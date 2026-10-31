@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import projects, system
+from app.api.routes import ask, projects, sources, system
 from app.core.config import get_settings
 from app.db.session import init_db
 
@@ -29,3 +29,5 @@ app.add_middleware(
 
 app.include_router(system.router, prefix=settings.api_prefix)
 app.include_router(projects.router, prefix=settings.api_prefix)
+app.include_router(sources.router, prefix=settings.api_prefix)
+app.include_router(ask.router, prefix=settings.api_prefix)
