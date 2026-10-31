@@ -2,26 +2,46 @@
 Paramètres du module vidéo, repris du prototype (D:\\Transcription).
 
 Décisions figées : LLM qwen2.5:3b uniquement, mode extractif, règle de décision
-combinée (plancher 0,02 + seuil 0,07). Les chemins et l'adresse d'Ollama peuvent
-être changés par variables d'environnement, sans toucher à app/core/config.py.
+combinée (plancher 0,02 + seuil 0,07). Les chemins et l'adresse d'Ollama se règlent
+dans backend/.env ou par variables d'environnement (prioritaires), sans toucher à
+app/core/config.py. Voir backend/.env.example.
 """
-import os
 from pathlib import Path
 
-# ---------- Stockage local (ignoré par git : backend/storage/.gitignore) ----------
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
 BACKEND_DIR = Path(__file__).resolve().parents[3]
-STORAGE_DIR = Path(os.getenv("VIDEO_STORAGE_DIR", BACKEND_DIR / "storage"))
+
+
+class _VideoEnv(BaseSettings):
+    """Réglages locaux du module vidéo, lus dans backend/.env puis l'environnement."""
+
+    model_config = SettingsConfigDict(env_file=BACKEND_DIR / ".env", env_file_encoding="utf-8", extra="ignore")
+
+    video_storage_dir: str = str(BACKEND_DIR / "storage")
+    video_max_bytes: int = 2 * 1024**3        # 2 Go
+    whisper_model_dir: str = ""               # vide : <stockage>/models/whisper
+    whisper_device: str = "cuda"              # "cuda" ou "cpu"
+    whisper_compute_type: str = "int8_float16"  # "int8" sur CPU
+    cuda_dll_dir: str = ""                    # Windows : dossier des DLL cuBLAS 12 / cuDNN 9
+    ollama_url: str = "http://localhost:11434"
+
+
+_env = _VideoEnv()
+
+# ---------- Stockage local (ignoré par git : backend/storage/.gitignore) ----------
+STORAGE_DIR = Path(_env.video_storage_dir)
 VIDEOS_DIR = STORAGE_DIR / "videos"
 EXT_VIDEO = (".mp4", ".webm", ".mkv", ".mov", ".m4v")
-TAILLE_MAX_VIDEO = int(os.getenv("VIDEO_MAX_BYTES", 2 * 1024**3))   # 2 Go
+TAILLE_MAX_VIDEO = _env.video_max_bytes
 # Paquets du groupe uv « video » (uv sync --group video), absents de l'image Docker par défaut
 DEPENDANCES = ("faster_whisper", "sentence_transformers", "rank_bm25", "numpy")
 
 # ---------- Transcription (faster-whisper) ----------
-WHISPER_MODEL_DIR = os.getenv("WHISPER_MODEL_DIR", str(STORAGE_DIR / "models" / "whisper"))
-WHISPER_DEVICE = os.getenv("WHISPER_DEVICE", "cuda")              # "cuda" ou "cpu"
-WHISPER_COMPUTE_TYPE = os.getenv("WHISPER_COMPUTE_TYPE", "int8_float16")  # "int8" sur CPU
-CUDA_DLL_DIR = os.getenv("CUDA_DLL_DIR", "")   # Windows : dossier des DLL cuBLAS 12 / cuDNN 9
+WHISPER_MODEL_DIR = _env.whisper_model_dir or str(STORAGE_DIR / "models" / "whisper")
+WHISPER_DEVICE = _env.whisper_device
+WHISPER_COMPUTE_TYPE = _env.whisper_compute_type
+CUDA_DLL_DIR = _env.cuda_dll_dir
 WHISPER_PROMPT = ("Transformer, BERT, SciBERT, embeddings, BM25, RAG, "
                   "fine-tuning, nDCG, retrieval, LangGraph")
 
@@ -37,7 +57,7 @@ N_CANDIDATS = 10      # candidats envoyés au reranker
 RRF_K = 60
 
 # ---------- LLM (Ollama) ----------
-OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
+OLLAMA_URL = _env.ollama_url
 MODELE_LLM = "qwen2.5:3b"   # tient entièrement dans les 4 Go de la GTX 1650
 OPTIONS_LLM = {"temperature": 0, "seed": 42, "num_ctx": 4096}
 TIMEOUT_LLM = 900
