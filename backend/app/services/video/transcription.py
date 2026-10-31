@@ -4,14 +4,20 @@ import os
 import sys
 from functools import lru_cache
 
-from .config import WHISPER_COMPUTE_TYPE, WHISPER_DEVICE, WHISPER_MODEL_DIR, WHISPER_PROMPT
+from .config import (CUDA_DLL_DIR, WHISPER_COMPUTE_TYPE, WHISPER_DEVICE, WHISPER_MODEL_DIR,
+                     WHISPER_PROMPT)
 
 
 def _rendre_dll_cuda_visibles() -> None:
-    """Windows : ajoute les DLL CUDA installées par pip (paquets nvidia-*) au chemin de recherche."""
+    """
+    Windows : rend visibles les DLL CUDA (cuBLAS 12, cuDNN 9) : dossier CUDA_DLL_DIR s'il est
+    défini (ex. D:\\Transcription), puis les paquets nvidia-* installés par pip.
+    """
     if os.name != "nt":
         return
-    for d in glob.glob(os.path.join(sys.prefix, "Lib", "site-packages", "nvidia", "*", "bin")):
+    dossiers = [CUDA_DLL_DIR] if CUDA_DLL_DIR else []
+    dossiers += glob.glob(os.path.join(sys.prefix, "Lib", "site-packages", "nvidia", "*", "bin"))
+    for d in dossiers:
         os.add_dll_directory(d)
         os.environ["PATH"] = d + os.pathsep + os.environ["PATH"]
 

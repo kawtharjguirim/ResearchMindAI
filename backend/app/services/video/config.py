@@ -21,6 +21,7 @@ DEPENDANCES = ("faster_whisper", "sentence_transformers", "rank_bm25", "numpy")
 WHISPER_MODEL_DIR = os.getenv("WHISPER_MODEL_DIR", str(STORAGE_DIR / "models" / "whisper"))
 WHISPER_DEVICE = os.getenv("WHISPER_DEVICE", "cuda")              # "cuda" ou "cpu"
 WHISPER_COMPUTE_TYPE = os.getenv("WHISPER_COMPUTE_TYPE", "int8_float16")  # "int8" sur CPU
+CUDA_DLL_DIR = os.getenv("CUDA_DLL_DIR", "")   # Windows : dossier des DLL cuBLAS 12 / cuDNN 9
 WHISPER_PROMPT = ("Transformer, BERT, SciBERT, embeddings, BM25, RAG, "
                   "fine-tuning, nDCG, retrieval, LangGraph")
 
