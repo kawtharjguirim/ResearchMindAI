@@ -11,6 +11,11 @@ from pathlib import Path
 # ---------- Stockage local (ignoré par git : backend/storage/.gitignore) ----------
 BACKEND_DIR = Path(__file__).resolve().parents[3]
 STORAGE_DIR = Path(os.getenv("VIDEO_STORAGE_DIR", BACKEND_DIR / "storage"))
+VIDEOS_DIR = STORAGE_DIR / "videos"
+EXT_VIDEO = (".mp4", ".webm", ".mkv", ".mov", ".m4v")
+TAILLE_MAX_VIDEO = int(os.getenv("VIDEO_MAX_BYTES", 2 * 1024**3))   # 2 Go
+# Paquets du groupe uv « video » (uv sync --group video), absents de l'image Docker par défaut
+DEPENDANCES = ("faster_whisper", "sentence_transformers", "rank_bm25", "numpy")
 
 # ---------- Transcription (faster-whisper) ----------
 WHISPER_MODEL_DIR = os.getenv("WHISPER_MODEL_DIR", str(STORAGE_DIR / "models" / "whisper"))

@@ -55,6 +55,7 @@ class Index:
 
     def __init__(self, chunks: list[dict], embeddings=None):
         """embeddings : vecteurs E5 déjà calculés (passage), pour éviter de les recalculer."""
+        import numpy as np
         from rank_bm25 import BM25Okapi
 
         if not chunks:
@@ -63,7 +64,7 @@ class Index:
         self.textes = [c["text"] for c in chunks]
         self.bm25 = BM25Okapi([normaliser(t) for t in self.textes])
         self.e5 = modele_e5()
-        self.emb = embeddings if embeddings is not None else encoder_passages(self.textes)
+        self.emb = np.asarray(embeddings if embeddings is not None else encoder_passages(self.textes))
         self.reranker = modele_reranker()
 
     def classements(self, question: str) -> dict:
