@@ -1,9 +1,15 @@
 """RAG minimal : search() et answer(), contrat documente dans docs/contrat_api.md.
 
 LLM : qwen2.5:3b uniquement, via Ollama local (http://localhost:11434). Regle de
-verification simplifiee (inspiree de D:\\Transcription\\rag.py) : la reponse n'est
-"verifiee" que si le meilleur score de reranking depasse PLANCHER_RERANK ET que le
-LLM a effectivement cite au moins un des extraits fournis.
+verification : la reponse n'est "verifiee" que si le meilleur score de reranking
+depasse PLANCHER_RERANK ET qu'au moins un des extraits fournis recouvre lexicalement
+la reponse au-dessus de SEUIL_COUVERTURE (fonction `couverture`, reprise de
+backend/app/services/video/text.py -- lecture seule, backend/ n'est pas modifie).
+
+Ancienne version : la citation etait detectee en cherchant "[1]", "[2]"... litteralement
+dans le texte genere. qwen2.5:3b ne reprend quasiment jamais ce format (verifie=False sur
+toutes les reponses testees, meme correctes), d'ou le recouvrement lexical a la place --
+plus robuste au format de sortie du LLM.
 
 Limite connue (voir le rapport de fin de mission) : pas de reecriture de requete, pas
 de verification par un second appel LLM separe, pas de mode extractif -- une seule
@@ -15,11 +21,24 @@ import urllib.request
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # utile avec python -I
-from recherche import N_CANDIDATS, Index  # noqa: E402
+from recherche import N_CANDIDATS, Index, normaliser  # noqa: E402
 
 MODELE_LLM = "qwen2.5:3b"
 OLLAMA_URL = "http://localhost:11434"
 PLANCHER_RERANK = 0.02   # sous ce score, aucun passage n'est juge pertinent
+SEUIL_COUVERTURE = 0.10  # recouvrement lexical minimal reponse/passage pour citer un extrait ;
+                         # seuil bas car les articles sont en anglais et les reponses en francais :
+                         # le recouvrement vient surtout des termes techniques et noms propres
+                         # partages, jamais d'une traduction mot a mot (calibre empiriquement,
+                         # voir le rapport de fin de mission)
+
+
+def couverture(phrase, texte):
+    """Part des mots (normalises) de `phrase` presents dans `texte` (1.0 = recopiee).
+    Repris de backend/app/services/video/text.py (lecture seule), avec notre normaliser()."""
+    mots = normaliser(phrase)
+    vus = set(normaliser(texte))
+    return sum(m in vus for m in mots) / len(mots) if mots else 0.0
 
 _index = None  # Index charge une seule fois par processus (chargement paresseux)
 
@@ -78,7 +97,8 @@ def answer(query, top_k=5):
     )
     reponse = _appeler_ollama(prompt)
 
-    cites = [p for i, p in enumerate(passages) if f"[{i + 1}]" in reponse]
+    notes = [couverture(reponse, p["text"]) for p in passages]
+    cites = [p for p, s in sorted(zip(passages, notes), key=lambda ps: -ps[1]) if s >= SEUIL_COUVERTURE]
     verifie = bool(cites) and passages[0]["score"] >= PLANCHER_RERANK
     citations = cites or passages[:1]
     return {
