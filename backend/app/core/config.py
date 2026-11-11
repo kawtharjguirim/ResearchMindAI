@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     # project uses asymmetric signing keys: tokens are then verified through JWKS.
     supabase_jwt_secret: str = ""
     supabase_jwt_audience: str = "authenticated"
+    # Signs short-lived video playback links (<video> cannot send an Authorization header).
+    # Falls back to supabase_jwt_secret, then to an insecure dev default, if left empty.
+    media_token_secret: str = ""
 
     # Comma-separated list of allowed frontend origins
     cors_origins: str = "http://localhost:3000"
