@@ -222,6 +222,16 @@ def test_search_across_all_sources_includes_video_and_papers(client, fake_models
     assert "paper-demo-relativity" in doc_ids
 
 
+def test_transcript_returns_chunks_in_order(client, fake_models):
+    s = upload(client).json()
+    r = client.get(f"{API}/sources/{s['id']}/transcript", headers=auth("alice"))
+    assert r.status_code == 200
+    chunks = r.json()
+    assert len(chunks) >= 1
+    assert chunks == sorted(chunks, key=lambda c: c["start"])
+    assert client.get(f"{API}/sources/{s['id']}/transcript", headers=auth("bob")).status_code == 404
+
+
 def test_play_link_then_file_streams_video(client, fake_models):
     s = upload(client).json()
     link = client.get(f"{API}/sources/{s['id']}/play-link", headers=auth("alice"))

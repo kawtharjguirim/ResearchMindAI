@@ -77,6 +77,14 @@ class PlayLink(BaseModel):
     expires_at: datetime
 
 
+class TranscriptChunk(BaseModel):
+    chunk_id: str
+    start: float
+    end: float
+    timestamp: str
+    text: str
+
+
 class SearchRequest(BaseModel):
     query: str = Field(min_length=1, max_length=1000)
     source_id: str | None = None   # limite la recherche à cette source ; sinon toutes les sources prêtes

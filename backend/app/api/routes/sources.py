@@ -25,7 +25,7 @@ from app.core.media_token import sign_play_token, verify_play_token
 from app.db.session import get_db
 from app.models.project import Project
 from app.models.source import Chunk, Source, SourceStatus
-from app.schemas.source import PlayLink, SourceRead
+from app.schemas.source import PlayLink, SourceRead, TranscriptChunk
 from app.services import papers
 from app.services.video import pipeline
 from app.services.video.config import EXT_VIDEO, TAILLE_MAX_VIDEO, VIDEOS_DIR
@@ -150,6 +150,15 @@ def delete_source(source_id: str, db: Session = Depends(get_db), user: CurrentUs
     if path is not None:
         path.unlink(missing_ok=True)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/{source_id}/transcript", response_model=list[TranscriptChunk])
+def get_transcript(source_id: str, db: Session = Depends(get_db), user: CurrentUser = Depends(get_current_user)):
+    """Transcription découpée en passages, pour l'afficher en synchronisation avec le lecteur."""
+    source = get_owned_source(db, source_id, user)
+    chunks = db.scalars(select(Chunk).where(Chunk.source_id == source.id).order_by(Chunk.position)).all()
+    return [TranscriptChunk(chunk_id=c.id, start=c.start, end=c.end, timestamp=c.timestamp, text=c.text)
+            for c in chunks]
 
 
 @router.get("/{source_id}/play-link", response_model=PlayLink)
