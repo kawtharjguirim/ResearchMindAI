@@ -1,17 +1,24 @@
 """
-Sources "papier" simulées (PDF, web, figure, document personnel).
+Sources "papier" (PDF, web, figure, document personnel).
 
-En attendant que la session qui construit le corpus arXiv (data_latex/) publie un contrat
-réel (recherche/réponse sur des documents papier), ce module fournit un petit jeu de données
-statique pour que GET /sources, POST /search et POST /answer aient de quoi afficher/chercher/
-répondre sur des sources non-vidéo. Si CONTRACT_PATH apparaît, brancher les vraies fonctions
-search()/answer() de ce contrat à la place de search()/answer() ci-dessous (vidéos non concernées).
+Deux modes, choisis à l'appel selon `rag_corpus.disponible()` :
+- corpus réel : si `rag/` (code + données, voir app.services.rag_corpus) est présent sur cette
+  machine, une seule source pseudo-document CORPUS_ID représente tout le corpus arXiv indexé
+  par la session sœur (`search()`/`answer()` de rag/rag.py interrogent le corpus entier, sans
+  filtre par document : voir docs/contrat_api.md).
+- simulé : sinon (dépôt frais, CI, données non générées localement), un petit jeu de données
+  statique pour que GET /sources, POST /search et POST /answer aient de quoi afficher/chercher/
+  répondre sur des sources non-vidéo.
 """
 from datetime import datetime, timezone
 from pathlib import Path
 
+from app.services import rag_corpus
+
 # backend/app/services/papers.py -> parents[3] = racine du dépôt (ou du worktree)
 CONTRACT_PATH = Path(__file__).resolve().parents[3] / "docs" / "contrat_api.md"
+
+CORPUS_ID = "corpus-arxiv"
 
 # Horodatage fixe (déterministe pour les tests et le tri par date de création).
 _BASE = datetime(2025, 9, 1, tzinfo=timezone.utc)
@@ -68,25 +75,12 @@ _BY_ID = {p["id"] for p in MOCK_PAPERS}
 
 
 def is_paper_id(source_id: str) -> bool:
-    return source_id in _BY_ID
+    return source_id in _BY_ID or source_id == CORPUS_ID
 
 
 def contrat_disponible() -> bool:
     """True si le contrat réel du corpus (docs/contrat_api.md) a été publié."""
     return CONTRACT_PATH.exists()
-
-
-def list_sources() -> list[dict]:
-    """Sources papier au format attendu par SourceRead (status toujours "ready": pas de traitement)."""
-    return [
-        {
-            "id": p["id"], "project_id": None, "source_type": p["source_type"], "title": p["title"],
-            "url": p["url"], "language": p["language"], "duration": None, "status": "ready", "error": "",
-            "excerpt": p["excerpt"], "chunk_count": len(p["chunks"]),
-            "created_at": _BASE.isoformat(), "updated_at": _BASE.isoformat(),
-        }
-        for p in MOCK_PAPERS
-    ]
 
 
 def get_paper(source_id: str) -> dict | None:
@@ -102,8 +96,21 @@ def _score(query: str, text: str) -> float:
     return round(len(mots_q & mots_t) / len(mots_q), 4)
 
 
-def search(query: str, source_id: str | None = None, top_k: int = 5) -> list[dict]:
-    """Résultats simulés au format {chunk_id, document_id, source, text, score}."""
+# ---------- Mode simulé (repli) ----------
+
+def _list_sources_simulees() -> list[dict]:
+    return [
+        {
+            "id": p["id"], "project_id": None, "source_type": p["source_type"], "title": p["title"],
+            "url": p["url"], "language": p["language"], "duration": None, "status": "ready", "error": "",
+            "excerpt": p["excerpt"], "chunk_count": len(p["chunks"]),
+            "created_at": _BASE.isoformat(), "updated_at": _BASE.isoformat(),
+        }
+        for p in MOCK_PAPERS
+    ]
+
+
+def _search_simulee(query: str, source_id: str | None, top_k: int) -> list[dict]:
     papers = [get_paper(source_id)] if source_id else MOCK_PAPERS
     resultats = []
     for p in papers:
@@ -118,15 +125,11 @@ def search(query: str, source_id: str | None = None, top_k: int = 5) -> list[dic
     return resultats[:top_k]
 
 
-def answer(question: str, source_id: str) -> dict:
-    """
-    Réponse simulée : {reponse, citations, verifie}. Aucune génération réelle tant que le
-    contrat du corpus n'est pas branché : verifie est toujours False pour rester honnête.
-    """
+def _answer_simulee(question: str, source_id: str) -> dict:
     p = get_paper(source_id)
     if p is None:
         return {"reponse": "Source papier introuvable.", "citations": [], "verifie": False}
-    resultats = search(question, source_id=source_id, top_k=1)
+    resultats = _search_simulee(question, source_id, top_k=1)
     if not resultats:
         return {"reponse": "Aucun passage simulé ne correspond à cette question.",
                 "citations": [], "verifie": False}
@@ -136,3 +139,43 @@ def answer(question: str, source_id: str) -> dict:
     reponse = (f"Réponse simulée (corpus papier non encore branché) : « {top['text']} » "
               f"— à vérifier, ce passage est un exemple de démonstration, pas une vraie extraction.")
     return {"reponse": reponse, "citations": [citation], "verifie": False}
+
+
+# ---------- Mode corpus réel (rag/, voir app.services.rag_corpus) ----------
+
+def _nb_chunks_corpus() -> int:
+    chemin = rag_corpus.REPO_ROOT / "rag" / "data" / "chunks.jsonl"
+    with open(chemin, encoding="utf-8") as f:
+        return sum(1 for _ in f)
+
+
+def _list_sources_corpus() -> list[dict]:
+    return [{
+        "id": CORPUS_ID, "project_id": None, "source_type": "pdf", "title": "Corpus arXiv (data_latex)",
+        "url": "", "language": "en", "duration": None, "status": "ready", "error": "",
+        "excerpt": "Recherche hybride (BM25 + E5 + reranker) sur les articles arXiv importés "
+                   "et les vidéos de démonstration. Une question interroge tout le corpus.",
+        "chunk_count": _nb_chunks_corpus(),
+        "created_at": _BASE.isoformat(), "updated_at": _BASE.isoformat(),
+    }]
+
+
+# ---------- API publique (app.api.routes.sources/answer/search) ----------
+
+def list_sources() -> list[dict]:
+    """Sources papier au format attendu par SourceRead (status toujours "ready": pas de traitement)."""
+    return _list_sources_corpus() if rag_corpus.disponible() else _list_sources_simulees()
+
+
+def search(query: str, source_id: str | None = None, top_k: int = 5) -> list[dict]:
+    """Résultats au format {chunk_id, document_id, source, text, score, timestamp?}."""
+    if rag_corpus.disponible():
+        return rag_corpus.search(query, top_k)
+    return _search_simulee(query, source_id, top_k)
+
+
+def answer(question: str, source_id: str) -> dict:
+    """{reponse, citations, verifie} : corpus réel si disponible, sinon réponse simulée."""
+    if rag_corpus.disponible():
+        return rag_corpus.answer(question, top_k=5)
+    return _answer_simulee(question, source_id)

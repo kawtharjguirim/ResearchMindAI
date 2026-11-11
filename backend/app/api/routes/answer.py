@@ -1,6 +1,7 @@
 """
 Questions-réponses génériques, sur une source vidéo (mode extractif, qwen2.5:3b via Ollama)
-ou sur une source papier simulée (app.services.papers, en attendant le contrat du corpus).
+ou sur une source papier (app.services.papers : corpus arXiv réel si rag/ est disponible sur
+la machine, sinon réponse simulée).
 
     POST /answer  {"source_id": "...", "question": "..."}  ->  {reponse, citations, verifie}
 
@@ -20,6 +21,7 @@ from app.db.session import get_db
 from app.models.source import SourceStatus
 from app.schemas.source import AnswerCitation, AnswerRequest, AnswerResponse, Passage
 from app.services import papers
+from app.services.rag_corpus import RagIndisponible
 from app.services.video import pipeline
 from app.services.video.llm import OllamaIndisponible
 
@@ -62,7 +64,10 @@ def _paper_to_response(question: str, r: dict) -> AnswerResponse:
 @router.post("/answer", response_model=AnswerResponse)
 def answer(body: AnswerRequest, db: Session = Depends(get_db), user: CurrentUser = Depends(get_current_user)):
     if papers.is_paper_id(body.source_id):
-        return _paper_to_response(body.question, papers.answer(body.question, body.source_id))
+        try:
+            return _paper_to_response(body.question, papers.answer(body.question, body.source_id))
+        except RagIndisponible as e:
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
 
     source = get_owned_source(db, body.source_id, user)
     if source.status != SourceStatus.ready:
