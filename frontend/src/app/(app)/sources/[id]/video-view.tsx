@@ -99,7 +99,7 @@ export function VideoView({ sourceId }: { sourceId: string }) {
   return (
     <div className="mx-auto max-w-[1200px] px-5 py-8 sm:px-8">
       <Link href="/sources" className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
-        <Icon name="x" className="size-3.5 rotate-45" />
+        <Icon name="arrowLeft" className="size-3.5" />
         Back to sources
       </Link>
       <div className="mt-3 flex flex-wrap items-center gap-3">
