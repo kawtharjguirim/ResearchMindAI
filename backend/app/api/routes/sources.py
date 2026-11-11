@@ -128,10 +128,10 @@ def list_sources(
         query = query.where(Source.project_id == project_id)
     rows = db.execute(query.order_by(Source.created_at.desc())).all()
     videos = [to_read(s, n) for s, n in rows]
-    # Sources papier simulées (app.services.papers), tant que le contrat du corpus n'est pas
-    # branché. Elles n'appartiennent à aucun projet : exclues dès qu'un project_id est demandé.
-    mock_papers = [] if project_id else [SourceRead(**p) for p in papers.list_sources()]
-    return videos + mock_papers
+    # Sources papier : corpus arXiv réel si rag/ est disponible (app.services.papers), sinon
+    # simulées. Elles n'appartiennent à aucun projet : exclues dès qu'un project_id est demandé.
+    paper_sources = [] if project_id else [SourceRead(**p) for p in papers.list_sources()]
+    return videos + paper_sources
 
 
 @router.get("/{source_id}", response_model=SourceRead)
