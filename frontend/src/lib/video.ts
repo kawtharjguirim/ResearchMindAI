@@ -48,6 +48,8 @@ export type AnswerResponse = {
 
 export type SearchResult = { chunk_id: string; document_id: string; source: string; text: string; score: number; timestamp: string | null };
 
+export type TranscriptChunk = { chunk_id: string; start: number; end: number; timestamp: string; text: string };
+
 export type VideoUpload = { file: File; title?: string; language?: string; projectId?: string };
 
 export const VIDEO_EXTENSIONS = [".mp4", ".webm", ".mkv", ".mov", ".m4v"];
@@ -61,6 +63,7 @@ export const videoApi = {
   getSource: (id: string) => request<Source>(`/sources/${id}`),
   deleteSource: (id: string) => request<void>(`/sources/${id}`, { method: "DELETE" }),
   playLink: (id: string) => request<PlayLink>(`/sources/${id}/play-link`),
+  getTranscript: (id: string) => request<TranscriptChunk[]>(`/sources/${id}/transcript`),
   // The video bytes are the request body (no multipart form): metadata goes in the query string.
   uploadVideo: ({ file, title, language, projectId }: VideoUpload) => {
     const params = new URLSearchParams({ filename: file.name });
