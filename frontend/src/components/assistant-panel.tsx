@@ -121,9 +121,12 @@ function AnswerBody({ answer, onJump }: { answer: AnswerResponse; onJump?: (cita
       <div className="flex flex-wrap items-center gap-2">
         <Badge tone={tone}>{label}</Badge>
         {answer.verifie && (
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-success-600 dark:text-[#6CE9A6]">
+          <span
+            className="inline-flex items-center gap-1 text-xs font-medium text-success-600 dark:text-[#6CE9A6]"
+            title="The answer is grounded in a retrieved passage — this does not confirm the passage is the correct one."
+          >
             <Icon name="shield" className="size-3.5" />
-            Verified
+            Grounded in a source
           </span>
         )}
       </div>
