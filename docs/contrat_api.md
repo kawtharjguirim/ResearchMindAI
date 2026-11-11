@@ -57,14 +57,27 @@ en français en citant les extraits utilisés (`[1]`, `[2]`, ...).
 
 - Si le meilleur score de reranking est sous le plancher (0.02) → pas de recherche de
   réponse, `verifie=False`, `citations=[]`, message standard de rejet.
-- Sinon, le LLM génère une réponse ; `verifie=True` seulement s'il a cité au moins un des
-  extraits fournis (détection de `[1]`, `[2]`, ... dans le texte généré).
+- Sinon, le LLM génère une réponse. Chaque extrait fourni est noté par recouvrement
+  lexical avec la réponse (fonction `couverture`, reprise de
+  `backend/app/services/video/text.py`, lecture seule) ; un extrait est retenu comme
+  citation si son score dépasse `SEUIL_COUVERTURE` (0.10). `verifie=True` seulement s'il
+  y a au moins une citation retenue.
+  - Première version : citation détectée en cherchant littéralement `[1]`, `[2]`, ... dans
+    le texte généré. Abandonnée : qwen2.5:3b ne reprend presque jamais ce format, donc
+    `verifie` restait `False` même pour des réponses correctes (voir le rapport de fin de
+    mission).
+  - Le seuil 0.10 est volontairement bas : le corpus d'articles est en anglais et les
+    réponses sont en français, donc le recouvrement lexical vient surtout des termes
+    techniques et noms propres partagés, jamais d'une traduction mot à mot. **`verifie=True`
+    signifie que la réponse est ancrée dans un passage retrouvé, pas que ce passage est le
+    bon** : sur l'échantillon de test, 2/5 réponses sont « vérifiées » alors que le passage
+    pertinent attendu n'était même pas dans le top 10 de la recherche.
 
-**Limite connue** (voir le rapport de fin de mission pour le détail) : cette règle est une
-version simplifiée de celle du prototype vidéo (`D:\Transcription\rag.py`), qui utilise un
-second appel LLM dédié à la vérification. Ici, un seul appel génère la réponse ; il n'y a
-pas de réécriture de requête ni de mode extractif. À valider/durcir avant mise en
-production si la fiabilité de `verifie` doit être plus stricte.
+**Limites connues** (voir le rapport de fin de mission pour le détail) : un seul appel LLM
+génère la réponse (pas de second appel de vérification séparé, pas de réécriture de
+requête, pas de mode extractif, contrairement au prototype vidéo complet
+`D:\Transcription\rag.py`). Le seuil 0.10 n'a été calibré que sur 5 questions, toutes dans
+le sujet du corpus ; son comportement sur des questions hors sujet n'a pas été testé.
 
 ## Données attendues
 
