@@ -57,6 +57,13 @@ export function VideoView({ sourceId }: { sourceId: string }) {
     el.play().catch(() => {});
   }, []);
 
+  // Jumped here from the Assistant page with a timestamp, e.g. /sources/{id}#t=125.
+  useEffect(() => {
+    if (!videoUrl) return;
+    const match = /^#t=(\d+(?:\.\d+)?)$/.exec(window.location.hash);
+    if (match) playAt(Number(match[1]));
+  }, [videoUrl, playAt]);
+
   function onTimeUpdate() {
     const t = videoRef.current?.currentTime;
     if (t == null || !transcript) return;
