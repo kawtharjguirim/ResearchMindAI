@@ -15,14 +15,18 @@ import os
 import uuid
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, Response, status
+from fastapi.responses import FileResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.auth import CurrentUser, get_current_user
+from app.core.config import Settings, get_settings
+from app.core.media_token import sign_play_token, verify_play_token
 from app.db.session import get_db
 from app.models.project import Project
-from app.models.source import Chunk, Source
-from app.schemas.source import SourceRead
+from app.models.source import Chunk, Source, SourceStatus
+from app.schemas.source import PlayLink, SourceRead, TranscriptChunk
+from app.services import papers
 from app.services.video import pipeline
 from app.services.video.config import EXT_VIDEO, TAILLE_MAX_VIDEO, VIDEOS_DIR
 
@@ -123,7 +127,11 @@ def list_sources(
     if project_id:
         query = query.where(Source.project_id == project_id)
     rows = db.execute(query.order_by(Source.created_at.desc())).all()
-    return [to_read(s, n) for s, n in rows]
+    videos = [to_read(s, n) for s, n in rows]
+    # Sources papier simulées (app.services.papers), tant que le contrat du corpus n'est pas
+    # branché. Elles n'appartiennent à aucun projet : exclues dès qu'un project_id est demandé.
+    mock_papers = [] if project_id else [SourceRead(**p) for p in papers.list_sources()]
+    return videos + mock_papers
 
 
 @router.get("/{source_id}", response_model=SourceRead)
@@ -142,3 +150,45 @@ def delete_source(source_id: str, db: Session = Depends(get_db), user: CurrentUs
     if path is not None:
         path.unlink(missing_ok=True)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/{source_id}/transcript", response_model=list[TranscriptChunk])
+def get_transcript(source_id: str, db: Session = Depends(get_db), user: CurrentUser = Depends(get_current_user)):
+    """Transcription découpée en passages, pour l'afficher en synchronisation avec le lecteur."""
+    source = get_owned_source(db, source_id, user)
+    chunks = db.scalars(select(Chunk).where(Chunk.source_id == source.id).order_by(Chunk.position)).all()
+    return [TranscriptChunk(chunk_id=c.id, start=c.start, end=c.end, timestamp=c.timestamp, text=c.text)
+            for c in chunks]
+
+
+@router.get("/{source_id}/play-link", response_model=PlayLink)
+def play_link(
+    source_id: str,
+    settings: Settings = Depends(get_settings),
+    db: Session = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
+    """Lien de lecture signé, valable 10 minutes : GET /sources/{id}/file?token=..."""
+    source = get_owned_source(db, source_id, user)
+    if source.status != SourceStatus.ready or not source.filename:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Video is not ready")
+    token, expires_at = sign_play_token(source.id, user.id, settings)
+    return PlayLink(url=f"{settings.api_prefix}/sources/{source_id}/file?token={token}", expires_at=expires_at)
+
+
+@router.get("/{source_id}/file")
+def play_file(
+    source_id: str,
+    token: str,
+    settings: Settings = Depends(get_settings),
+    db: Session = Depends(get_db),
+):
+    """Octets de la vidéo, protégés par le jeton signé (pas de Bearer : <video> ne l'envoie pas)."""
+    verify_play_token(token, source_id, settings)
+    source = db.get(Source, source_id)
+    if source is None or not source.filename:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Source not found")
+    path = pipeline.chemin_video(source)
+    if not path.exists():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Video file missing on disk")
+    return FileResponse(path, media_type="video/mp4")

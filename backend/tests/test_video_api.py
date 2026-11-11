@@ -103,13 +103,16 @@ def test_upload_processes_video_and_isolates_users(client, fake_models):
     s = client.get(f"{API}/sources/{s['id']}", headers=auth("alice")).json()
     assert s["status"] == "ready" and s["chunk_count"] >= 1 and s["duration"] == 70.0
 
-    assert [x["id"] for x in client.get(f"{API}/sources", headers=auth("alice")).json()] == [s["id"]]
-    assert client.get(f"{API}/sources", headers=auth("bob")).json() == []
+    def video_ids(user):
+        return [x["id"] for x in client.get(f"{API}/sources", headers=auth(user)).json() if x["source_type"] == "video"]
+
+    assert video_ids("alice") == [s["id"]]
+    assert video_ids("bob") == []
     assert client.get(f"{API}/sources/{s['id']}", headers=auth("bob")).status_code == 404
     assert client.delete(f"{API}/sources/{s['id']}", headers=auth("bob")).status_code == 404
 
     assert client.delete(f"{API}/sources/{s['id']}", headers=auth("alice")).status_code == 204
-    assert client.get(f"{API}/sources", headers=auth("alice")).json() == []
+    assert video_ids("alice") == []
     assert list(fake_models.iterdir()) == []          # vidéo supprimée du disque
 
 
@@ -127,7 +130,7 @@ def test_upload_to_someone_elses_project_is_refused(client, fake_models):
     assert upload(client, project_id=p["id"]).status_code == 404
 
 
-def test_ask_returns_exact_citation_with_timestamp(client, fake_models, monkeypatch):
+def test_answer_returns_exact_citation_with_timestamp(client, fake_models, monkeypatch):
     def fake_chat(messages, schema=None, appels=None, etape=None):
         if etape == "verification":
             return {"information_demandee": "conséquence", "extrait": 1, "repond": True,
@@ -136,49 +139,106 @@ def test_ask_returns_exact_citation_with_timestamp(client, fake_models, monkeypa
     monkeypatch.setattr(llm, "chat", fake_chat)
 
     s = upload(client).json()
-    r = client.post(f"{API}/ask", json={"source_id": s["id"], "question": "Que se passe-t-il sans correction ?"},
+    r = client.post(f"{API}/answer", json={"source_id": s["id"], "question": "Que se passe-t-il sans correction ?"},
                     headers=auth("alice"))
     assert r.status_code == 200
     a = r.json()
-    assert a["status"] == "repondu"
-    assert a["citation"] == {"text": "Sans cette correction, la position dériverait de dix kilomètres par jour.",
-                             "timestamp": "00:00:04", "passage": 1}
-    assert a["answer"].startswith("« Sans cette correction")
+    assert a["status"] == "repondu" and a["verifie"] is True
+    assert a["citations"] == [{
+        "chunk_id": a["passages"][0]["chunk_id"], "document_id": s["id"], "source": s["title"],
+        "text": "Sans cette correction, la position dériverait de dix kilomètres par jour.",
+        "timestamp": "00:00:04", "url": None,
+    }]
+    assert a["reponse"].startswith("« Sans cette correction")
     assert len(a["passages"]) >= 1 and "recherche" in a["timings"]
 
     # Isolation : bob ne peut pas interroger la vidéo d'alice
-    assert client.post(f"{API}/ask", json={"source_id": s["id"], "question": "?"},
+    assert client.post(f"{API}/answer", json={"source_id": s["id"], "question": "?"},
                        headers=auth("bob")).status_code == 404
 
 
-def test_ask_below_floor_is_off_topic_without_calling_llm(client, fake_models, monkeypatch):
+def test_answer_below_floor_is_off_topic_without_calling_llm(client, fake_models, monkeypatch):
     def no_llm(*a, **k):
         raise AssertionError("le LLM ne doit pas être appelé sous le plancher")
     monkeypatch.setattr(llm, "chat", no_llm)
     monkeypatch.setattr(FakeIndex, "rerank", 0.0147)
     s = upload(client).json()
-    a = client.post(f"{API}/ask", json={"source_id": s["id"], "question": "Recette des lasagnes ?"},
+    a = client.post(f"{API}/answer", json={"source_id": s["id"], "question": "Recette des lasagnes ?"},
                     headers=auth("alice")).json()
-    assert a["status"] == "hors_sujet" and a["citation"] is None
+    assert a["status"] == "hors_sujet" and a["verifie"] is False and a["citations"] == []
 
 
-def test_ask_on_unready_source_is_409(client, fake_models, monkeypatch):
+def test_answer_on_unready_source_is_409(client, fake_models, monkeypatch):
     monkeypatch.setattr(pipeline, "traiter_source", lambda source_id: None)   # reste « pending »
     s = upload(client).json()
-    r = client.post(f"{API}/ask", json={"source_id": s["id"], "question": "?"}, headers=auth("alice"))
+    r = client.post(f"{API}/answer", json={"source_id": s["id"], "question": "?"}, headers=auth("alice"))
     assert r.status_code == 409
 
 
-def test_ask_when_ollama_is_down_is_503(client, fake_models, monkeypatch):
+def test_answer_when_ollama_is_down_is_503(client, fake_models, monkeypatch):
     def down(*a, **k):
         raise llm.OllamaIndisponible("Ollama injoignable")
     monkeypatch.setattr(llm, "chat", down)
     s = upload(client).json()
-    r = client.post(f"{API}/ask", json={"source_id": s["id"], "question": "Et le GPS ?"}, headers=auth("alice"))
+    r = client.post(f"{API}/answer", json={"source_id": s["id"], "question": "Et le GPS ?"}, headers=auth("alice"))
     assert r.status_code == 503 and "Ollama" in r.json()["detail"]
 
 
 def test_empty_question_rejected(client, fake_models):
     s = upload(client).json()
-    r = client.post(f"{API}/ask", json={"source_id": s["id"], "question": "   "}, headers=auth("alice"))
+    r = client.post(f"{API}/answer", json={"source_id": s["id"], "question": "   "}, headers=auth("alice"))
     assert r.status_code == 422
+
+
+def test_answer_on_simulated_paper_source_is_marked_unverified(client):
+    r = client.post(f"{API}/answer", json={"source_id": "paper-demo-rag", "question": "What is RAG?"},
+                    headers=auth("alice"))
+    assert r.status_code == 200
+    a = r.json()
+    assert a["verifie"] is False and len(a["citations"]) == 1
+
+
+def test_sources_list_includes_simulated_papers(client):
+    r = client.get(f"{API}/sources", headers=auth("alice"))
+    assert r.status_code == 200
+    types = {s["source_type"] for s in r.json()}
+    assert "pdf" in types and "web" in types and "personal" in types
+
+
+def test_search_returns_results_for_paper_source(client):
+    r = client.post(f"{API}/search", json={"query": "relativistic GPS clocks", "source_id": "paper-demo-relativity"},
+                    headers=auth("alice"))
+    assert r.status_code == 200
+    results = r.json()
+    assert len(results) >= 1 and results[0]["document_id"] == "paper-demo-relativity"
+
+
+def test_search_across_all_sources_includes_video_and_papers(client, fake_models, monkeypatch):
+    monkeypatch.setattr(FakeIndex, "rerank", 0.5)
+    upload(client)
+    r = client.post(f"{API}/search", json={"query": "GPS relativity", "top_k": 20}, headers=auth("alice"))
+    assert r.status_code == 200
+    doc_ids = {x["document_id"] for x in r.json()}
+    assert "paper-demo-relativity" in doc_ids
+
+
+def test_transcript_returns_chunks_in_order(client, fake_models):
+    s = upload(client).json()
+    r = client.get(f"{API}/sources/{s['id']}/transcript", headers=auth("alice"))
+    assert r.status_code == 200
+    chunks = r.json()
+    assert len(chunks) >= 1
+    assert chunks == sorted(chunks, key=lambda c: c["start"])
+    assert client.get(f"{API}/sources/{s['id']}/transcript", headers=auth("bob")).status_code == 404
+
+
+def test_play_link_then_file_streams_video(client, fake_models):
+    s = upload(client).json()
+    link = client.get(f"{API}/sources/{s['id']}/play-link", headers=auth("alice"))
+    assert link.status_code == 200
+    url = link.json()["url"]
+    r = client.get(url)
+    assert r.status_code == 200 and r.content == b"fake video bytes"
+    # Jeton valide, mais pour une autre source dans l'URL : refusé.
+    bad = client.get(url.replace(s["id"], "00000000-0000-0000-0000-000000000000"))
+    assert bad.status_code in (401, 403, 404)
