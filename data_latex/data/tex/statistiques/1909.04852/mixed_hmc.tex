@@ -1,0 +1,1142 @@
+\documentclass{article}
+
+% if you need to pass options to natbib, use, e.g.:
+%     \PassOptionsToPackage{numbers, compress}{natbib}
+% before loading neurips_2020
+
+% ready for submission
+% \usepackage{neurips_2020}
+
+% to compile a preprint version, e.g., for submission to arXiv, add add the
+% [preprint] option:
+%     \usepackage[preprint]{neurips_2020}
+
+% to compile a camera-ready version, add the [final] option, e.g.:
+%     \usepackage[final]{neurips_2020}
+
+% to avoid loading the natbib package, add option nonatbib:
+\usepackage[final, nonatbib]{neurips_2020}
+\usepackage{wrapfig}
+\usepackage[utf8]{inputenc} % allow utf-8 input
+\usepackage[T1]{fontenc}    % use 8-bit T1 fonts
+\usepackage{hyperref}       % hyperlinks
+\usepackage{url}            % simple URL typesetting
+\usepackage{booktabs}       % professional-quality tables
+\usepackage{nicefrac}       % compact symbols for 1/2, etc.
+\usepackage{microtype}      % microtypography
+% \usepackage{algorithm, algpseudocode}
+\usepackage{multicol}
+\usepackage{amsmath, amsfonts, amsthm, amssymb}
+\usepackage{mathtools}
+\usepackage{graphicx, subcaption}
+\usepackage{afterpage}
+\usepackage{algorithm, algorithmic}
+\usepackage{paralist}
+\usepackage{bbm}
+
+
+\newcommand{\cald}{\mathcal{D}}
+\newcommand{\calc}{\mathcal{C}}
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}{Proposition}
+\newtheorem{lemma}{Lemma}
+\newenvironment{proof_sketch}{\textit{Proof Sketch.\hspace*{-1pt}}}{\hfill$\square$}
+
+\title{Mixed Hamiltonian Monte Carlo for Mixed Discrete and Continuous Variables}
+
+% The \author macro works with any number of authors. There are two commands
+% used to separate the names and addresses of multiple authors: \And and \AND.
+%
+% Using \And between authors leaves it to LaTeX to determine where to break the
+% lines. Using \AND forces a line break at that point. So, if LaTeX puts 3 of 4
+% authors names on the first line, and the last on the second line, try using
+% \AND instead of \And before the third author name.
+
+\author{%
+    Guangyao Zhou\\
+  Vicarious AI\\
+  Union City, CA 94587, USA \\
+  \texttt{stannis@vicarious.com} \\
+  % examples of more authors
+  % \And
+  % Coauthor \\
+  % Affiliation \\
+  % Address \\
+  % \texttt{email} \\
+  % \AND
+  % Coauthor \\
+  % Affiliation \\
+  % Address \\
+  % \texttt{email} \\
+  % \And
+  % Coauthor \\
+  % Affiliation \\
+  % Address \\
+  % \texttt{email} \\
+  % \And
+  % Coauthor \\
+  % Affiliation \\
+  % Address \\
+  % \texttt{email} \\
+}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+	Hamiltonian Monte Carlo (HMC) has emerged as a powerful Markov Chain Monte Carlo (MCMC) method to sample from complex continuous distributions. However, a fundamental limitation of HMC is that it can not be applied to distributions with mixed discrete and continuous variables. In this paper, we propose mixed HMC (M-HMC) as a general framework to address this limitation. M-HMC is a novel family of MCMC algorithms that evolves the discrete and continuous variables in tandem, allowing more frequent updates of discrete variables while maintaining HMC's ability to suppress random-walk behavior. We establish M-HMC's theoretical properties, and present an efficient implementation with Laplace momentum that introduces minimal overhead compared to existing HMC methods. The superior performances of M-HMC over existing methods are demonstrated with numerical experiments on Gaussian mixture models (GMMs), variable selection in Bayesian logistic regression (BLR), and correlated topic models (CTMs).
+\end{abstract}
+
+\section{Introduction}
+
+Markov chain Monte Carlo (MCMC) is one of the most powerful methods for sampling from probability distributions. The Metropolis-Hastings (MH) algorithm is a commonly used general-purpose MCMC method, yet is inefficient for complex, high-dimensional distributions because of the random walk nature of its movements. Recently, Hamiltonian Monte Carlo (HMC)~\cite{Duane1987-ta, Neal2012-cp, Betancourt2017-vx} has emerged as a powerful alternative to MH for complex continuous distributions due to its ability to follow the curvature of target distributions using gradients information and make distant proposals with high acceptance probabilities. It enjoyed remarkable empirical success, and (along with its popular variant No-U-Turn Sampler (NUTS)~\cite{Hoffman2014-so}) is adopted as the dominant inference strategy in many probabilistic programming systems~\cite{Carpenter2017-zi, Salvatier2016, bingham2018pyro, Phan2019-vh, ge2018t, Cusumano-Towner:2019:GGP:3314221.3314642}. However, a fundamental limitation of HMC is that it can not be applied to distributions with mixed discrete and continuous variables. 
+
+One existing approach for addressing this limitation involves integrating out the discrete variables(e.g. in Stan\cite{Carpenter2017-zi}, Pyro\cite{bingham2018pyro}), yet it's only applicable on a small-scale, and can not always be carried out automatically. Another approach involves alternating between updating continuous variables using HMC/NUTS and discrete variables using generic MCMC methods (e.g. in PyMC3\cite{Salvatier2016}, Turing.jl\cite{ge2018t}). However, to suppress random walk behavior in HMC, long trajectories are needed. As a result, the discrete variables can only be updated infrequently, limiting the efficiency of this approach. The most promising approach involves updating the discrete and continuous variables in tandem. Since naively making MH updates of discrete variables within HMC results in incorrect samples~\cite{Neal2012-cp}, novel variants of HMC (e.g. discontinuous HMC (DHMC)\cite{Nishimura2017-wv, Zhou2019-uk}, probabilistic path HMC (PPHMC)~\cite{Dinh2017-td}) are developed. However, these methods can not be easily generalized to complicated discrete state spaces (DHMC works best for ordinal discrete parameters, PPHMC is only applicable to phylogenetic trees), and as we show in Sections~\ref{sec:demo} and~\ref{sec:experiments}, DHMC's embedding and algorithmic structure are inefficient.
+
+In this paper, we propose mixed HMC (M-HMC), a novel family of MCMC algorithms that better addresses this limitation. M-HMC provides a general mechanism, applicable to any distributions with mixed support, to evolve the discrete and continuous variables in tandem. It allows more frequent updates of discrete variables while maintaining HMC's ability to suppress random walk behavior, and adopts an efficient implementation (using Laplace momentum) that introduces minimal overhead compared to existing HMC methods. In Section~\ref{sec:theory}, we review HMC and some of its variants involving discrete variables, present M-HMC and rigorously establish its correctness, before presenting its efficient implementation with Laplace momentum and an illustrative application to 1D GMM. We demonstrate M-HMC's superior performances over existing methods with numerical experiments on GMMs, BLR and CTMs in Section~\ref{sec:experiments}, before concluding with discussions in Section~\ref{sec:discussions}.
+
+\section{Mixed Hamiltonian Monte Carlo (M-HMC)}\label{sec:theory}
+
+Our goal is to sample from a target distribution $\pi (x, q^\calc)\propto e^{-U(x, q^\calc)}\text{ on }\Omega\times \mathbb{R}^{N_\calc}$ with mixed discrete variables $x = (x_1, \ldots, x_{N_\cald})\in\Omega$ and continuous variables $q^\calc=(q^\calc_1, \ldots, q^\calc_{N_\calc})\in\mathbb{R}^{N_\calc}$. 
+
+\subsection{Review of HMC and some variants of HMC that involve discrete variables}\label{sec:related_works}
+
+For a continuous target distribution $\pi(q^\calc)\propto e^{-U(q^\calc)}$, the original HMC introduces auxiliary momentum variables $p^\calc\in\mathbb{R}^{N_\calc}$ associated with a kinetic energy function $K^\calc$, and draws samples for $\pi(q^\calc)$ by sampling from the joint distribution $\pi(q^\calc)\chi(p^\calc) (\chi(p^\calc)\propto e^{-K^\calc(p^\calc)})$ with simulations of
+\vspace*{-2pt}
+\[\frac{\mathrm{d} q^\calc(t)}{\mathrm{d} t} = \nabla K^\calc(p^\calc), \frac{\mathrm{d} p^\calc(t)}{\mathrm{d}t} = -\nabla U(q^\calc)\textit{ (Hamiltonian dynamics)}\]
+
+A foundational tool in applying HMC to distributions with discrete variables is the discontinuous variant of HMC, which operates on piecewise continuous potentials. This was first studied in~\cite{Pakman2013-gi}, where the authors proposed binary HMC to sample from binary distributions $\pi(x)\propto e^{-U(x)}$ for $x\in\Omega=\{-1,1\}^{N_\cald}$. The idea is to embed the binary variables $x$ into the continuum by introducing auxiliary location variables $q^\cald\in\mathbb{R}^{N_\cald}$ associated with a conditional distribution
+\[
+    \psi(q^\cald | x) : \begin{cases}
+        \psi(q^\cald | x) \propto 
+        \begin{cases}
+            e^{-\frac{1}{2}\sum_{i=1}^{N_d}(q^\cald_i)^2}&\text{(Gaussian)}\\
+            e^{-\sum_{i=1}^{N_\cald}|q^\cald_i|}&\text{(Exponential)}
+        \end{cases} & \text{ If }sign(q^\cald_i) = x_i, \forall i=1, \cdots, N^\cald\\
+        \psi(q^\cald | x) = 0 & \text{ Otherwise}
+    \end{cases}
+\]
+
+Binary HMC introduces auxiliary momentum variables $p^\cald\in\mathbb{R}^{N_\cald}$ associated with a kinetic energy $K^\cald(p^\cald)=\sum_{i=1}^{N_\cald}(p^\cald_i)^2 / 2$, and operates on the joint distribution $\Psi(q^\cald)\nu(p^\cald) (\nu(p^\cald)\propto e^{-K^\cald(p^\cald)})$ on $\Sigma=\mathbb{R}^{N_\cald}\times\mathbb{R}^{N_\cald}$. The distribution $\Psi(q^\cald)=\sum_{x\in\Omega}\pi(x)\psi(q^\cald | x)$ gives rise to a piecewise continuous potential, and~\cite{Pakman2013-gi} developed a way to exactly integrate Hamiltonian dynamics for $\Psi(q^\cald)\nu(p^\cald)$, taking into account discontinuities in the potential. $x$ and $q^\cald$ are coupled through signs of $q^\cald$ in $\psi$, so we can read out samples for $x$ from the signs of binary HMC samples for $q^\cald$. We show in supplementary that binary HMC is a special case of M-HMC, with Gaussian/exponential binary HMC corresponding to two particular choices of $k^\cald$ (defined in Section~\ref{sec:framework}) in M-HMC.
+
+\cite{Mohasel_Afshar2015-uh} later made the key observation that we can analytically integrate Hamiltonian dynamics with piecewise continuous potentials near a discontinuity while perserving the total (potential and kinetic) energy. The trick is to calculate the potential energy difference $\Delta E$ across an encountered discontinuity, and either refract (replace $p^\cald_\perp$, the component of $p^\cald$ that's perpendicular to the discontinuity boundary, by $\sqrt{\frac{1}{2}||p^\cald_\perp||^2 - \Delta E} (p^\cald_\perp/||p^\cald_\perp||)$) if there's enough kinetic energy ($\frac{1}{2}||p^\cald_\perp||^2 > \Delta E$), or reflect (replace $p^\cald_\perp$ by $-p^\cald_\perp$) if there is not enough kinetic energy ($\frac{1}{2}||p^\cald_\perp||^2 \leq \Delta E$). Reflection/refraction HMC (RRHMC) combines the above observation with the leapfrog integrator, and generalizes binary HMC to arbitrary piecewise continuous potentials with discontinuities across affine boundaries. However, RRHMC is computationally expensive due to the need to detect all encountered discontinuities, and by itself can not directly handle distributions with mixed support.
+
+\cite{Nishimura2017-wv} proposed DHMC as an attempt to address some of the issues of RRHMC. It uses Laplace momentum to avoid the need to detect encountered discontinuities, and handles discrete variables (which it assumes take positive integer values, i.e. $x\in\mathbb{Z}_+^{N_\cald}$) by an embedding into 1D spaces ($x_i = n \iff q^\cald_i\in(a_n, a_{n+1}], 0=a_1 \leq a_2 \leq \cdots$) and a coordinate-wise integrator (a special case of M-HMC with Laplace momentum as shown in Section~\ref{sec:implementation}). In Sections~\ref{sec:demo} and~\ref{sec:experiments}, using numerical experiments, we show that DHMC's embedding is inefficient and sensitive to ordering, and it can not easily generalize to more complicated discrete state spaces; furthermore, its need to update all discrete variables at every step makes it computationally expensive for long HMC trajectories.
+
+
+\subsection{The general framework of M-HMC}\label{sec:framework}
+
+
+Formally, M-HMC operates on the expanded state space $\Omega \times \Sigma$, where $\Sigma = \mathbb{T}^{N_\cald} \times \mathbb{R}^{N_\cald} \times \mathbb{R}^{N_\calc} \times \mathbb{R}^{N_\calc}$ with auxiliary location variables $q^\cald\in \mathbb{T}^{N_\cald}$ and momentum variables $p^\cald \in \mathbb{R}^{N_\cald}$ for $x\in\Omega$, and auxiliary momentum variables $p^\calc\in\mathbb{R}^{N_\calc}$ for $q^\calc\in\mathbb{R}^{N_\calc}$. Here $\mathbb{T}^{N_\cald} =\mathbb{R}^{N_\cald} /\tau\mathbb{Z}^{N_\cald}$ denotes the $N_\cald$-dimensional flat torus, and is identified as the hypercube $[0, \tau]^{N_\cald}$ with the 0's and $\tau$'s in different dimensions glued together. We associate $q^\cald$ with a flat potential $U^\cald (q^\cald) = 0, \forall q^\cald \in \mathbb{T}^{N_\cald}$ and $p^\cald$ with a kinetic energy $K^\cald(p^\cald)=\sum_{i = 1}^{N_\cald} k^\cald (p^\cald_i), p^\cald \in \mathbb{R}^{N_\cald}$ where $k^\cald : \mathbb{R} \rightarrow \mathbb{R}^+$ is some kinetic energy, and $p^\calc$ with a kinetic energy\footnote{The simplest choice for $K^\calc$ is $K^\calc(p^\calc)=\sum_{i=1}^{N_\calc}\frac{(p^\calc_i)^2}{2}$, but M-HMC can work with any kinetic energy.} $K^\calc:\mathbb{R}^{N_\calc}\rightarrow \mathbb{R}^+$. Use $Q_i, i = 1, \ldots, N_\cald$ to denote $N_\cald$ irreducible single-site MH proposals, where $Q_i (\tilde{x} |x) > 0$ only when $\tilde{x}_j = x_j, \forall j \neq i$.
+
+Intuitively, M-HMC also ``embeds'' the discrete variables $x$ into the continuum (in the form of $q^\cald$). However, the ``embedding'' is done by combining the original discrete state space $\Omega$ with the flat torus $\mathbb{T}^{N_\cald}$: instead of relying on the embedding structure (e.g. the sign of $q^\cald_i$ in binary HMC, or the value of $q^\cald_i$ in DHMC) to determine $x$ from $q^\cald$, in M-HMC we explicitly record the values of $x$ as we can not read out $x$ from $q^\cald$. $\mathbb{T}^{N_\cald}$ bridges $x$ with the continuous Hamiltonian dynamics, and functions like a ``clock'': the system evolves $q^\cald_i$ with speed determined by the momentum $p^\cald_i$ and makes an attempt to move to a different state for $x_i$ when $q^\cald_i$ reaches $0$ or $\tau$. Such mixed embedding makes M-HMC easily applicable to arbitrary discrete state spaces, but also prevents the use of methods like RRHMC. For this reason, M-HMC introduces probabilistic proposals $Q_i$'s to move around $\Omega$, and probabilistic reflection/refraction actions to handle discontinuities (which now happen at $q^\cald_i\in\{0, \tau\}$).
+
+More concretely, M-HMC evolves according to the following dynamics: If $q^\cald \in (0, \tau)^{N_\cald}$, $x$ remains unchanged, and $q^\cald, p^\cald$ and $q^\calc, p^\calc$ follow the Hamiltonian dynamics
+\begin{equation}\label{eqn:hamiltonian}
+\text{Discrete}
+\begin{cases} 
+\frac{\mathrm{d} q_i^\cald(t)}{\mathrm{d} t} = (k^\cald)' (p^\cald_i), i=1, \ldots, N_\cald\\
+\frac{\mathrm{d} p^\cald(t)}{\mathrm{d}t} = -\nabla U^\cald(q^\cald) = 0
+\end{cases}
+\text{Continuous}
+\begin{cases}
+\frac{\mathrm{d} q^\calc(t)}{\mathrm{d} t} = \nabla K^\calc(p^\calc)\\
+\frac{\mathrm{d} p^\calc(t)}{\mathrm{d}t} = -\nabla_{q^\calc} U(x, q^\calc)
+\end{cases}
+\end{equation}
+If $q^\cald$ hits either $0$ or $\tau$ at site $j$ (i.e. $q^\cald_j \in \{ 0, \tau \}$), we propose a new $\tilde{x}\sim Q_j(\cdot|x)$, calculate $\Delta E = \log \frac{\pi (x, q^\calc) Q_j (\tilde{x} |x)}{\pi (\tilde{x}, q^\calc) Q_j (x| \tilde{x})}$, and either \textit{refract} if there's enough kinetic energy $\left(k^\cald (p^\cald_j) > \Delta E\right)$:
+\[x\leftarrow \tilde{x}, q_j^\cald\leftarrow \tau - q_j^\cald, p_j^\cald \leftarrow \text{sign}(p_j^\cald)(k^\cald)^{-1}(k^\cald(p_j^\cald) - \Delta E)\] 
+or \textit{reflect} if there is not enough kinetic energy $\left(k^\cald (p^\cald_j) \leq \Delta E\right)$: $x\leftarrow x, q^\cald_j\leftarrow q^\cald_j, p^\cald_j\leftarrow -p^\cald_j$.
+
+For the discrete component, because of the flat potential $U^\cald$, we can exactly integrate the Hamiltonian dynamics with arbitrary $k^\cald$. For the continuous component, given a discrete state $x$ and some time $t>0$, use $I(\cdot, \cdot, t | x, U, K^\calc): \mathbb{R}^{N_\calc}\times\mathbb{R}^{N_\calc}\times\mathbb{R}^+\rightarrow\mathbb{R}^{N_\calc}\times\mathbb{R}^{N_\calc}$ to denote a reversible, volume-preserving integrator\footnote{An example is the commonly used leapfrog integrator} that's irreducible and aperiodic and approximately evolves the continuous part of the Hamiltonian dynamics in Equation~\ref{eqn:hamiltonian} for time $t$. Given the current state $x^{(0)}, q^{\calc(0)}$, a full M-HMC iteration first resamples the auxiliary variables
+\[q^{\cald(0)}_i \sim \text{Uniform}([0, \tau]), p^{\cald(0)}_i \sim \nu(p)\propto e^{-k^\cald(p)}\text{ for }i=1, \ldots, N_\cald, p^{\calc(0)} \sim \chi(p)\propto e^{-K^\calc(p)}\]
+then evolves the discrete variables (using exact integration) and continuous variables (using the integrator $I$) in tandem for a given time $T$, before making a final MH correction like in regular HMC. A detailed description of a full M-HMC iteration is given in Section 1 in the supplementary materials.
+
+Note that if we use conditional distributions for $Q_i$ (i.e. making Gibbs updates), $\Delta E$ would always be 0, and the discrete dynamics in Equation~\ref{eqn:hamiltonian} only determines when and where to make the Gibbs updates. In this special case, M-HMC can be seen as a simple mechanism to allow making Gibbs updates within an HMC iteration using a modified MH correction term, with the frequency of the Gibbs updates determined by the overall M-HMC dynamics.
+
+\subsection{M-HMC samples from the correct distribution}
+
+For notational simplicity, define $\Theta=(q^\cald, p^\cald, q^\calc, p^\calc)$. To prove M-HMC samples from the correct distribution $\pi(x, q^\calc)$, we show that a full M-HMC iteration preserves the joint invariant distribution $\varphi ((x, \Theta)) \propto \pi (x, q^\calc) e^{- \left[ U^\cald (q^\cald) + K^\cald (p^\cald) + K^\calc(p^\calc)\right]}$ and establish its irreducibility and aperiodicity. At each iteration, the resampling can be seen as a Gibbs step, where we resample the auxiliary variables $q^\cald, p^\cald, q^\calc$ from their conditional distribution given $x, q^\calc$. This obviously preserves $\varphi$.  So we only need to prove detailed balance of the evolution of $x$ and $q^\calc$ in an M-HMC iteration (described in detail in the {\textit{M-HMC}} function in Section 1 of the supplementary materials) w.r.t. $\varphi$. Formally, $\forall T > 0$, the {\textit{M-HMC}} function (section 1 of supplementary) defines a transition probability kernel $ R_T ((x, \Theta), B) =\mathbb{P} \left( \textit{M-HMC} (x, \Theta, T) \in B \right), \forall(x, \Theta) \in \Omega\times\Sigma$ and $B \subset \Omega\times\Sigma$ measurable. For all $A \subset \Omega\times\Sigma$ measurable, $\Theta \in \Sigma$, define $A (\Theta) = \{ x \in \Omega : (x, \Theta) \in A \}$. We have
+\begin{theorem}
+	{\textbf{(Detailed Balance)}} The \textit{M-HMC} function (Section 1 of supplementary) satisfies detailed balance w.r.t.\ the joint invariant distribution $\varphi $, i.e.\ for any measurable sets $A, B \subset \Omega\times\Sigma$,
+\begin{equation*}
+ \int_{\Sigma} \sum_{x \in A (\Theta)} R_T ((x, \Theta), B) \varphi ((x, \Theta))  \mathrm{d} \Theta = \int_{\Sigma} \sum_{x \in B (\Theta)} R_T ((x, \Theta), A) \varphi ((x, \Theta))  \mathrm{d}\Theta
+\end{equation*}
+
+\end{theorem}
+\begin{proof_sketch} Use $s=(x, q^\cald, p^\cald, q^\calc, p^\calc), s'=(x', q^{\cald\prime}, p^{\cald\prime}, q^{\calc\prime}, p^{\calc\prime})\in\Omega\times\Sigma$ to denote 2 points.
+
+\vspace*{-7pt}
+
+\paragraph{Sequence of proposals and probabilistic paths} Starting from $s\in\Omega\times\Sigma$, for a given travel time $T$, a concrete M-HMC iteration involves a finite sequence of realized discrete proposals $Y$. If we fix $Y$, the M-HMC iteration (without the final MH correction) specifies a deterministic mapping from $s$ to some $s'$. For a given $Y$, we introduce an associated probabilistic path $\omega(s, T, Y)$ (containing information on $Y$, indices/times and accept/reject decisions for discrete updates, and evolution of $s$) to describe the deterministic trajectory going from $s$ to $s'$ in time $T$ through the M-HMC iteration.
+
+\vspace*{-7pt}
+
+\paragraph{Countable number of probabilistic paths and decomposition of $R_T(s, B)$} Since $T$ and $\Omega$ are finite, traveling from $s$ for time $T$ gives a countable number of possible destinations $s'$. This implies there can only be a countable number of valid probabilistic paths, and we can decompose $R_T(s, B) = \sum_{s'}\sum_{Y} r_{T, Y}(s, s')$. Here we sum over all possible destinations $s'$ and all valid $Y$'s for which $\omega(s, T, Y)$ brings $s$ to $s'$. $r_{T, Y}(s, s')$ denotes the transition probability along $\omega(s, T, Y)$.
+\vspace*{-7pt}
+
+\paragraph{Proof of detailed balance} Using similar proof techniques as in RRHMC, we can prove detailed balance for $r_{T, Y}$ (Lemma 4 in supplementary). This in turn proves detailed balance of M-HMC.
+\end{proof_sketch}
+
+We defer detailed definitions and proofs to the supplementary. Combining the above theorem with irreducibility and aperiodicity (which follow from irreducibility and aperiodicity of the integrator $I$, and the irreducibility of the $Q_i$'s) proves that M-HMC samples from the correct distribution $\pi (x, q^\calc)$.
+
+\subsection{Efficient M-HMC implementation with Laplace momentum}\label{sec:implementation}
+
+
+
+We next present an efficient implementation of M-HMC using Laplace momentum $k^\cald(p)=|p|$. While M-HMC works with any $k^\cald$, using a general $k^\cald$ requires detection of all encountered discontinuities, similar to RRHMC. However, with Laplace momentum, $q^\cald_i$'s speed (given by $(k^{\cald})'(p^\cald_i)$) becomes a constant 1, and we can precompute the occurences of all discontinuities at the beginning of each M-HMC iteration. In particular, we no longer need to explicitly record $q^\cald, p^\cald$, but can instead keep track of only the kinetic energies associated with $x$. Note that we need to use $\tau$ to orchestrate discrete and continuous updates. Here, instead of explicitly setting $\tau$, we propose to alternate discrete and continuous updates, specifying the total travel time $T$, the number of discrete updates $L$, and the number of discrete variables to update each time $n_\cald$. The step sizes are properly scaled (effectively setting $\tau$) to match the desired total travel time $T$. To reduce integration error and ensure a high acceptance rate, we specify a maximum step size $\varepsilon$. A detailed description of the efficient implementation is given in Algorithm~\ref{alg:efficient}. See Section 2 of supplementary for a detailed discussion on how each part of Algorithm~\ref{alg:efficient} can be derived from the original \textit{M-HMC} function in Section 1 of supplementary. The coordinate-wise integrator in DHMC corresponds to setting $n_\cald=N_\cald$ with $Q_i$'s that are implicitly specified through embedding. However, the need to update all discrete variables at each step is computationally expensive for long HMC trajectories. In contrast, M-HMC can flexibly orchestrate discrete and continuous updates depending on models at hand, and introduces minimal overhead ($x$ updates that are usually cheap) compared to existing HMC methods.
+
+\begin{center}
+\begin{algorithm}[ht!]
+\caption{M-HMC with Laplace momentum}
+\label{alg:efficient}
+\begin{algorithmic}[1]
+\REQUIRE{$U$, target potential; $Q_i, i = 1, \ldots, N_\cald$, single-site proposals; $\varepsilon$, maximum step size; $L$, \# of times to update discrete variables; $n_\cald$, \# of discrete sites to update each time}
+\INPUT{$x^{(0)}$, current discrete state; $q^{\calc(0)}$, current continuous location; $T$, travel time}
+\OUTPUT{$x$, next discrete state; $q^{\calc}$, next continuous location}
+\FUNCTION{M-HMCLaplaceMomentum($x^{(0)}, q^{\calc(0)}, T | U, Q_i, i = 1, \ldots, N_\cald, \varepsilon, L, n^\cald$)}
+\STATE $k^{\cald(0)}_i \sim \text{Exponential}(1), i=1, \ldots, N_\cald$, $p^{\calc(0)}_i \sim N(0, 1), i=1, \ldots, N_\calc$
+\STATE $x \leftarrow x^{(0)}$, $k^\cald \leftarrow k^{\cald(0)}$, $q^\calc \leftarrow q^{\calc(0)}$, $p^\calc \leftarrow p^{\calc(0)}, \Delta U^\cald \leftarrow 0$
+\STATE $\Lambda \sim \text{RandomPermutation}(\{1, \ldots, N_\cald\})$
+\STATE $(\eta, M) \leftarrow\textit{GetStepSizesNSteps}(\varepsilon, T, L, N_\cald, n_\cald)$ \# Defined in Section 2 of supplementary
+\FOR{$t$ \textbf{from} $1$ \textbf{to} $L$}
+\STATE \algorithmicfor\ $s$ \textbf{from} $1$ \textbf{to} $M_t$ \algorithmicdo\ $q^\calc, p^\calc\leftarrow\textit{leapfrog}(q^\calc, p^\calc, \eta_t)$ \algorithmicendfor
+\FOR{$s$ \textbf{from} $1$ \textbf{to} $n_\cald$}
+\STATE $x, k^\cald, \Delta U^\cald\leftarrow\textit{DiscreteStep}(x, k^\cald, \Delta U^\cald, q^\calc, \Lambda_{[(t - 1)n_\cald + s] \bmod N_\cald})$
+\ENDFOR
+\ENDFOR
+\STATE $E \leftarrow U\left(x, q^\calc\right) + K^\calc(p^\calc)$, $E^{(0)} \leftarrow U\left(x^{(0)}, q^{\calc(0)}\right) + K^\calc(p^{\calc(0)})$
+\STATE \algorithmicif\ $\text{Uniform}([0, 1]) >= e^{-(E - E^{(0)} - \Delta U^\cald)}$ \algorithmicthen\ $x\leftarrow x^{(0)}, q^\calc\leftarrow q^{\calc(0)}$ \algorithmicendif
+\STATE \textbf{return} $x, q^\calc$
+\ENDFUNCTION
+\vspace*{-6pt}
+\\\hrulefill
+\FUNCTION{leapfrog($q^\calc, p^\calc, \tilde{\varepsilon}$)}
+\STATE $p^\calc \leftarrow p^\calc - \tilde{\varepsilon}\nabla_{q^\calc} U(x, q^\calc)/2$; $q^\calc \leftarrow q^\calc + \tilde{\varepsilon} p^\calc$; $p^\calc \leftarrow p^\calc - \tilde{\varepsilon}\nabla_{q^\calc} U(x, q^\calc)/2$
+\STATE \textbf{return} $q^\calc, p^\calc$
+\ENDFUNCTION
+\vspace*{-6pt}
+\\\hrulefill
+\FUNCTION{DiscreteStep($x, k^\cald, \Delta U^\cald, q^\calc, j$)}
+\STATE $\tilde{x} \sim Q_j (\cdot |x)$; $\Delta E \leftarrow \log\frac{e^{-U(x, q^\calc)} Q_j (\tilde{x} |x)}{e^{-U(\tilde{x}, q^\calc)} Q_j (x| \tilde{x})}$
+\IF{$k^{\cald}_j > \Delta E$}
+\STATE $\Delta U^\cald \leftarrow \Delta U^\cald + U(\tilde{x}, q^\calc) - U(x, q^\calc)$
+\STATE $x\leftarrow\tilde{x}, k_j^\cald \leftarrow k_j^\cald - \Delta E$ 
+\ENDIF
+\STATE \textbf{return} $x, k^\cald, \Delta U^\cald$
+\ENDFUNCTION
+\end{algorithmic}
+\end{algorithm}
+\vspace*{-36pt}
+\end{center}
+
+\subsection{Illustrative application of M-HMC to 1D Gaussian mixture model (GMM)}\label{sec:demo}
+\begin{figure}[b!]
+    \centering
+    \includegraphics[width=\textwidth]{figures/mhmc_vs_dhmc.pdf}
+    \caption{Samples histograms (blue) and true density (red) on 1D GMM for M-HMC and DHMC}
+    \label{fig:mhmc_vs_dhmc}
+    \vspace{-15pt}
+\end{figure}
+
+\vspace*{-7pt}
+
+In this section, we illustrate some important aspects of M-HMC by applying M-HMC to a concrete 1D GMM with 4 mixture componets. Use $x\in\{1, 2, 3, 4\}$ to denote the discrete variable, and $q^\calc\in\mathbb{R}$ to denote the continuous variable. We study the 1D GMM $\pi(x, q^\calc)=\phi_x N(q^\calc|\mu_x, \Sigma)$, where $\phi_1=0.15, \phi_2=\phi_3=0.3, \phi_4=0.25, \Sigma=0.1$, and $\mu_1=-2, \mu_2=0, \mu_3=2, \mu_4=4$.
+\vspace*{-6pt}
+
+\paragraph{More frequent discrete updates within HMC are beneficial} The essential idea of M-HMC is to evolve discrete and continuous variables in tandem, allowing more frequent discrete updates within HMC. Figure~\ref{fig:mhwhmc_vs_mhmc}(a) visualizes the evolution of $x, q^\calc$ in an M-HMC iteration on our 1D GMM, and intuitively shows the benefits of such more frequent discrete updates: M-HMC can make frequent attempts to move to a different mixture component; such attempts can often succeed when M-HMC gets close to a different mixture component while traversing the current one; the ability to move to different mixture components within an M-HMC iteration allows M-HMC to make distant proposals, which are accepted with high probabilities due to the use of HMC-like mechanisms. Figure~\ref{fig:mhwhmc_vs_mhmc}(a) demonstrates one such distant proposal in which M-HMC moves across all 4 mixture components in one iteration. Such distant proposals are unlikely to happen in methods that alternate between HMC and discrete updates, limiting the efficiency of such methods. In Section~\ref{sec:experiments}, we would further demonstrate the efficiency of M-HMC when compared with alternatives using numerical experiments.
+\vspace*{-21pt}
+
+\paragraph{Naively making discrete updates within HMC is incorrect} Figure~\ref{fig:mhwhmc_vs_mhmc}(left) compares naive MH within HMC (MHwHMC) and M-HMC for 1D GMM. The seemingly trivial distinction naturally comes out of Algorithm~\ref{alg:efficient} with 1 discrete variable, yet corrects the inherent bias in MHwHMC (see Figure~\ref{fig:mhwhmc_vs_mhmc}(b)(c)). This demonstrates the necessity to use the M-HMC framework to evolve discrete and continuous variables in tandem. See Section 3 of supplementary materials for more details.
+
+\vspace*{-9pt}
+\paragraph{M-HMC is applicable to arbitrary distributions with mixed support, unlike DHMC} DHMC does not easily generalize to complicated discrete state spaces due to its 1D embedding. A simple illustration is to apply DHMC to 1D GMM, but instead with $\mu_2=2, \mu_3=0$. While the model remains exactly the same, as shown in red curves in Figures~\ref{fig:mhmc_vs_dhmc}(b)(c), due to its sensitivity to the ordering of discrete states, DHMC failed to sample all components even after $10^7$ samples (Figure~\ref{fig:mhmc_vs_dhmc}(c)), even though it can fit well with $5\times10^6$ samples in the original setup (Figure~\ref{fig:mhmc_vs_dhmc}(b)). In contrast, M-HMC suffers no such issue, and works well in both cases with $10^6$ samples (Figures~\ref{fig:mhmc_vs_dhmc}(a) and~\ref{fig:mhwhmc_vs_mhmc}(c)), and in general for arbitrary distributions with mixed support. See Section~\ref{sec:ctm} for another example.
+
+\vspace*{-10pt}
+\section{Numerical experiments}\label{sec:experiments}
+\vspace*{-10pt}
+\begin{wrapfigure}{L}{0.7\textwidth}
+    \centering
+    \includegraphics[width=0.7\textwidth]{figures/mh_in_hmc_vs_mhmc.pdf}
+    \caption{Proposed M-HMC kernel and comparison of MHwHMC and M-HMC on 1D GMM. \textbf{Figure~\ref{fig:mhwhmc_vs_mhmc}(a):} Evolution of $x$ (in the form of $\mu_x$, blue) and $q^\calc$ (orange) in an M-HMC iteration. Background color and red curve visualize model density. \textbf{Figure~\ref{fig:mhwhmc_vs_mhmc}(left):} Comparison of MHwHMC and M-HMC on 1D GMM. \textbf{Figure~\ref{fig:mhwhmc_vs_mhmc}(b)(c):} Samples histograms (blue) and true density (red) for MHwHMC and M-HMC.}
+    \label{fig:mhwhmc_vs_mhmc}
+    \vspace{-15pt}
+\end{wrapfigure}
+
+In this section, we empirically verify the accuracy of M-HMC, and compare the performances of various samplers for GMMs, variable selection in BLR, and CTM. In addition to DHMC and M-HMC, we also compare NUTS (using Numpyro~\cite{Phan2019-vh}, for GMMs), HMC-within-Gibbs (HwG), NUTS-within-Gibbs (NwG, implemented as a compound step in PyMC3~\cite{Salvatier2016}), and specialized Gibbs samplers (adapting~\cite{Polson2013-zt} for variable selection in BLR, and adapting~\cite{Chen2013-ge} for CTM).  Our implementations of DHMC, M-HMC and HwG rely on \textit{JAX}~\cite{jax2018github}. For Gibbs samplers, we combine \textit{NUMBA}~\cite{Siu_Kwan_Lam_Continuum_Analytics_Austin_Texas_undated-fa} with the package \textit{pypolyagamma}\footnote{For efficient sampling from Polya-Gamma distribution. \url{github.com/slinderman/pypolyagamma}}. The exact parameter values for different samplers can be found in the supplementary, and in the code to reproduce the results\footnote{Code available at \url{https://github.com/StannisZhou/mixed\_hmc}}.
+
+For all three models, a common performance measure is the minimum relative effective sample size (MRESS), i.e. the minimum ESS over all dimensions, normalized by the number of samples. We use function \textit{ess} (with default settings) from Python package \textit{arviz}~\cite{arviz_2019} to estimate MRESS. Our MRESS is estimated using multiple independent chains. For discrete updates in HwG and NwG, in addition to the MH updates used in our experiments, we also tried standard particle Gibbs (using \textit{Turing.jl}~\cite{ge2018t}) as suggested by an anonymous reviewer, but were unable to get meaningful results due to numerical accuracy in \textit{Turing.jl} implementations. For M-HMC, we use Gibbs updates $Q_j(\tilde{x}|x) \propto \pi(\tilde{x}, q^{\calc})$ due to their superior empirical performances, and include additional experiments on how M-HMC performs with different proposals in Section 5.3 of supplementary.
+
+
+\vspace*{-10pt}
+\subsection{24D Gaussian Mixture Model (GMM)}
+\vspace*{-10pt}
+\begin{wrapfigure}{L}{0.5\textwidth}
+    \centering
+    \includegraphics[width=0.5\textwidth]{figures/24d_gmm.pdf}
+    \caption{Evolution of K-S statistics of empirical and true samples for $q^\calc_1$, and MRESS for the 24D GMM. Colored regions indicate $95\%$ confidence interval, estimated using 192 independent chains.}
+    \label{fig:24d_gmm}
+    \vspace{-12pt}
+\end{wrapfigure}
+
+
+
+We experiment with a more challenging 24D GMM with 4 components. We again use $\phi_1=0.15, \phi_2=\phi_3=0.3, \phi_4=0.25$. To avoid potential intractability because of multimodality, we set $\Sigma=3I$. We use the 24 permutations of $-2, 0, 2, 4$ to specify the means of the 4 components in the 24 dimensions. We test 5 different samplers: NUTS, HwG, NwG, DHMC and M-HMC. NUTS operates on the marginal distribution $\pi(q^\calc)$, and serves to provide an upper bound on the performance. All other samplers operate on the joint distribution $\pi(x, q^\calc)$.
+
+\vspace*{-4pt}
+
+NUTS and NwG require no tuning. We favor HwG and DHMC with a parameter grid search, and tune M-HMC by inspecting short trial runs. For each sampler, we draw $10^4$ burn-in and $10^4$ actual samples in 192 independent chains.
+
+\vspace*{-4pt}
+
+To get a sense of the accuracy of the samplers as well as their convergence speed, we calculate the two-sided Kolmogorov-Smirnov (K-S) statistic\footnote{Calculated using \textit{scipy.stats.ks\_2samp}} of the 24 marginal empirical distributions given by samples from the samplers and the true marginal distributions, averaged over 192 chains. We also calculate the MRESS for $q^\calc$ to measure the efficiency of the different samplers. Figure~\ref{fig:24d_gmm} shows the evolution of the K-S statistic for $q^\calc_1$, with MRESS reported in legends. M-HMC clearly outperforms HwG, NwG and DHMC, and surprisingly also outperforms NUTS\footnote{The NUTS adaption is done via dual averaging, with 0.6 target acceptance probability. Note that if we use the default 0.8 in \textit{NumPyro}, NUTS's MRESS reduces to $8.27\times 10^{-4}$.}, which explicitly integrates out $x$. DHMC and NwG have essentially the same performance, and are slightly outperformed by HwG.
+
+
+\vspace*{-8pt}
+\subsection{Variable Selection in Bayesian Logistic Regression (BLR)}\label{sec:blr}
+\vspace*{-6pt}
+We consider the logistic regression model $ y_i \sim \text{Bernoulli}\left(\sigma(X_i^T\beta)\right), i=1,\cdots, 100 $
+where $X\in\mathbb{R}^{100\times 20}, \beta\in\mathbb{R}^{20}$, and $\sigma(x)=1/(1+e^{-x})$ is the sigmoid function. For our experiments, we generate a set of synthetic data: The $X_i$'s are generated from the multivariate Gaussian $N(0, \Sigma)$, where $\Sigma_{j j} = 3, j=1, \cdots, 20$ and $\Sigma_{j k} = 0.3, \forall j\neq k$. For $\beta$, we set 5 randomly picked components to be $0.5$, and all the other components to be 0. We generate $y_i \sim \text{Bernoulli}\left(\sigma(X_i^T\beta)\right)$. We introduce a set of binary random variables $\gamma_j, j=1, \cdots, 20$ to indicate the presence of components of $\beta$, and put an uninformative prior $N(0, 25I)$ on $\beta$. This results in the following joint distribution on $\beta, \gamma$ and $y$: $p(\beta, \gamma, y) = N(\beta |0, 25I)\prod_{i=1}^{100}p_i^{y_i}(1 - p_i)^{1 - y_i}$ where $p_i=\sigma(\sum_{j=1}^{20}X_{i j}\beta_j\gamma_j), i=1, \cdots, 100$.
+
+\vspace*{-2pt}
+
+We are interested in a sampling-based approach to identify the relevant components of $\beta$. A natural approach~\cite{Dellaportas2000-pa, Zucknick2014-pf} is to sample from the posterior distribution $p(\beta, \gamma|y)$, and inspect the posterior samples of $\gamma$. This constitutes a challenging posterior sampling problem due to the lack of conjugacy and the mixed support, and prevents the wide applicability of this approach. Existing methods typically rely on data-augmentation schemes~\cite{Albert1993-ho, Carlin1995-fz, Holmes2006-xe, Polson2013-zt}. Here we explore applications of HwG, NwG, DHMC and M-HMC to this problem. As a baseline, we implement a specialized Gibbs sampler, by combining the Gibbs sampler in~\cite{Polson2013-zt} for $\beta$ with a single-site systematic scan Gibbs sampler for $\gamma$. 
+
+\vspace*{-2pt}
+
+Gibbs and NwG require no tuning. For HwG and DHMC, we conduct a parameter grid search, and report its best performance. For M-HMC, instead of picking a particular setting, we test its performance on multiple settings, to better understand how different components of M-HMC affect its performance. In particular, we are interested in how performance changes with the number of discrete updates $L$ for a fixed travel time $T$, and with $n_\cald$, the number of discrete variables to update at each discrete update while holding the total numer of single discrete variable updates $n_\cald L$ a constant. For each sampler, we use 192 independent chains, each with 1000 burn-in and 2000 actual samples. 
+
+We check the accuracy of the samplers by looking at their accuracy in terms of percentage of the posterior samples for $\gamma$ that agree exactly with the true model, as well as their average Hamming distance to the true model. All the tested samplers perform similarly, giving about $8.1\%$ accuracy and an average Hamming distance of around $2.2$.  We compare the efficiency of the 5 samplers by measuring MRESS of posterior samples for $\beta$. The results are summarized in Figures~\ref{fig:variable_selection}(a)(b). M-HMC and DHMC both significantly outperform Gibbs, HwG and NwG, demonstrating the benefits of more frequent discrete updates inside HMC. However, we observe a ``U-turn"~\cite{Hoffman2014-so} phenomenon, shown in Figure~\ref{fig:variable_selection_L}, for both $T$ and $L$: increasing $T, L$ results in performance oscillations, suggesting that although M-HMC is capable of making distant proposals, increasing $T, L$ beyond a certain threshold would decrease its efficiency as M-HMC starts to ``double back" on itself. Nevertheless, it's clear that for fixed $T$, increasing $L$ generally improves performance, again demonstrating the benefits of more frequent discrete variables updates. We also observe (Figure~\ref{fig:variable_selection}(b)) that $n_\cald=1$ generally gives the best performance when $n_\cald L$ is held as a constant, suggesting that distributed/more frequent updates of the discrete variables is more beneficial than concentrated/less frequent updates. However, distributed/more frequent updates of discrete variables entail using a large $L$, which can break each leapfrog step into smaller steps, resulting in more (potentially expensive) gradients evaluations.
+
+Although the best DHMC has good performance, we note that its algorithmic structure requires sequential updates of all discrete variables at each leapfrog step. Compared with, e.g. M-HMC with $T=40, L=600, n_\cald=1$, using similar implementations, the best DHMC takes 1.82 times longer with nearly 0.3 reduction in MRESS, demonstrating the superior performance of M-HMC.
+
+\begin{figure*}[t!]
+    \centering
+    \begin{subfigure}[t]{0.487\textwidth}
+        \centering
+	\includegraphics[width=\textwidth]{figures/variable_selection_L.pdf}
+	\caption{Baseline MRESS for the Gibbs sampler, NwG, and best DHMC, and evolution of MRESS for M-HMC as $L$ changes for different travel time $T$, with $n_\cald=1$}
+	\label{fig:variable_selection_L}
+    \end{subfigure}%
+    \quad
+    \begin{subfigure}[t]{0.487\textwidth}
+        \centering
+	\includegraphics[width=\textwidth]{figures/variable_selection_nd.pdf}
+        \caption{Baseline MRESS for the Gibbs sampler, NwG, and evolution of MRESS for M-HMC as $n_\cald$ increases for different travel time $T$, with $n_\cald L=600$}
+	\label{fig:variable_selection_nd}
+    \end{subfigure}%
+    \caption{Performances (MRESS of posterior samples for $\beta$) of M-HMC as $L$ and $n_\cald$ change on variable selection for BLR, as well as baseline MRESS for the Gibbs sampler, NwG, and best DHMC}
+    \label{fig:variable_selection}
+    \vspace*{-20pt}
+\end{figure*}
+
+
+\vspace*{-8pt}
+\subsection{Correlated Topic Model (CTM)}\label{sec:ctm}
+\vspace*{-6pt}
+Topic modeling is widely used in the statistical analysis of documents collections. CTM~\cite{Blei2007-tk} is a topic model that extends the popular Latent Dirichlet Allocation (LDA)~\cite{Blei2003-pz} by using a logistic-normal prior to effectively model correlations among different topics. Our setup follows~\cite{Blei2007-tk}: assume we have a CTM modeling $D$ documents with $K$ topics and a $V$-word vocabulary. The $K$ topics are specified by a $K\times V$ matrix $\beta$. The $k$th row $\beta_k$ is a point on the $V-1$ simplex, defining a distribution on the vocabulary. Use $w_{d,n}\in\{1,\cdots, V\}$ to denote the $n$th word in the $d$th document, $z_{d,n}\in\{1, \cdots, K\}$ to denote the topic assignment associated with the word $w_{d,n}$, and use $\text{Categ}(p)$ to denote a categorical distribution with distribution $p$. Define $f:\mathbb{R}^K\rightarrow\mathbb{R}^K$ to be $f_i(\eta) = e^{\eta_i} / \sum_{j=1}^K e^{\eta_k}$. Given the topics $\beta$, a vector $\mu\in\mathbb{R}^K$ and a $K\times K$ covariance matrix $\Sigma$, for the $d$th document with $N_d$ words, CTM first samples $\eta_d\sim N(\mu, \Sigma)$; then for each $n\in\{1, \cdots, N_d\}$, CTM draws topic assignment $z_{d,n} | \eta_d\sim \text{Categ}(f(\eta_d))$, before finally drawing word $w_{d,n} | z_{d,n}, \beta\sim \text{Categ}(\beta_{z_{d,n}})$.
+
+\begin{wrapfigure}{L}{0.7\textwidth}
+    \centering
+	\includegraphics[width=0.7\textwidth]{figures/ctm_gibbs_negative.pdf}
+    \caption{Traceplots and samples histograms of posterior samples of $\eta_{d 1}$ when Gibbs differs from HwG, NwG\&M-HMC in posterior means}
+	\label{fig:ctm_gibbs_negative}
+    \vspace*{-15pt}
+\end{wrapfigure}
+
+While CTM has proved to be a better topic model than LDA~\cite{Blei2007-tk}, its use of the non-conjugate logistic-normal prior makes efficient posterior inference of $p(\eta, z |w; \beta, \mu, \Sigma)$ highly challenging. In~\cite{Blei2007-tk}, the authors resorted variational inference with highly idealized mean-field approximations. There has been efforts on developing more efficient inference methods using a sampling-based approach, e.g. specialized Gibbs samplers~\cite{Mimno2008-mi, Chen2013-ge}. In this section, we explore the applications of HwG, NwG, DHMC and M-HMC to the posterior inference problem $p(\eta, z |w; \beta, \mu, \Sigma)$ in CTM. 
+
+We use the Associated Press (AP) dataset~\cite{Harman1993-df}\footnote{The dataset can be downloaded at \url{http://www.cs.columbia.edu/~blei/lda-c/ap.tgz}}, which consists of 2246 documents. Since we are interested in comparing the performance of different samplers, we train a CTM using \textit{ctm-c}\footnote{\url{https://github.com/blei-lab/ctm-c}}, with the default settings, $K=10$ topics and the given vocabulary of $V=10473$ words. As a baseline, we use the Gibbs sampler developed in~\cite{Chen2013-ge}, which was empirically demonstrated to be highly effective. Note that unlike~\cite{Chen2013-ge}, there's no Dirichlet prior on $\beta$ in our setup; moreover, for $K$ topics, \textit{ctm-c} handles the issue of non-identifiability by using $\eta_d\in\mathbb{R}^{K-1}$ and assuming the first dimension to be 0. Nevertheless, it's straightforward to adapt~\cite{Chen2013-ge} to our setup. After training with \textit{ctm-c}, we apply the 4 different samplers to 20 randomly picked documents for posterior sampling of $z$ and $\eta$. For each sampler, we draw 1000 burn-in and 4000 actual samples in each of 96 independent chains. Gibbs and NwG require no tuning. For HwG and DHMC, we conduct a parameter grid search. For M-HMC, we inspect short trial runs on a separate document, and fix $T, n_\cald$ for all 20 picked documents and set $L=80\times N_d$ for document $d$. Empirically, we find it important to use a non-identity mass matrix for the kinetic energy $K^\calc$ in M-HMC, which we implement by using step size $\frac{4\Sigma_{i i}}{\sum_{j=1}^9\Sigma_{j j}}$ for $\eta_{d,i}$.
+
+We first compare the accuracy of the 5 different samplers, by inspecting the posterior means of $\eta_d$ using samples from the 5 different samplers on the 20 randomly picked documents. Likely due to its inability to generalize to complicated discrete state spaces, the sample means for $\eta_d$ from DHMC differ significantly from the 4 other samplers on all 20 documents. HwG, NwG and M-HMC agree on all 20 documents, while Gibbs agrees ($\pm5\%$ relative error) with them on 17 out of the 20 documents.
+
+On the 17 documents where the 4 samplers agree, we calculate MRESS for $\eta_d$. Without much tunning, M-HMC already shows significant advantages: it has the largest MRESS for all 17 documents, and its MRESS is on average \textbf{57.32} times larger than that of Gibbs, \textbf{8.76} times larger than that of NwG, and \textbf{8.65} times larger than that of HwG. HwG slightly outperforms NwG, with Gibbs performing the worst. Note that Gibbs sequentially updates each component of $z$ and $\eta$, likely causing slow mixing.
+
+
+We additionally inspect traceplots and samples histograms of posterior samples for $\eta_{d 1}$ on a document where Gibbs disagrees with the other 3 samplers (Figure~\ref{fig:ctm_gibbs_negative}. NwG is excluded since it behaves similarly to HwG but is less efficient). M-HMC clearly mixes the fastest, with HwG also outperforming Gibbs. Moreover, HwG and M-HMC explore the state space much more thoroughly, suggesting that Gibbs gives different posterior means on the 3 documents due to ineffective exploration of the state spaces.
+
+\vspace*{-10pt}
+\section{Discussions and Conclusions}\label{sec:discussions}
+\vspace*{-10pt}
+Numerical experiments in Sections~\ref{sec:demo} and~\ref{sec:experiments} show that:\begin{inparaenum}[(1)]
+    \item M-HMC gives accurate samples on all the tested models, while some alternatives occasionally fail (e.g. DHMC in Section~\ref{sec:demo}, and Gibbs and DHMC in Section~\ref{sec:ctm}).
+    \item In terms of MRESS, M-HMC is consistently more efficient than HwG, NwG, DHMC and Gibbs, and even matches NUTS for 24D GMM.
+    \item As shown in Section~\ref{sec:blr}, M-HMC's performance is sensitive to parameter choices, similar to regular HMC. This makes automatically picking the parameters (e.g. in a NUTS-like way) an important future direction.
+\end{inparaenum}
+
+Overall, M-HMC provides a generally applicable mechanism that can be easily implemented to make more frequent updates of discrete variables within HMC. Such updates are usually inexpensive (when compared to gradients evaluations) yet highly beneficial as shown in our numerical experiments in Section~\ref{sec:experiments}. This makes M-HMC an appealing option for probabilistic models with mixed support.
+
+
+\clearpage
+
+
+\section*{Broader Impact}
+
+Probabilistic modeling with structured models leads to more interpretable modeling of data and proper uncertainty quantification. M-HMC enables efficient inference for probabilistic models with mixed support, allowing applicability of probabilistic modeling to a broader set of problems. This can contribute to more principled and interpretable decision making process based on probabilistic modeling of data. As with any technology, negative consequences are possible but difficult to predict at this time. This is not a deployed system with immediate failure consequences or that can leverage potentially harmful biases.
+
+\begin{ack}
+    The author would like to thank Stuart Geman for providing the initial spark for this work and many helpful discussions, an anonymous reviewer at NeurIPS 2019 for suggesting to extend the framework from the discrete-only case to the mixed discrete and continuous case, Nishad Gothoskar for suggesting the name M-HMC, Rajeev Rikhye for valuable help in improving the figures and poster for the paper, and Du Phan for the help in correcting a mistake in the MH correction term. This work was partially supported by the National Science Foundation under Grant No. DMS-1439786 while the author was in residence at the Institute for Computational and Experimental Research in Mathematics in Providence, RI, during the Spring 2019 semester, and by Vicarious AI.
+\end{ack}
+
+\appendix
+\renewcommand\thesection{\arabic{section}}
+\setcounter{theorem}{0}
+\setcounter{algorithm}{0}
+\begin{center}
+    \LARGE Supplement for ``Mixed Hamiltonian Monte Carlo for Mixed Discrete and Continuous Variables''
+\end{center}
+
+\section{Algorithm and theory}
+
+\subsection{Detailed description of a full M-HMC iteration}
+
+See Algorithm~\ref{alg:abstract} for a detailed description of a full M-HMC iteration.
+
+\begin{algorithm}[ht!]
+\caption{Core step of M-HMC}
+\label{alg:abstract}
+\begin{algorithmic}[1]
+	\REQUIRE{$U$, potential for the target distribution $\pi$; $Q_i, i = 1, \ldots, N_\cald$, single-site proposals; $k^\cald$, kinetic energy for discrete component; $I(\cdot, \cdot, \cdot | x, U, K^\calc)$, reversible and volume-preserving integrator for continuous component; $\tau$, interval length in $\mathbb{T}^{N_\cald}$}
+\INPUT{$x^{(0)}$, discrete state; $q^{\cald(0)}, p^{\cald(0)}$, auxiliary location and momentum for discrete state; $q^{\calc(0)}$, continuous location; $p^{\calc(0)}$, auxiliary momentum for continuous state; $T$, travel time}
+\OUTPUT{$x$, next discrete state; $q^{\cald}, p^{\cald}$, next auxiliary location and momentum for discrete state; $q^{\calc}$, next continuous location; $p^{\calc}$, next auxiliary momentum for continuous state}
+
+\FUNCTION{M-HMC($x^{(0)}, q^{\cald(0)}, p^{\cald(0)}, q^{\calc(0)}, p^{\calc(0)}, T$)}
+\STATE $x \leftarrow x^{(0)}$, $q^\cald \leftarrow q^{\cald(0)}$, $p^\cald \leftarrow p^{\cald(0)}$
+\STATE $q^\calc \leftarrow q^{\calc(0)}$, $p^\calc \leftarrow p^{\calc(0)}, \Delta U^\cald \leftarrow 0$
+\STATE $v_i \leftarrow (k^{\cald})' (p^\cald_i), i = 1, \ldots, N_\cald$
+\STATE $t_i \leftarrow \frac{\tau(\text{sign} (v_i) + 1) - 2 q^\cald_i}{2 v_i}, i = 1, \ldots, N_\cald$
+  \WHILE{$T > 0$}
+  \STATE $j \leftarrow \text{argmin}_i \{ t_i, i = 1, \ldots, N_\cald \}$
+  \STATE $\varepsilon = \min \{ t_j, T \}$ 
+    \STATE $q^\cald_i \leftarrow q^\cald_i + \varepsilon v_i, i = 1, \ldots, N_\cald$
+    \STATE ($q^\calc, p^\calc) \leftarrow I(q^\calc, p^\calc, \varepsilon |x, U, K^\calc)$
+    \STATE $T \leftarrow T - \varepsilon$
+    \IF{$\varepsilon = t_j$}
+      \STATE $t_i \leftarrow t_i - t_j, i = 1, \ldots, N_\cald$
+      \STATE $\tilde{x} \sim Q_j (\cdot |x)$
+      \STATE $\Delta E \leftarrow \log\frac{e^{-U(x, q^\calc)} Q_j (\tilde{x} |x)}{e^{-U(\tilde{x}, q^\calc)} Q_j (x| \tilde{x})}$ 
+      \IF{$k^{\cald} (p^\cald_j) > \Delta E$}
+      \STATE $\Delta U^\cald \leftarrow \Delta U^\cald + U(\tilde{x}, q^\calc) - U(x, q^\calc)$
+      \STATE $x\leftarrow \tilde{x}, q_j^\cald \leftarrow \tau - q_j^\cald$
+      \STATE $p_j^\cald \leftarrow\text{sign}(p^\cald_j)(k^\cald)^{-1}(k^\cald(p^\cald_j)-\Delta E)$
+      \STATE $v_j\leftarrow(k^\cald)'(p^\cald_j)$
+      \ELSE
+        \STATE $p^\cald_j\leftarrow -p^\cald_j, v_j\leftarrow -v_j$
+      \ENDIF
+      \STATE $t_j \leftarrow \frac{\tau(\text{sign} (v_j) + 1) - 2 q^\cald_j}{2 v_j}$
+    \ENDIF
+  \ENDWHILE
+  \STATE $E=U\left(x, q^\calc\right) + K^\calc(p^\calc)$
+  \STATE $E^{(0)}=U\left(x^{(0)}, q^{\calc(0)}\right) + K^\calc(p^{\cald(0)})$
+  \IF{$\text{Uniform}([0, 1]) < e^{-(E - E^{(0)} - \Delta U^\cald)}$}
+  \STATE $p^\cald\leftarrow -p^\cald, p^\calc \leftarrow -p^\calc$
+  \ELSE
+\STATE $x \leftarrow x^{(0)}$, $q^\cald \leftarrow q^{\cald(0)}$, $p^\cald \leftarrow p^{\cald(0)}$
+\STATE $q^\calc \leftarrow q^{\calc(0)}$, $p^\calc \leftarrow p^{\calc(0)}$
+  \ENDIF
+  \STATE \textbf{return} $x, q^\cald, p^\cald, q^\calc, p^\calc$
+\ENDFUNCTION
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Proof of Theorem 1}
+
+\subsubsection{Proof of the Theorem}
+
+\begin{theorem}\label{thm:detailed_balance}
+	{\textbf{(Detailed Balance)}} The \textit{M-HMC} function in Algorithm~\ref{alg:abstract} satisfies detailed balance w.r.t.\ the joint invariant distribution $\varphi $, i.e.\ for any measurable sets $A, B \subset \Omega\times\Sigma$,
+\begin{equation*}
+ \int_{\Sigma} \sum_{x \in A (\Theta)} R_T ((x, \Theta), B) \varphi ((x, \Theta))  \mathrm{d} \Theta
+ = \int_{\Sigma} \sum_{x \in B (\Theta)} R_T ((x, \Theta), A) \varphi ((x, \Theta))  \mathrm{d}\Theta
+\end{equation*}
+
+\end{theorem}
+
+\begin{proof}
+    Use $s=(x, q^\cald, p^\cald, q^\calc, p^\calc)$ and $s'=(x', q^{\cald\prime}, p^{\cald\prime}, q^{\calc\prime}, p^{\calc\prime})$ to denote two points in $\Omega\times\Sigma$. 
+\subsubsection*{Sequence of proposals and probabilistic paths}
+	If we start from $s\in\Omega\times\Sigma$, for a given travel time $T$, a concrete run of the \textit{M-HMC} function would involve a finite sequence of random proposals. Assume the length of the sequence is $M$. The sequence of random proposals $Y$ can be denoted as
+  \[ Y = (y^{(0)}, y^{(1)}, \ldots, y^{(M - 1)}), y^{(m)} \in \Omega, m = 0, \ldots, M - 1 \]
+  This sequence of proposals indicates that, for this particular run of \textit{M-HMC}, we reach 0 or $\tau$ at individual sites $M$ times, and each time the system makes a proposal to go to the discrete state $y^{(m)}\in\Omega, m=0, \cdots, M-1$ from the current discrete state. 
+
+ If we fix $Y$, the \textit{M-HMC} function (without the final accept/reject step) in fact specifies a deterministic mapping, and would map $s$ to a single point $s'\in\Omega\times\Sigma$. For each such sequence of proposals $Y$, we introduce an associated probabilistic path $\omega(s, T, Y)$, which contains all the information of the system going from $s$ to $s'$ in time $T$ through the function \textit{M-HMC}. Formally, $\omega(s, T, Y)$ is specified by
+
+\begin{itemize}
+  \item The sequence of random proposals $Y$
+  \[ Y = (y^{(0)}, y^{(1)}, \ldots, y^{(M - 1)}), y^{(m)} \in \Omega, m = 0, \ldots, M - 1 \] 
+  \item The indices of the sites for the $M$ site visitations $j^{(0)}, j^{(1)}, \ldots, j^{(M - 1)}\in\{1, \dots, N_\cald\}$
+  \item The times of the $M$ site visitations $0 \leqslant t^{(0)} < t^{(1)}< \ldots < t^{(M - 1)} \leqslant T$
+  \item The discrete states of the system at $M$ site visitations $x = x^{(0)}, x^{(1)}, \ldots, x^{(M - 1)}\in\Omega$
+  \item Accept/reject decisions for the $M$ site visitations $a^{(m)} = \mathbbm{1}_{\{y^{(m)} = x^{(m + 1)} \}}$, where $x^{(M)} = x'$
+  \item The evolution of the location variables $q^\cald (t), q^\calc(t)$ and the momentum variables $p^\cald(t), p^\calc(t), 0 \leqslant t \leqslant T$. Note that we might have discontinuities in $p^\cald (t)$. We use $p^\cald (t^-)$ to denote the left limit and $p^\cald (t^+)$ to denote the right limit.
+\end{itemize}
+
+\subsubsection*{Countable number of probabilistic paths and decomposition of $R_T(s, B)$}
+
+In order for a probabilistic path $\omega(s, T, Y)$ to be valid, the different components of $\omega(s, T, Y)$ have to interact with each other in a way as determined 
+by the \textit{M-HMC} function. For example, we should have \ $y^{(m)}_i
+= x^{(m)}_i, \forall i \neq j^{(m)}$ and
+\[ x^{(m + 1)} = \left\{\begin{array}{ll}
+		y^{(m)} & \text{if } k^\cald (p^\cald (t^{(m) -})) > \log \frac{\pi (x^{(m)}, q^{\calc}(t^{(m)}))
+			Q_{j^{(m)}} (y^{(m)} |x^{(m)})}{\pi (y^{(m)}, q^{\calc}(t^{(m)})) Q_{j^{(m)}} (x^{(m)}
+     |y^{(m)})}\\
+     x^{(m)} & \text{otherwise}
+   \end{array}\right. \]
+
+
+For $s\in\Omega\times\Sigma$ and some given travel time $T$, we say a sequence of proposals $Y$ is compatible with $s, T$ and \textit{M-HMC} if we can find a corresponding probabilistic path $\omega(s, T, Y)$ that's valid. 
+
+Not all sequences of proposals correspond to valid probabilistic paths. But even if we don't consider the compatibility of the sequence of proposals with $s, T$ and \textit{M-HMC}, the set of all possible such sequences has only a countable number of elements. This is because we only need to look at sequences of finite length (because of the fixed travel time $T$), and all the individual proposals are on discrete state spaces with a finite number of states.
+
+The above analysis indicates that for some starting point $s\in\Omega\times\Sigma$ and travel time $T$, running the \textit{M-HMC} function would result in only a countable number of possible destinations $s'$. Furthermore, $\forall s, s'\in\Omega\times\Sigma$ for which $R_T(s, \{ s' \}) > 0$, there are at most a countable number of probabilistic paths which bring $s$ to $s'$ in time $T$ through \textit{M-HMC}.
+
+Formally, given some travel time $T$ and a sequence of proposals $Y$, define
+\begin{equation*}
+	\mathcal{D}(T, Y) = \{s\in \Omega\times\Sigma: Y\text{ is compatible with }s, T\text{ and }\textit{M-HMC}\}
+\end{equation*}
+Use $\mathcal{T}_{T, Y} : \mathcal{D}(T, Y)\rightarrow \Omega\times\Sigma$ to denote the deterministic mapping defined by \textit{M-HMC} (without the final accept/reject step) for the given $Y$ in time $T$ (so that $\mathcal{D}(T, Y)$ represents the domain of the mapping $\mathcal{T}_{T, Y}$), and use
+\begin{equation*}
+	\mathcal{I}(T, Y) = \{s'\in\Omega\times\Sigma: \exists s\in \mathcal{D}(T, Y), s.t. \mathcal{T}_{T, Y}(s) = s'\}
+\end{equation*}
+to denote the image of the mapping $\mathcal{T}_{T, Y}$. For a given $x\in\Omega$, use
+$$\mathcal{T}_{T, Y, x}: \{(q^\cald, p^\cald, q^\calc, p^\calc)\in\Sigma: s=(x, q^\cald, p^\cald, q^\calc, p^\calc)\in\mathcal{D}(T, Y)\} \rightarrow \Sigma$$
+to denote the deterministic mapping induced by $\mathcal{T}_{T, Y}$ on $\Sigma$. In other words, $$\forall s=(x, q^\cald, p^\cald, q^\calc, p^\calc)\in\mathcal{D}(T, Y), \mathcal{T}_{T, Y, x}((q^\cald, p^\cald, q^\calc, p^\calc)) = (q^{\cald\prime}, p^{\cald\prime}, q^{\calc\prime}, p^{\calc\prime})$$ where $s'=(x', q^{\cald\prime}, p^{\cald\prime}, q^{\calc\prime}, p^{\calc\prime})=\mathcal{T}_{T, Y}(s)$.
+Define
+\begin{equation*}
+    (\Omega\times\Sigma)(s, T) = \{ s' = (x', q^{\cald\prime}, p^{\cald\prime}, q^{\calc\prime}, p^{\calc\prime}) \in \Omega\times\Sigma : R_T (s, \{ s' \}) > 0 \}
+\end{equation*}
+$\forall s, s'\in\Omega\times\Sigma$ for which $R_T(s, \{ s' \}) > 0$, further define
+\begin{equation*}
+	\mathcal{P}(s, s', T) = \{Y\text{ a sequence of proposals: } s\in\mathcal{D}(T, Y)\text{ and }\mathcal{T}_{T, Y}(s) = s'\}
+\end{equation*}
+Then both $(\Omega\times\Sigma)(s, T)$ and $\mathcal{P}(s, s', T)$ have at most a countable number of elements.
+
+\subsubsection*{Proof of detailed balance}
+First, we note that it's trivially true that
+\begin{equation}\label{eqn:trivial}
+\varphi(s)R_T(s, \{s\}) = \varphi(s) R_T(s, \{s\})
+\end{equation}
+
+
+Next, we consider $s'\neq s$. For a given travel time $T$ and a sequence of proposals $Y$, $\forall s\in\mathcal{D}(T, Y)$, we use $r_{T, Y}(s, s')$ to denote the probability of going from $s$ to $s'$ through the probabilistic path $\omega(s, T, Y)$. Since \textit{M-HMC} (without the final accept/reject step) defines a deterministic mapping $\mathcal{T}_{T, Y}$ for given $T$ and $Y$, considering all $s'\neq s$, the only non-zero term is $r_{T, Y}(s, \mathcal{T}_{T, Y}(s))$ . For all $s'\neq s, \mathcal{T}_{T, Y}(s)$, we have $r_{T, Y}(s, s')=0$.
+
+Using the above notation, $\forall s\in A$ and $B\subset \Omega\times\Sigma$ measurable for which $s\notin B$, we can write $R_T(s, B)$ as
+\begin{align*}
+	R_T (s, B) &= \sum_{s' \in B\cap(\Omega\times\Sigma)(s, T)} R_T (s, \{ s' \})\\
+		   &= \sum_{s' \in B\cap(\Omega\times\Sigma)(s, T)}\sum_{Y\in\mathcal{P}(s, s', T)}r_{T, Y}(s, s')\\
+		   &= \sum_{s' \in B\cap(\Omega\times\Sigma)(s, T)}\sum_{Y\in\mathcal{P}(s, s', T)}r_{T, Y}(s, \mathcal{T}_{T, Y}(s))
+\end{align*}
+
+For a given travel time $T$, $\forall s, s'\in \Omega\times\Sigma, s\neq s'$, if $R_T(s, \{ s' \}) > 0$, then $\mathcal{P}(s, s', T)\neq\emptyset$. In Lemma \ref{lem:prob_path}, we prove that $\forall Y\in\mathcal{P}(s, s', T)$, the absolute value of the determinant of the Jacobian of $\mathcal{T}_{T, Y, x}$ is $|\text{det}\mathcal{J}\mathcal{T}_{T, Y, x}| = 1$, for all $x\in\Omega$. Furthermore, the deterministic mapping $\mathcal{T}_{T, Y}$ is reversible, and there exists a sequence of proposals $\tilde{Y}\in\mathcal{P}(s', s, T)$, s.t. $s = \mathcal{T}_{T, Y}^{-1}(s') = \mathcal{T}_{T, \tilde{Y}}(s')$.
+
+In Lemma \ref{lem:detailed_balance_singleton}, we prove that, $\forall s'=\mathcal{T}_{T, Y}(s)\neq s$,
+\begin{equation*}
+	\varphi (s) r_{T, Y} (s, s') = \varphi(s)r_{T, Y}(s, \mathcal{T}_{T, Y}(s)) = \varphi (s') r_{T, \tilde{Y}} (s', \mathcal{T}_{T, \tilde{Y}}(s')) = \varphi (s') r_{T, \tilde{Y}} (s', s)
+\end{equation*}
+
+Using the above results, it's not hard to see that, for the case where $A\cap B = \emptyset$,
+\begin{align*}
+   & \int_{\Sigma} \sum_{x \in A (\Theta)} R_T (s, B) \varphi (s) \mathrm{d} \Theta\\
+	= & \int_{\Sigma}\sum_{x \in A (\Theta)} \sum_{s' \in B\cap(\Omega\times\Sigma)(s, T)}\sum_{Y\in\mathcal{P}(s, s', T)} r_{T, Y} (s, s') \varphi (s) \mathrm{d} \Theta\\
+	= & \int_{\Sigma} \sum_{x \in A (\Theta)} \sum_{s' \in B \cap(\Omega\times\Sigma)(s, T)} \sum_{Y\in\mathcal{P}(s, s', T)} r_{T, \tilde{Y}} (s', s) \varphi (s')  \mathrm{d} \Theta\\
+	\stackrel{\text{change of variables}}{=} & \int_{\Sigma}\sum_{x' \in B (\Theta')} \sum_{s \in A \cap(\Omega\times\Sigma)(s', T)} \sum_{\tilde{Y}\in\mathcal{P}(s', s, T)} r_{T, \tilde{Y}} (s', s) \varphi (s') \frac{1}{|det \mathcal{J}\mathcal{T}_{T, Y, x}|}\mathrm{d} \Theta'\\
+   = & \int_{\Theta} \sum_{x' \in B (\Theta')} R_T (s', A) \varphi (s') \mathrm{d} \Theta' 
+\end{align*}
+Combining the above reasoning with Equation \ref{eqn:trivial}, the same result can be established for the case where $A\cap B \neq \emptyset$. This proves the desired detailed balance property of \textit{M-HMC} w.r.t. $\varphi$
+\begin{equation*}
+ \int_{\Sigma} \sum_{x \in A (\Theta)} R_T ((x, \Theta), B) \varphi ((x, \Theta))  \mathrm{d} \Theta
+ = \int_{\Sigma} \sum_{x \in B (\Theta)} R_T ((x, \Theta), A) \varphi ((x, \Theta))  \mathrm{d}\Theta
+\end{equation*}
+\end{proof}
+
+\subsubsection{Useful Lemmas}
+
+In this section, we prove a few useful lemmas to complete the proof of Theorem~\ref{thm:detailed_balance}. W.l.o.g. we assume $\tau=1$ in this section. The proof can be trivially modified to be applicable to arbitrary $\tau$.
+
+First, we prove two lemmas, similar to Lemma 1 and Lemma 2 in Section 5.1 of \cite{Mohasel_Afshar2015-uh}.
+
+\begin{lemma}\label{lem:refraction} {\textbf{(Refraction)}} Let $\mathcal{T} : \mathbb{T}^{N_\cald} \times \mathbb{R}^{N_\cald} \rightarrow \mathbb{T}^{N_\cald} \times \mathbb{R}^{N_\cald}$ be a transformation in $\mathbb{T}^{N_\cald}$ that takes a unit mass located at $q^\cald = (q^\cald_1, \ldots, q^\cald_{N_\cald})$ and moves it with constant velocity $v = ((k^\cald)' (p^\cald_1), \ldots, (k^\cald)' (p^\cald_{N_\cald}))$. Assume it reaches 0 or 1 at site $j$ first. Subsequently $q^\cald_j$ is changed to $1-q^\cald_j$, and $p^\cald_j$ is changed to $\text{sign} (p^\cald_j) (k^\cald)^{- 1} (k^\cald (p^\cald_j) - \Delta E)$ (where $\Delta E$ is a constant and satisfies $\Delta E < k^\cald (p^\cald_j)$). The move is carried on, with the velocity $v_j$ changed to $(k^\cald)'(\text{sign} (p^\cald_j) (k^\cald)^{- 1} (k^\cald (p^\cald_j) - \Delta E))$, for the total time period $\mu$ till it ends in location $q^{\cald\prime}$ and momentum $p^{\cald\prime}$, before it reaches 0 or 1 again at any sites. Then $\mathcal{T}$ is volume preserving, i.e. the absolute value of the determinant of its Jacobian $|\text{det} \mathcal{J} \mathcal{T} | = 1$. 
+\end{lemma}
+
+\begin{proof}
+Following the same argument as in the proof of Lemma 1 of \cite{Mohasel_Afshar2015-uh}, we have
+\[ 
+	|\text{det}\mathcal{J} \mathcal{T}| = \left| \text{det}\left(\begin{array}{cc}
+            \frac{\partial q^{\cald_j\prime}}{\partial q^\cald_j} & \frac{\partial q^{\cald_j\prime}}{\partial p^\cald_j}\\
+            \frac{\partial p^{\cald_j\prime}}{\partial q^\cald_j} & \frac{\partial p^{\cald_j\prime}}{\partial p^\cald_j}
+   \end{array}\right) \right|
+\]
+If we define $t_j = \frac{\text{sign} (v_j) + 1 - 2 q^\cald_j}{2 (k^\cald)' (p^\cald_j)} = \frac{\text{sign} (p^\cald_j) + 1 - 2 q^\cald_j}{2 (k^\cald)' (p^\cald_j)}$, then
+\begin{eqnarray*}
+    p^{\cald_j\prime} & = & \text{sign} (p^\cald_j) (k^\cald)^{- 1} (k^\cald (p^\cald_j) - \Delta E)\\
+    q^{\cald_j\prime} & = & \frac{1 - \text{sign}(p^\cald_j)}{2} + (k^\cald)' (p^{\cald_j\prime}) (\mu - t_j)\\
+                      & = & \frac{1 - \text{sign}(p^\cald_j)}{2} + (k^\cald)' (p^{\cald_j\prime}) \left( \mu - \frac{\text{sign} (p^\cald_j) + 1 - 2 q^\cald_j}{2 (k^\cald)' (p^\cald_j)} \right)
+\end{eqnarray*}
+This implies
+\begin{align*}
+	| \text{det}\mathcal{J} \mathcal{T} | &= \left| \text{det} \left(\begin{array}{cc}
+            \frac{\partial q^{\cald_j\prime}}{\partial q^\cald_j} & \frac{\partial q^{\cald_j\prime}}{\partial p^\cald_j}\\
+            \frac{\partial p^{\cald_j\prime}}{\partial q^\cald_j} & \frac{\partial p^{\cald_j\prime}}{\partial p^\cald_j}
+			\end{array}\right) \right| = \left|\text{det} \left(\begin{array}{cc}
+            \frac{\partial q^{\cald_j\prime}}{\partial q^\cald_j} & \frac{\partial q^{\cald_j\prime}}{\partial p^\cald_j}\\
+            0 & \frac{\partial p^{\cald_j\prime}}{\partial p^\cald_j}
+   \end{array}\right) \right| \\
+                                          &= \left| \frac{\partial q^{\cald_j\prime}}{\partial q^\cald_j}
+                                          \frac{\partial p^{\cald_j\prime}}{\partial p^\cald_j} \right| = \left| \frac{(k^\cald)'
+                                          (p^{\cald_j\prime})}{(k^\cald)' (p^\cald_j)} \frac{(k^\cald)' (p^\cald_j)}{(k^\cald)' (p^{\cald_j\prime})}
+			\right| = 1
+\end{align*}
+\end{proof}
+
+\begin{lemma}\label{lem:reflection}  {\textbf{(Reflection)}}
+    Let $\mathcal{T} : \mathbb{T}^{N_\cald} \times \mathbb{R}^{N_\cald} \rightarrow \mathbb{T}^{N_\cald} \times \mathbb{R}^{N_\cald}$ be a transformation in $\mathbb{T}^{N_\cald}$ that takes a unit mass located at $q^\cald = (q^\cald_1, \ldots, q^\cald_N)$ and moves it with constant velocity $v = ((k^\cald)' (p^\cald_1), \ldots, (k^\cald)' (p^\cald_{N_\cald}))$. Assume it reaches 0 or 1 at site $j$ first. Subsequently $p^\cald_j$ is changed to $- p^\cald_j$. The move is carried on, with the velocity $v_j$ changed to $-v_j$, for the total time period $\mu$ till it ends in location $q^{\cald\prime}$ and momentum $p^{\cald\prime}$, before it reaches 0 or 1 at any sites again. Then $\mathcal{T}$ is volume preserving, i.e. the absolute value of the determinant of its Jacobian $| \text{det}\mathcal{J} \mathcal{T} | = 1$.
+\end{lemma}
+
+\begin{proof}
+Following the same argument as in the proof of Lemma 2 of \cite{Mohasel_Afshar2015-uh}, we have
+\[ | \text{det}\mathcal{J} \mathcal{T} | = \left| \text{det}\left(\begin{array}{cc}
+        \frac{\partial q^{\cald_j\prime}}{\partial q^\cald_j} & \frac{\partial q^{\cald_j\prime}}{\partial p^\cald_j}\\
+        \frac{\partial p^{\cald_j\prime}}{\partial q^\cald_j} & \frac{\partial p^{\cald_j\prime}}{\partial p^\cald_j}
+   \end{array}\right) \right| \]
+   If we define $t_j = \frac{\text{sign} (v_j) + 1 - 2 q^\cald_j}{2 (k^\cald)' (p^\cald_j)} = \frac{\text{sign} (p^\cald_j) + 1 - 2 q^\cald_j}{2 (k^\cald)' (p^\cald_j)}$, then
+\begin{eqnarray*}
+    p^{\cald_j\prime} & = & - p^\cald_j\\
+    q^{\cald_j\prime} & = & \frac{1 + \text{sign}(p^\cald_j)}{2} - (k^\cald)' (p^\cald_j) (\mu - t_j)\\
+  & = & \frac{1 + \text{sign}(p^\cald_j)}{2} - (k^\cald)' (p^\cald_j) \left( \mu - \frac{\text{sign} (p^\cald_j) + 1 - 2 q^\cald_j}{2 (k^\cald)' (p^\cald_j)} \right)\\
+  & = & 1 + \text{sign}(p^\cald_j) - (k^\cald)' (p^\cald_j) \mu - q^\cald_j
+\end{eqnarray*}
+This implies
+\[ | \text{det}\mathcal{J} \mathcal{T} | = \left| \text{det}\left(\begin{array}{cc}
+        \frac{\partial q^{\cald_j\prime}}{\partial q^\cald_j} & \frac{\partial q^{\cald_j\prime}}{\partial p^\cald_j}\\
+        \frac{\partial p^{\cald_j\prime}}{\partial q^\cald_j} & \frac{\partial p^{\cald_j\prime}}{\partial p^\cald_j}
+			\end{array}\right) \right| = \left| \text{det} \left(\begin{array}{cc}
+        -1 & \frac{\partial q^{\cald_j\prime}}{\partial p^\cald_j}\\
+     0 & - 1
+   \end{array}\right) \right| = 1 \]
+\end{proof}
+
+\begin{lemma}
+	\label{lem:prob_path}
+	Given travel time $T$, $\forall s, s'\in\Omega\times\Sigma, s\neq s'$ for which $R_T(s, \{s'\})>0$, $\mathcal{P}(s, s', T)\neq\emptyset$. $\forall Y\in\mathcal{P}(s, s', T)$, the absolute value of the determinant of the Jacobian of $\mathcal{T}_{T, Y, x}$ is $|\text{det}\mathcal{J}\mathcal{T}_{T, Y, x}| = 1$, for all $x\in\Omega$ where $\mathcal{T}_{T, Y, x}$ is well-defined. Furthermore, the deterministic mapping $\mathcal{T}_{T, Y}$ is reversible, and there exists a sequence of proposals $\tilde{Y}\in\mathcal{P}(s', s, T)$, s.t. $s = \mathcal{T}_{T, Y}^{-1}(s') = \mathcal{T}_{T, \tilde{Y}}(s')$
+\end{lemma}
+
+\begin{proof}
+	Given travel time $T$, $\forall s, s'\in\Omega\times\Sigma$, if $R_T(s, \{ s'\}) > 0$, then by definition $\mathcal{P}(s, s', T)\neq\emptyset$. $\forall Y\in\mathcal{P}(s, s', Y)$, for some $x\in\Omega$, if the deterministic mapping $\mathcal{T}_{T, Y, x}$ is well-defined, then $\mathcal{T}_{T, Y, x}$ can be be written as the composition of a sequence of deterministic mappings
+$$\mathcal{T}_{T, Y, x} = \mathcal{T}^{(0)}_{T, Y, x} \circ \mathcal{T}_{T, Y, x}^{(1)} \circ \cdots \circ \mathcal{T}_{T, Y, x}^{(M - 1)}$$
+Each one of the mappings $\mathcal{T}_{T, Y, x}^{(m)}, m = 0, \ldots, M - 1$ consists of two parts that don't interact: a discrete part that operates on $q^\cald, p^\cald$, and a continuous part that operates on $q^\calc, p^\calc$. The discrete part is either a refraction mapping as described in Lemma \ref{lem:refraction}, or a reflection mapping as described in Lemma \ref{lem:reflection}. The continuous part is given by the integrator $I$, which is reversible and volume-preserving. Using Lemma \ref{lem:refraction} and Lemma \ref{lem:reflection} and the properties of the integrator $I$, it's easy to see that the absolute value of the determinant of the Jacobian
+\[ | \text{det}\mathcal{J} \mathcal{T}_{T, Y, x} | = \prod_{m = 0}^{M - 1} | \text{det}\mathcal{J}
+   \mathcal{T}_{T, Y, x}^{(m)} | = 1 \]
+
+   $\forall Y\in\mathcal{P}(s, s', Y)$, define a new sequence of proposals $\tilde{Y} = (\tilde{y}^{(0)}, \tilde{y}^{(1)}, \ldots, \tilde{y}^{(M - 1)})$ where
+\[ \tilde{y}^{(m)} = \left\{\begin{array}{ll}
+     x^{(M - m - 1)} & \text{if } a^{(M - m - 1)} = 1 (\text{i.e. }y^{(M - m - 1)} =
+     x^{(M - m)} )\\
+     y^{(M - m - 1)} & \text{otherwise } (\text{i.e. } y^{(M - m - 1)} \neq x^{(M - m)},
+     \text{which means } x^{(M - m - 1)} = x^{(M - m)})
+   \end{array}\right. \]
+   We claim that $\tilde{Y}\in\mathcal{P}(s, s', T)$, and $\mathcal{T}_{T, \tilde{Y}}(s') = s$. To see $\tilde{Y}$ has these desired properties, we look at its corresponding probabilistic path $\omega(s', T, \tilde{Y})$. The corresponding discrete states of the system at $M$ site visitations $\tilde{x}^{(m)}, m = 0, \ldots, M$ and the indices of the sites for the $M$ site visitations $\tilde{j}^{(m)}, m = 0, \ldots, M - 1$ are given by simple reversals of the original sequence of discrete states $x^{(m)}, m = 0, \ldots, M$ and the original sequence of indices for visited sites $j^{(m)}, m = 0, \ldots, M - 1$:
+\begin{eqnarray*}
+  \tilde{j}^{(m)} & = & j^{(M - m - 1)}, m = 0, \ldots, M - 1\\
+  \tilde{x}^{(m)} & = & x^{(M - m)}, m = 0, \ldots, M
+\end{eqnarray*}
+The corresponding sequence of accept/reject decisions $\tilde{a}^{(m)}, m = 0,
+\ldots, M - 1$ is also a simple reversal of the original sequence of
+accept/reject decisions $a^{(m)}, m = 0, \ldots, M - 1$
+\[ \tilde{a}^{(m)} = \mathbbm{1}_{\{ \tilde{y}^{(m)} = \tilde{x}^{(m + 1)} \}}
+   = \left\{\begin{array}{ll}
+     \mathbbm{1}_{\{ x^{(M - m - 1)} = x^{(M - m - 1)} \}} = 1 & \text{if }
+     a^{(M - m - 1)} = 1\\
+     \mathbbm{1}_{\{ y^{(M - m - 1)} = x^{(M - m - 1)} \}} = 0 & \text{if }
+     a^{(M - m - 1)} = 0
+   \end{array}\right. = a^{(M - m - 1)} \]
+It's straightforward to verify that $\omega(s', T, \tilde{Y})$ is a valid probabilistic path that brings $s'$ back to $s$ in time $T$ through \textit{M-HMC}. In particular, note the importance of the momentum negating step in ensuring the existence of such a probabilistic path. This proves our claim.
+
+\end{proof}
+
+\begin{lemma}\label{lem:detailed_balance_singleton}
+	$\forall s, s'\in \Omega\times\Sigma, s\neq s'$ for which $R_T(s, \{ s' \}) > 0$, for $Y\in\mathcal{P}(s, s', T)$, we have
+\begin{equation*}
+	\varphi (s) r_{T, Y} (s, s') = \varphi(s)r_{T, Y}(s, \mathcal{T}_{T, Y}(s)) = \varphi (s') r_{T, \tilde{Y}} (s', \mathcal{T}_{T, \tilde{Y}}(s')) = \varphi (s') r_{T, \tilde{Y}} (s', s)
+\end{equation*}
+where $\tilde{Y}$ is defined as in Lemma \ref{lem:prob_path}.
+\begin{proof}
+    We can directly calculate the transition probability $r_{T, Y} (s, s')$. Define $$E = U(x, q^\calc) + K^\calc(p^\calc), E' = U(x', q^{\calc\prime}) + K^\calc(p^{\calc\prime})$$
+and
+\begin{align*}
+	\Delta U^\cald &= \sum_{m:a^{(m)}=1} [U(y^{(m)}, q^\calc(t^{(m)})) - U(x^{(m)}, q^\calc(t^{(m)}))]\\
+	\Delta U^{\cald\prime} &= \sum_{m:\tilde{a}^{(m)}=1} [U(\tilde{y}^{(m)}, \tilde{q}^\calc(\tilde{t}^{(m)})) - U(\tilde{x}^{(m)}, \tilde{q}^\calc(\tilde{t}^{(m)}))]\\
+\end{align*}
+Then
+\[ r_{T, Y} (s, s') = \prod_{m = 0}^{M - 1} Q_{j^{(m)}} (y^{(m)} |x^{(m)}) \min\{1, e^{-(E' - E - \Delta U^\cald)}\}\]
+Correspondingly, we can also calculate the transition probability $r_{T, \tilde{Y}} (s', s)$. 
+\[ r_{T, \tilde{Y}} (s', s) = \prod_{m = 0}^{M - 1} Q_{\tilde{j}^{(m)}} (\tilde{y}^{(m)} | \tilde{x}^{(m)})\min\{1, e^{-(E - E' - \Delta U^{\cald\prime})}\} \]
+Due to the definition of $\tilde{Y}$, it's easy to see that $\Delta U^{\cald\prime} = -\Delta U^\cald$.
+
+Note that
+\begin{eqnarray*}
+	\frac{r_{T, Y} (s, s')}{\min\{1, e^{-(E' - E - \Delta U^\cald)}\}} & = & \prod_{m = 0}^{M - 1} Q_{j^{(m)}}^{a^{(m)}} (y^{(m)} |x^{(m)}) \prod_{m = 0}^{M - 1} Q_{j^{(m)}}^{1 - a^{(m)}} (y^{(m)} |x^{(m)})\\
+  & = & \prod_{m : a^{(m)} = 1} Q_{j^{(m)}} (y^{(m)} |x^{(m)}) \prod_{m : a^{(m)} = 0} Q_{j^{(m)}} (y^{(m)} |x^{(m)})\\
+\frac{r_{T, \tilde{Y}} (s', s)}{\min\{1, e^{-(E - E' - \Delta U^{\cald\prime})}\}} & = &  \frac{r_{T, \tilde{Y}} (s', s)}{\min\{1, e^{-(E + \Delta U^{\cald} - E' )}\}} \\
+& = & \prod_{m = 0}^{M - 1}
+  Q_{\tilde{j}^{(m)}}^{\tilde{a}^{(m)}} (\tilde{y}^{(m)} | \tilde{x}^{(m)})
+  \prod_{m = 0}^{M - 1} Q_{\tilde{j}^{(m)}}^{1 - \tilde{a}^{(m)}}
+  (\tilde{y}^{(m)} | \tilde{x}^{(m)})\\
+  & = & \prod_{m : \tilde{a}^{(m)} = 1} Q_{\tilde{j}^{(m)}} (\tilde{y}^{(m)}
+  | \tilde{x}^{(m)}) \prod_{m : \tilde{a}^{(m)} = 0} Q_{\tilde{j}^{(m)}}
+  (\tilde{y}^{(m)} | \tilde{x}^{(m)})\\
+  & = & \prod_{m : a^{(M - m - 1)} = 1} Q_{j^{(M - m - 1)}} (x^{(M - m - 1)}
+  |y^{(M - m - 1)})\\
+  & \times & \prod_{m : a^{(M - m - 1)} = 0} Q_{j^{(M - m - 1)}} (y^{(M - m -
+  1)} |x^{(M - m)})\\
+  & = & \prod_{m : a^{(M - m - 1)} = 1} Q_{j^{(M - m - 1)}} (x^{(M - m - 1)}
+  |y^{(M - m - 1)})\\
+  & \times & \prod_{m : a^{(M - m - 1)} = 0} Q_{j^{(M - m - 1)}} (y^{(M - m -
+  1)} |x^{(M - m - 1)})\\
+  & = & \prod_{m : a^{(m)} = 1} Q_{j^{(m)}} (x^{(m)} |y^{(m)}) \prod_{m : a^{(m)} = 0} Q_{j^{(m)}} (y^{(m)} |x^{(m)})
+\end{eqnarray*}
+By following the probabilistic path $\omega (s, T, Y)$ and doing explicit calculations, we can show that
+\[ K^{\cald}(p^{\cald\prime}) - K^{\cald}(p^{\cald}) = -\sum_{m: a^{(m)} = 1} \log \frac{e^{-U(x^{(m)}, q^\calc(t^{(m)}))}Q_{j^{(m)}}(y^{(m)} | x^{(m)})}{e^{-U(y^{(m)}, q^\calc(t^{(m)}))}Q_{j^{(m)}}(x^{(m)} | y^{(m)})} \]
+Using the above equations, it's easy to see that
+\begin{align*}
+ &\frac{\varphi (s) r_{T, Y} (s, s')}{\varphi (s') r_{T, \tilde{Y}} (s', s)}\\
+	= & \frac{e^{-(U(x, q^\calc) + K^\cald(p^\cald) + K^\calc(p^\calc))}r_{T,Y}(s, s')}{e^{-(U(x', q^{\calc\prime}) + K^\cald(p^{\cald\prime}) + K^\cald(p^{\cald\prime}))}r_{T, \tilde{Y}}(s', s)}\\
+	=& e^{-(E - E')}e^{K^\cald(p^{\cald\prime}) - K^\cald(p^\cald)}\\
+	\times &\frac{\prod_{m : a^{(m)} = 1} Q_{j^{(m)}} (y^{(m)} |x^{(m)}) \prod_{m : a^{(m)} = 0} Q_{j^{(m)}} (y^{(m)} |x^{(m)})}{\prod_{m : a^{(m)} = 1} Q_{j^{(m)}} (x^{(m)} |y^{(m)}) \prod_{m : a^{(m)} = 0} Q_{j^{(m)}} (y^{(m)} |x^{(m)})}\\
+	\times & \frac{\min\{1, e^{-(E' - E - \Delta U^\cald)}\}}{\min\{1, e^{-(E - E' - \Delta U^{\cald\prime})}\}}\\
+	=& e^{-(E - E')}\prod_{m: a^{(m)} = 1}\frac{e^{U(x^{(m)}, q^\calc(t^{(m)}))}Q_{j^{(m)}}(x^{(m)} | y^{(m)})}{e^{U(y^{(m)}, q^\calc(t^{(m)}))}Q_{j^{(m)}}(y^{(m)} | x^{(m)})}\\
+	\times &\frac{\prod_{m : a^{(m)} = 1} Q_{j^{(m)}} (y^{(m)} |x^{(m)})}{\prod_{m : a^{(m)} = 1} Q_{j^{(m)}} (x^{(m)} |y^{(m)})}\frac{\min\{1, e^{-(E' - E - \Delta U^\cald)}\}}{\min\{1, e^{-(E  + \Delta U^{\cald} - E')}\}}\\
+	=& e^{-(E + \Delta U^{\cald} - E')}\frac{\min\{1, e^{-(E' - E - \Delta U^\cald)}\}}{\min\{1, e^{-(E  + \Delta U^{\cald} - E')}\}}\\
+	=&1
+\end{align*}
+\end{proof}
+\end{lemma}
+
+\section{Details on implementation with Laplace momentum}\label{sec:implementation}
+
+\begin{algorithm}[ht!]
+\caption{Definition of \textit{GetStepSizesNSteps}}
+\label{alg:step_sizes_function}
+\begin{algorithmic}[1]
+\FUNCTION{GetStepSizesNSteps($\varepsilon, T, L, N_\cald, n_\cald$)}
+\STATE $\Phi \sim \text{Dirichlet}_{N_\cald + 1}(1)$; $\Phi_1 \leftarrow \Phi_1 + \Phi_{N_\cald + 1}$
+\STATE $\eta_t \leftarrow \sum_{s=1}^{n_\cald} \Phi_{[(t - 1)n_\cald + s] \bmod N_\cald}, t=1, \ldots, L$; $\eta_1 \leftarrow \eta_1 - \Phi_{N_\cald + 1}$
+\STATE $\eta_t \leftarrow T \eta_t / \sum_{s=1}^L \eta_s, t=1, \ldots, L$; $M_t \leftarrow \lceil\eta_t / \varepsilon\rceil, t=1, \ldots, L$; $\eta_t \leftarrow \eta_t / M_t, t=1, \ldots, L$
+\STATE \textbf{return} $\eta, M$
+\ENDFUNCTION
+\end{algorithmic}
+\end{algorithm}
+
+In what follows, line numbers refer to lines in Algorithm~\ref{alg:abstract}. Under Laplace momentum, $v_i=\text{sign}(p^\cald_i)\in\{1, -1\}$. As a result, different $q^\cald_i$ always evolve with a constant speed 1, and we no longer need the $\operatorname{argmin}$ in Line 7. Site visitation order is completely determined by the initial sampling of $q^\cald, p^\cald$. Furthermore, we can precompute all the involved step sizes (in Line 8). These step sizes are in fact differences of neighboring order statistics of $N^\cald$ uniform samples on $[0, \tau]$, and as a result have the Dirichlet distribution as the joint distribution. The initial momentum is given by $p^{\cald(0)}_i\sim \nu(p)\propto e^{-|p|}$, which corresponds to the initial kinetic energy $k^\cald(p^{\cald(0)}_i)\sim\text{Exponential}(1)$.
+
+The above observations indicate that, using Laplace momentum, we no longer need to keep track of $q^\cald, p^\cald$. Instead, at the beginning of each iteration, we can sample the site visitation order as a random permutation, the step sizes from a Dirichlet distribution, and the kinetic energies from independent exponential distributions. In each iteration, we simply evolve the system according to the step sizes, visit each site in order, and keep track of changes in kinetic energies. These simplications results in the efficient implementation described in Algorithm 1 in the main text. See also Algorithm~\ref{alg:step_sizes_function} for the definition of the function \textit{GetStepSizesNSteps} in Algorithm 1 in the main text.
+
+
+\section{Python function for comparing M-HMC with naive MH within HMC}
+Code for reproducing the results in the paper is available at \url{https://github.com/StannisZhou/mixed_hmc}. In particular, we include below a illustrative python function for comparing M-HMC with naive Metropolis updates within HMC. Experimental results using this function can be reproduced using the script \textit{test\_naive\_mixed\_hmc.py} under \textit{scripts/simple\_gmm}.
+
+\begin{verbatim}
+import numba
+import numpy as np
+from tqdm import tqdm
+
+
+def naive_mixed_hmc(
+    x0, q0, n_samples, epsilon, L, pi, mu_list, sigma_list, use_k=True
+):
+    """Function for comparing mixed HMC and naive Metropolis updates within HMC
+
+    Parameters
+    ----------
+    x0 : int
+        Discrete variable for the mixture component
+    q0 : float
+        Continuous variable for the state of GMM
+    n_samples : int
+        Number of samples to draw
+    epsilon : float
+        Step size
+    L : int
+        Number of steps
+    pi : np.array
+        Array of shape (n_components,). The probabilities for different components
+    mu_list : np.array
+        Array of shape (n_components,). Means of different components
+    sigma_list : np.array
+        Array of shape (n_components,). Standard deviations of different components
+    use_k : bool
+        True if we use mixed HMC. False if we make naive Metropolis updates within HMC
+
+    Returns
+    -------
+    x_samples : np.array
+        Array of shape (n_samples,). Samples for x
+    q_samples : np.array
+        Array of shape (n_samples,). Samples for x
+    accept_list : np.array
+        Array of shape (n_samples,). Records whether we accept or reject at each step
+    """
+
+    @numba.jit(nopython=True)
+    def potential(x, q):
+        potential = (
+            -np.log(pi[x])
+            + 0.5 * np.log(2 * np.pi * sigma_list[x] ** 2)
+            + 0.5 * (q - mu_list[x]) ** 2 / sigma_list[x] ** 2
+        )
+        return potential
+
+    @numba.jit(nopython=True)
+    def grad_potential(x, q):
+        grad_potential = (q - mu_list[x]) / sigma_list[x] ** 2
+        return grad_potential
+
+    @numba.jit(nopython=True)
+    def take_naive_mixed_hmc_step(x0, q0, epsilon, L, n_components):
+        # Resample momentum
+        p0 = np.random.randn()
+        k0 = np.random.exponential()
+        # Initialize q, k, delta_U
+        x = x0
+        q = q0
+        p = p0
+        k = k0
+        delta_U = 0.0
+        # Take L steps
+        for ii in range(L):
+            q, p = leapfrog_step(x=x, q=q, p=p, epsilon=epsilon)
+            x, k, delta_U = update_discrete(
+                x0=x, k0=k, q=q, delta_U=delta_U, n_components=n_components
+            )
+
+        # Accept or reject
+        current_E = potential(x0, q0) + 0.5 * p0 ** 2
+        proposed_E = potential(x, q) + 0.5 * p ** 2
+        accept = np.random.rand() < np.exp(current_E + delta_U - proposed_E)
+        if not accept:
+            x, q = x0, q0
+
+        return x, q, accept
+
+    @numba.jit(nopython=True)
+    def leapfrog_step(x, q, p, epsilon):
+        p -= 0.5 * epsilon * grad_potential(x, q)
+        q += epsilon * p
+        p -= 0.5 * epsilon * grad_potential(x, q)
+        return q, p
+
+    @numba.jit(nopython=True)
+    def update_discrete(x0, k0, q, delta_U, n_components):
+        x = x0
+        k = k0
+        distribution = np.ones(n_components)
+        distribution[x] = 0
+        distribution /= np.sum(distribution)
+        proposal_for_ind = np.argmax(np.random.multinomial(1, distribution))
+        x = proposal_for_ind
+        delta_E = potential(x, q) - potential(x0, q)
+        # Decide whether to accept or reject
+        if use_k:
+            accept = k > delta_E
+            if accept:
+                delta_U += potential(x, q) - potential(x0, q)
+                k -= delta_E
+            else:
+                x = x0
+        else:
+            accept = np.random.exponential() > delta_E
+            assert k == k0
+            if not accept:
+                x = x0
+
+        return x, k, delta_U
+
+    x, q = x0, q0
+    x_samples, q_samples, accept_list = [], [], []
+    for _ in tqdm(range(n_samples)):
+        x, q, accept = take_naive_mixed_hmc_step(
+            x0=x, q0=q, epsilon=epsilon, L=L, n_components=pi.shape[0]
+        )
+        x_samples.append(x)
+        q_samples.append(q)
+        accept_list.append(accept)
+
+    x_samples = np.array(x_samples)
+    q_samples = np.array(q_samples)
+    accept_list = np.array(accept_list)
+    return x_samples, q_samples, accept_list
+\end{verbatim}
+\section{Binary HMC Samplers are special cases of M-HMC}\label{sec:expressions}
+
+Formally, we have the following equivalence between binary HMC and M-HMC:
+
+\begin{proposition}
+	Binary HMC is equivalent to a variant of M-HMC (where $q^\cald$ is initialized at the start and not resampled at each iteration) with $\tau=1$ and deterministic proposals $Q_i,  i = 1, \ldots, N_\cald$
+\begin{equation*}
+	Q_i (\tilde{x}|x) = \begin{cases}1\text{, if }\tilde{x}_i = - x_i, \tilde{x}_j = x_j, \forall j \neq i\\0\text{, otherwise}\end{cases}
+\end{equation*}
+Gaussian and exponential binary HMC correspond to $k^\cald(p)=|p|$ and $k^\cald(p)=|p|^{\frac{2}{3}}$ respectively.
+\end{proposition}
+
+Since no continuous component is involved in a binary distribution, for notational simplicity, we drop all the superscript $\cald$ in the following discussions. We consider the family of kinetic energies $K_\beta(p)=|p|^\beta$, and define the corresponding distribution to be $\nu_\beta(p)\propto e^{-K_\beta(p)}$. We want to show that the binary HMC samplers are special cases of a variant of M-HMC. In what follows, we use M-HMC to refer to the variant of M-HMC where $q$ is initialized at the start and not resampled at each iteration. 
+
+In order to establish the equivalence between binary HMC and M-HMC, we need to study:
+\begin{enumerate}
+  \item For site $j$, the distribution on the initial time it takes to visit site $j$, which we denote by $t^{(0)}_j$.
+  \begin{itemize}
+    \item As shown in Algorithm 1, in M-HMC
+	    \[ t^{(0)}_j = \frac{\ensuremath{\operatorname{sign}} (v_j^{(0)}) + 1 - 2 q_j^{(0)}}{2 v_j^{(0)}} \]
+    where $v_j^{(0)} = K_{\beta}^{'} (p_j^{(0)}) =\ensuremath{\operatorname{sign}} (p_j^{(0)}) \beta | p_j^{(0)} |^{\beta - 1}$ is the velocity at site $j$, and
+    $$q_j^{(0)} \sim U ([0, 1]), p_j^{(0)} \sim \nu_\beta(p_j^{(0)})$$
+    
+    \item For the Gaussian binary HMC sampler,
+    \[ t_j^{(0)} = \left\{\begin{array}{ll}
+         - \arctan \left( \frac{q^{(0)}_j}{p^{(0)}_j} \right) &
+         \ensuremath{\operatorname{if}} \frac{q^{(0)}_j}{p^{(0)}_j} \leqslant
+         0\\
+         \pi - \arctan \left( \frac{q^{(0)}_j}{p^{(0)}_j} \right) &
+         \ensuremath{\operatorname{if}} \frac{q^{(0)}_j}{p^{(0)}_j} > 0
+       \end{array}\right. \]
+    where $q^{(0)}_j, p^{(0)}_j \sim N (0, 1)$.
+    
+    \item For the exponential binary HMC sampler,
+    \[ t_j^{(0)} = p^{(0)}_j + \sqrt{(p^{(0)}_j)^2 + 2 q^{(0)}_j} \]
+    where $q_j^{(0)} \sim \exp (1), p_j^{(0)} \sim N (0, 1)$.
+  \end{itemize}
+  \item For site $j$, the distribution on the initial total energy, which we denote by $k^{(0)}_j$.
+  \begin{itemize}
+    \item For M-HMC, $k_j^{(0)} = K_{\beta} (p_j^{(0)})$, where
+	    $p_j^{(0)} \sim \nu_\beta(p_j^{(0)})$.
+    
+    \item For the Gaussian binary HMC sampler,
+    \[ k_j^{(0)} = \frac{1}{2} (q_j^{(0)})^2 + \frac{1}{2} (p_j^{(0)})^2 \]
+    where $q^{(0)}_j, p^{(0)}_j \sim N (0, 1)$.
+    
+    \item For the exponential binary HMC sampler,
+    \[ k_j^{(0)} = q_j^{(0)} + \frac{1}{2} (p_j^{(0)})^2 \]
+    where $q_j^{(0)} \sim \exp (1), p_j^{(0)} \sim N (0, 1)$.
+  \end{itemize}
+  \item For site $j$, after we reach 0 or 1, if we have total energy $k$, the time it takes to hit a boundary again at this site. We denote this time by $t_j (k)$.
+  \begin{itemize}
+    \item For M-HMC, $t_j (k) = \frac{1}{\beta k^{1 -
+    \frac{1}{\beta}}}$
+    
+    \item For the Gaussian binary HMC, $t_j (k) = \pi$
+    
+    \item For the exponential binary HMC, $t_j (k) = 2 \sqrt{2 k}$
+  \end{itemize}
+\end{enumerate}
+Since different dimensions are independent of each other, we only need to look
+at one particular dimension $j$. We can prove the corresponding propositions
+if we can establish suitable equivalence concerning the joint distribution on
+$(t_j^{(0)}, k_j^{(0)})$, and the function $t_j (k)$.
+
+
+
+\subsection{Proof of Proposition 1 for Gaussian binary HMC}
+
+In order to prove Proposition 1 for Gaussian binary HMC, we first prove a lemma
+
+\begin{lemma}\label{lem:gaussian_independent}
+  Assume $q, p \sim N (0, 1)$ are two independent standard normal random
+  variables. Then $\frac{q}{p}$ and $q^2 + p^2$ are independent. Furthermore,
+  $\arctan \left( \frac{q}{p} \right)$ follows the uniform distribution $U
+  \left( \left[ - \frac{\pi}{2}, \frac{\pi}{2} \right] \right)$, and
+  $\frac{q^2 + p^2}{2}$ follows the exponential distribution $\exp (1)$.
+\end{lemma}
+
+\begin{proof}
+We calculate the characteristic function of the
+random vector $\left( \frac{q}{p}, q^2 + p^2 \right)$:
+\begin{eqnarray*}
+  &  & \mathbb{E}_{q, p \sim N (0, 1)} \left[ e^{i \left[ t_1 \frac{q}{p} +
+  t_2 (q^2 + p^2) \right]} \right]\\
+  & = & \frac{1}{2 \pi} \int_{\mathbb{R}^2} e^{it_1 \frac{q}{p} + it_2 (q^2 +
+  p^2)} e^{- \frac{q^2 + p^2}{2}} \mathrm{d} q \mathrm{d} p\\
+  & = & \frac{1}{2 \pi} \int_0^{+ \infty} \int_0^{2 \pi} e^{it_1 \tan \theta}
+  e^{it_2 r^2} e^{- \frac{r^2}{2}} r \mathrm{d} r \mathrm{d} \theta\\
+  & = & \left[ \int_0^{2 \pi} e^{it_1 \tan \theta} \frac{1}{2 \pi} \mathrm{d}
+  \theta \right] \left[ \int_0^{+ \infty} e^{it_2 r^2 - \frac{r^2}{2}} r
+  \mathrm{d} r \right]\\
+  & = & \left[ \int_{- \frac{\pi}{2}}^{\frac{\pi}{2}} e^{it_1 \tan \theta}
+	  \frac{1}{\pi} \mathrm{d} \theta \right] \left[ \int_0^{+ \infty} e^{it_2 x}
+  \frac{1}{2} e^{- 2 x} \mathrm{d} x \right]\\
+  & = & \left[ \int_{- \infty}^{+ \infty} e^{it_1 x} \frac{1}{\pi (1 + x^2)}
+	  \mathrm{d} x \right] \left[ \int_0^{+ \infty} e^{it_2 x} \frac{1}{2} e^{- 2 x}
+  \mathrm{d} x \right]\\
+  & = & \mathbb{E}_{x \sim \text{Cauchy} (0, 1)} [e^{it_1 x}] \mathbb{E}_{x
+  \sim \exp (2)} [e^{it_2 x}]
+\end{eqnarray*}
+This calculation implies that $\frac{q}{p}$ and $q^2 + p^2$ are independent,
+and that $\frac{q}{p} \sim \text{Cauchy} (0, 1)$, $q^2 + p^2 \sim \exp (2)$.
+Since the cumulative distribution function (CDF) of Cauchy$(0, 1)$ is given by
+\[ \frac{1}{\pi} \arctan (x) + \frac{1}{2} \]
+we have $\frac{1}{\pi} \arctan \left( \frac{q}{p} \right) + \frac{1}{2} \sim U
+([0, 1])$, which implies that $\arctan \left( \frac{q}{p} \right) \sim U
+\left( \left[ - \frac{\pi}{2}, \frac{\pi}{2} \right] \right)$. From $q^2 + p^2
+\sim \exp (2)$, it's easy to deduce that $\frac{q^2 + p^2}{2} \sim \exp
+(1)$.
+\end{proof}
+
+\begin{proof}\textbf{(Proposition 1 for Gaussian binary HMC)}
+For the Gaussian binary HMC sampler, using Lemma \ref{lem:gaussian_independent} and the expressions we derived in Section \ref{sec:expressions}, given a dimension $j$, it's easy to see that $t_j^{(0)}$ and $k_j^{(0)}$ are independent, and that $t_j^{(0)} \sim U ([0, \pi])$, $k_j^{(0)} \sim \exp (1)$. For M-HMC with $\beta = 1 \,$, it's easy to see that we also have $t_j^{(0)}$ and $k_j^{(0)}$ are independent, and that $t_j^{(0)} \sim U ([0, 1]), k_j^{(0)} \sim \exp (1)$. This implies that the random vector $\left( \frac{t_j^{(0)}}{\pi}, k_j^{(0)} \right)$ from the Gaussian binary HMC sampler has the same joint distribution as the random vector $(t_j^{(0)}, k_j^{(0)})$ from M-HMC with $\beta = 1$.  
+
+For the Gaussian binary HMC sampler, $t_j (k) = \pi$, which is a constant function and is independent of the value of $k$. For M-HMC with $\beta = 1$, it's easy to see that $t_j (k) = 1$, which is also a constant function. This implies that $\forall k, \frac{t_j (k)}{\pi}$ for the Gaussian binary HMC sampler is equivalent to $t_j (k)$ for M-HMC with $\beta = 1$.
+
+The above equivalences imply that the Gaussian binary HMC has exactly the same behavior as M-HMC with $\beta = 1$. In fact, the Gaussian binary HMC sampler behaves like scaling the time of M-HMC with $\beta = 1$ by $\pi$.
+\end{proof}
+
+\subsection{Proof of Proposition 1 for exponential binary HMC}
+
+\begin{proof}\textbf{(Proposition 1 for exponential binary HMC)}
+Using the expressions we derived in Section \ref{sec:expressions}, we can see that, at a given site $j$,
+\begin{itemize}
+  \item For the exponential binary HMC sampler, the joint distribution of the
+  random vector $(t_j^{(0)}, k_j^{(0)})$ is the same as the random vector
+  $\left( p + \sqrt{p^2 + 2 q}, q + \frac{1}{2} p^2 \right)$, where $q \sim
+  \exp (1), p \sim N (0, 1)$ are independent. For a given total energy level
+  $k$, $t_j (k) = 2 \sqrt{2 k}$.
+  
+  \item For M-HMC with $\beta = \frac{2}{3}$, the joint
+  distribution of the random vector $(t_j^{(0)}, k_j^{(0)})$ is the same as
+  the random vector $\left( \frac{3}{2} q | p |^{\frac{1}{3}}, | p
+  |^{\frac{2}{3}} \right)$, where $q \sim U ([0, 1]), p \sim G \left( 0, 1,
+  \frac{2}{3} \right)$ are independent. For a given total energy level $k$,
+  $t_j (k) = \frac{3}{2} \sqrt{k}$.
+\end{itemize}
+In order to establish the equivalence between these two samplers, we calculate the characteristic functions of two random vectors. We first calculate the characteristic function of the random vector $\left( p + \sqrt{p^2 + 2 q}, q + \frac{1}{2} p^2 \right)$, where $q \sim \exp (1), p \sim N (0, 1)$ are independent:
+  \begin{eqnarray*}
+    &  & \mathbb{E}_{q \sim \exp (1), p \sim N (0, 1)} \left[ e^{i \left[ t_1
+    \left( p + \sqrt{p^2 + 2 q} \right) + t_2 \left( q + \frac{1}{2} p^2
+    \right) \right]} \right]\\
+    & = & \frac{1}{\sqrt{2 \pi}} \int_0^{+ \infty} \int_{\mathbb{R}} e^{it_1
+    \left( p + \sqrt{p^2 + 2 q} \right) + it_2 \left( q + \frac{p^2}{2}
+    \right)} e^{- q} e^{- \frac{p^2}{2}} \mathrm{d} p \mathrm{d} q\\
+    & = & \frac{1}{2 \sqrt{2 \pi}} \int_{\mathbb{R}^2} e^{it_1 \left( p +
+    \sqrt{p^2 + 2 | q |} \right) + it_2 \left( | q | + \frac{p^2}{2} \right)}
+    e^{- | q |} e^{- \frac{p^2}{2}} \mathrm{d} p \mathrm{d} q\\
+    & \mathop{=}\limits^{p = r \cos \theta, q = \text{sign} (\sin \theta) \frac{r^2
+    \sin^2 \theta}{2}} & \frac{1}{2 \sqrt{2 \pi}} \int_0^{+ \infty} \int_0^{2
+    \pi} e^{it_1 r (1 + \cos \theta) + it_2 \frac{r^2}{2}} e^{- \frac{r^2}{2}}
+    r^2 \sin \theta \mathrm{d} \theta \mathrm{d} r
+  \end{eqnarray*}
+
+\begin{figure}[ht!]
+    \centering
+	\includegraphics[width=\textwidth]{figures/ctm_gibbs_positive.pdf}
+    \caption{Traceplots and samples histograms of posterior samples of $\eta_{d 1}$ on a document where Gibbs agrees with HwG, NwG\&M-HMC in posterior means for $\eta_{d 1}$}
+	\label{fig:ctm_gibbs_positive}
+\end{figure}
+
+Next we calculate the characteristic function of the random vector $\left( 2 \sqrt{2} q | p |^{\frac{1}{3}}, | p |^{\frac{2}{3}} \right)$, where $q \sim U ([0, 1]), p \sim G \left( 0, 1, \frac{2}{3} \right)$ are independent:
+  \begin{eqnarray*}
+    &  & \mathbb{E}_{q \sim U ([0, 1]), p \sim G \left( 0, 1, \frac{2}{3}
+    \right)} \left[ e^{i \left( t_1 2 \sqrt{2} q | p |^{\frac{1}{3}} + t_2 | p
+    |^{\frac{2}{3}} \right)} \right]\\
+    & = & \frac{\frac{2}{3}}{2 \Gamma \left( \frac{3}{2} \right)} \int_0^1
+    \int_{\mathbb{R}} e^{it_1 2 \sqrt{2} q | p |^{\frac{1}{3}} + it_2 | p
+    |^{\frac{2}{3}}} e^{- | p |^{\frac{2}{3}}} \mathrm{d} p \mathrm{d} q\\
+    & = & \frac{2}{3 \sqrt{\pi}} \int_0^1 \int_{\mathbb{R}} e^{it_1 2
+    \sqrt{2} q | p |^{\frac{1}{3}} + it_2 | p |^{\frac{2}{3}}} e^{- | p
+    |^{\frac{2}{3}}} \mathrm{d} p \mathrm{d} q\\
+    & = & \frac{4}{3 \sqrt{\pi}} \int_0^1 \int_0^{+ \infty} e^{it_1 2
+    \sqrt{2} qp^{\frac{1}{3}} + it_2 p^{\frac{2}{3}}} e^{- p^{\frac{2}{3}}}
+    \mathrm{d} p \mathrm{d} q\\
+    & \mathop{=}\limits^{q = \frac{1 + \cos \theta}{2}, p =
+    \frac{r^3}{2^{\frac{3}{2}}}} & \frac{4}{3 \sqrt{\pi}} \int_0^{\pi}
+    \int_0^{+ \infty} e^{it_1 r (1 + \cos \theta) + it_2 \frac{r^2}{2}} e^{-
+    \frac{r^2}{2}} \frac{3}{2^{\frac{5}{2}}} r^2 \sin \theta \mathrm{d} r \mathrm{d}
+    \theta\\
+    & = & \frac{1}{\sqrt{2 \pi}} \int_0^{+ \infty} \left[ \int_0^{\pi}
+	    e^{it_1 r (1 + \cos \theta)} \sin \theta \mathrm{d} \theta \right] e^{it_2
+    \frac{r^2}{2} - \frac{r^2}{2}} r^2 \mathrm{d} r\\
+    & = & \frac{1}{2 \sqrt{2 \pi}} \int_0^{+ \infty} \left[ \int_0^{2 \pi}
+	    e^{it_1 r (1 + \cos \theta)} \sin \theta \mathrm{d} \theta \right] e^{it_2
+    \frac{r^2}{2} - \frac{r^2}{2}} r^2 \mathrm{d} r\\
+    & = & \frac{1}{2 \sqrt{2 \pi}} \int_0^{+ \infty} \int_0^{2 \pi} e^{it_1 r
+    (1 + \cos \theta) + it_2 \frac{r^2}{2}} e^{- \frac{r^2}{2}} r^2 \sin
+    \theta \mathrm{d} \theta \mathrm{d} r
+  \end{eqnarray*}
+
+The above calculations indicate that the joint distribution of $(t_j^{(0)}, k_j^{(0)})$ for the exponential binary HMC sampler is equivalent to the joint distribution of $\left( \frac{4 \sqrt{2}}{3} t_j^{(0)}, k_j^{(0)} \right)$ for M-HMC with $\beta = \frac{2}{3}$. Furthermore, if we multiply the $t_j (k)$ function of M-HMC with $\beta = \frac{2}{3}$ by $\frac{4 \sqrt{2}}{3}$, we get the function $2 \sqrt{2k}$, which is exactly the $t_j (k)$ function for the exponential binary HMC sampler.
+
+The above equivalences imply that the exponential binary HMC has exactly the same behavior as M-HMC with $\beta = \frac{2}{3}$. In fact, the exponential binary HMC sampler behaves like scaling the time of M-HMC with $\beta = \frac{2}{3}$ by $\frac{3}{4 \sqrt{2}}$.
+\end{proof}
+
+
+\section{Some more details on numerical experiments}
+
+\begin{figure}[t!]
+	\centering
+	\includegraphics[width=0.8\textwidth]{figures/24d_gmm_proposals.pdf}
+    \caption{Evolution of K-S statistics of empirical and true samples for $q^\calc_1$, and MRESS for the 24D GMM for M-HMC with 3 different discrete proposals. Colored regions indicate $95\%$ confidence interval, estimated using 192 independent chains.}
+    \label{fig:24d_gmm_proposals}
+\end{figure}
+
+\begin{figure*}[h!]
+    \centering
+    \begin{subfigure}[t]{0.487\textwidth}
+        \centering
+	\includegraphics[width=\textwidth]{figures/variable_selection_L_proposals.pdf}
+	\caption{Evolution of MRESS for M-HMC with different discrete proposals as $L$ changes for different travel time $T$, with $n_\cald=1$}
+	\label{fig:variable_selection_L_proposals}
+    \end{subfigure}%
+    \quad
+    \begin{subfigure}[t]{0.487\textwidth}
+        \centering
+	\includegraphics[width=\textwidth]{figures/variable_selection_nd_proposals.pdf}
+        \caption{Evolution of MRESS for M-HMC with different discrete proposals as $n_\cald$ increases for different travel time $T$, with $n_\cald L=600$}
+	\label{fig:variable_selection_nd_proposals}
+    \end{subfigure}%
+    \caption{Performances (MRESS of posterior samples for $\beta$) of M-HMC with 3 different discrete proposals as $L$ and $n_\cald$ change on variable selection for BLR.}
+    \label{fig:variable_selection_proposals}
+\end{figure*}
+
+
+\begin{figure}[ht!]
+    \centering
+    \begin{subfigure}[t]{\textwidth}
+	\includegraphics[width=\textwidth]{figures/ctm_gibbs_negative_proposals.pdf}
+	\caption{Traceplots and samples histograms of posterior samples of $\eta_{d 1}$ on a document where Gibbs differs from HwG, NwG\&M-HMC in posterior means for $\eta_{d 1}$. Showing first 1000 examples (instead of the 4000 examples shown in Figure~\ref{fig:ctm_gibbs_negative}).}
+    \label{fig:ctm_gibbs_negative_proposals}
+    \end{subfigure}
+    \begin{subfigure}[t]{\textwidth}
+    \centering
+	\includegraphics[width=\textwidth]{figures/ctm_gibbs_positive_proposals.pdf}
+	\caption{Traceplots and samples histograms of posterior samples of $\eta_{d 1}$ on a document where Gibbs agrees with HwG, NwG\&M-HMC in posterior means for $\eta_{d 1}$. Showing first 1000 examples (instead of the 4000 examples shown in Figure~\ref{fig:ctm_gibbs_positive}).}
+	\label{fig:ctm_gibbs_positive_proposals}
+	\end{subfigure}
+	\caption{Traceplots and samples histograms of posterior samples of $\eta_{d 1}$ on 2 documents for M-HMC with 3 different discrete proposals.}
+	\label{fig:ctm_proposals}
+\end{figure}
+\subsection{Exact parameter values for different samplers for 24D GMM}
+
+NUTS and NwG require no manual tuning. We favor HwG and DHMC by doing a parameter grid search and pick the setting with best MRESS for $x$, resulting in step size 1.1 and number of steps 80 for HwG, and a step-size range $(0.8, 1.0)$ and a number-of-steps range $(30, 40)$ for DHMC. We tune M-HMC by conducting short trial runs and inspecting the acceptance probabilities and traceplots, resulting in $\varepsilon=1.7, L=80, T=136, n_\cald=1$.
+
+\subsection{Some additional CTM results}
+
+We also inspect traceplots and samples histograms of posterior samples for $\eta_{d 1}$ on a document where Gibbs agrees with the other 3 samplers (Figure~\ref{fig:ctm_gibbs_positive}. NwG is excluded since it behaves similarly to HwG but is less efficient). The conclusions are similar to those in Section 3.3 of the main text: M-HMC clearly mixes the fastest, with HwG also outperforming Gibbs. Moreover, HwG and M-HMC explore the state space much more thoroughly.
+
+\subsection{Experiments on M-HMC with different discrete proposals}
+
+In addition to the Gibbs proposals (\textit{Gibbs}) $Q(\tilde{x} | x) \propto \pi(\tilde{x}, q^{\calc})$ used in the main text, we additionally experiment with two simple discrete proposals, a modified~\cite{Liu1996-dg} random-walk proposal (\textit{RW})
+\[
+Q_j(\tilde{x}|x) \propto \begin{cases}1 & \text{if } \tilde{x}_j \neq x_j, \tilde{x}_i = x_i, i \neq j_{}\\ 0 & \text{otherwise}\end{cases}
+\] 
+and a modified~\cite{Liu1996-dg} Gibbs proposal (\textit{GB})
+\[
+	Q_j (\tilde{x} |x) \propto \begin{cases}\pi(\tilde{x}, q^{\calc}) & \text{if } \tilde{x}_j \neq x_j, \tilde{x}_i = x_i, i \neq j_{}\\ 0 & \text{otherwise}\end{cases}
+\]
+
+We redo the same experiments for all 3 models in Section 3 in main text with the 2 additional discrete proposals, and compare the performances of M-HMC when different discrete proposals are used.
+
+Figure~\ref{fig:24d_gmm_proposals} shows the results for 24D GMM. It's interesting to see that although \textit{GB} is presumably more informed than \textit{RW}, M-HMC performs similarly (as measured by MRESS) with these two different discrete proposals. \textit{Gibbs} greatly outperforms both \textit{RW} and \textit{GB}, despite previous results~\cite{Liu1996-dg} indicating that modified proposals are more efficient.
+
+Figure~\ref{fig:variable_selection_proposals} shows the results for variable selection in BLR. Since all discrete variables are binary here, \textit{GB} is equivalent to \textit{RW}. As a result, we only show results for M-HMC with \textit{RW} and \textit{Gibbs}. M-HMC with \textit{Gibbs} in general outperforms M-HMC with \textit{RW}, and the behaviors of MRESS for M-HMC with these two different discrete proposals are similar.
+
+For CTMs, we get accurate samples from M-HMC with all 3 discrete proposals, but \textit{Gibbs} again performs the best, followed by \textit{GB}. \textit{RW} performs the worst among all 3 discrete proposals. On the 20 documents used in the main text, we again compare MRESS for $\eta_d$.  The MRESS of M-HMC with \textit{Gibbs} is on average \textbf{2.57} times larger than that of M-HMC with \textit{RW}, and \textbf{1.38} times larger than that of M-HMC with \textit{GB}. The MRESS of M-HMC with \textit{GB} is on average \textbf{1.84} times larger than that of M-HMC with \textit{RW}. Figure~\ref{fig:ctm_proposals} visualizes the performances of the 3 different discrete proposals on 2 documents, similar to Figures~\ref{fig:ctm_gibbs_negative} and~\ref{fig:ctm_gibbs_positive}.
+
+\bibliographystyle{plain}
+\bibliography{refs}
+
+\end{document}

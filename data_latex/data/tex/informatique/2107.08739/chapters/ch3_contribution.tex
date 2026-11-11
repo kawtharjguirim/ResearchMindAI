@@ -1,0 +1,174 @@
+\section{E-PDDL}
+\newcommand{\codetext}[1]{\ensuremath{\mathtt{#1}}}
+\newcommand{\probdom}{problem-\emph{domain}\xspace}
+\newcommand{\probinst}{problem-\emph{instance}\xspace}
+\newcommand{\impltoexpl}{From Implicit to Explicit \KnoBel Update}
+
+In what follows we present E-PDDL making use of the Coin in the Box domain (Example~\ref{ex:coin_box}) to better explain some of the features.
+Let us remark that the syntax has been chosen with the objective of minimizing the difference with standard PDDL while providing a general epistemic input language.
+We will start by showing the syntax of the \probdom---that contains the general settings of the problem---and then we will illustrate how a \probinst---that contains specific objects, initial conditions and goals---is characterized.
+In particular in Listings~\ref{lst:domain} we present the characterization of the Example~\ref{ex:coin_box} \probdom and in Listings~\ref{lst:instance} we present a simple \probinst where it is known that agent \agent{a} has the key and the goal is for \agent{a} to know the coin position.
+Before proceeding with the description of the E-PDDL syntax we need to introduce the meaning of the operator ``\codetext{[\agent{i}]}" where $\agent{i} \in \sAG$.
+This operator captures the modal operator $\B{\agent{i}}$.
+For example in Line 13 of Listings~\ref{lst:domain} the formula \codetext{[?\agent{i}](has\_key\ ?\agent{i})} reads ``agent \agent{i} knows \codetext{has\_key\_\agent{i}}" where $\agent{i} \in \sAG$ and the fluent \codetext{has\_key\_\agent{i}} encodes the fact that \agent{i} has the key.
+When the operator is of the form ``[$\alpha$]" where $\alpha \subseteq \sAG$ and $|\alpha| \geq 2$ then it captures the idea of common \knobel. %\Lior{nice and clear illustration}
+
+\subsection{Problem \emph{Domain}}
+First of all let us note that in Listings~\ref{lst:domain} the actions \codetext{signal} and \codetext{distract} are omitted to avoid clutter. In fact, these actions are world-altering and, therefore, share a similar structure with the action \codetext{open}.
+
+Following the PDDL syntax~\cite{pddl2.1} we start the \probdom definition by defining the name and the requirements of the problem (Lines 1 and 2-3 of Listings~\ref{lst:domain}, respectively). We included a new requirement called \codetext{:mep} to identify the need for E-PDDL.
+In Lines 5-8 are introduced the predicates following the PDDL standard.
+A small variation is the \emph{object-type} \codetext{agent} that does not need to be defined and is used to define variables that capture the acting agents.
+
+From Line 10 to Line 19 the action \codetext{open} is introduced.
+The action's definition starts with its \emph{name} (Line 10) and its \emph{type} (Line 11).
+The concept of {action type} is inherited from \mar and for now is restricted to be one among ontic, sensing or announcement since these are the accepted variations of an action in the MEP community.
+This concept allows to apply the right transition function in the context of implicit \knobel update.
+We plan, for the future, to include custom action types through the definition of custom event models (see~\cite{baral2015action} for a better introduction on this topic).
+Since such feature needs to be also implemented in the epistemic planners, we leave this contribution as a future work.
+Next, in Line 12 and Line 13, respectively, the action's \emph{parameters} and \emph{preconditions} are defined.
+The {parameters} have the same role that they have in PDDL, that is they are used to associate the variables of the action's definition with an \emph{object type}.
+Similarly, also the field {preconditions}---identified by any belief formula---follow the standard PDDL meaning.
+Following the {preconditions} the action specify the \emph{effects}.
+The {effects}, contrarily from the {preconditions}, cannot contain arbitrary belief formulae.
+In fact, depending on the action type, only fluents or special fluent formulae are allowed.
+In particular, ontic actions allow for conjunctions of fluents while epistemic actions (\ie sensing and announcements) can only consider single fluents as effects.
+These limitations, inherited by \mar, are necessary for planners that reason on epistemic transition functions.
+We address the reader to~\cite{Fab20} for a more detailed description of the motivations behind these limitations.
+Finally, the last field of the action \codetext{open} is about the \emph{observer}s.
+This field is used to indicate which agents are fully observant, \ie knows about the execution and the effects of the action.
+Knowing which agent is observant is once again useful to derive how the \knobel of the agents is updated after the action is been executed.
+To better characterize the set of observant agents we introduced the operator \codetext{diff} that allow to ``isolate" the executor of the action (since the executor needs to be observant and should not depend on other factors).
+For example, the condition in Lines 15-17 reads as: ``the agent \agent{i}, \ie the executor, is fully observant" (Line 15) and ``for every agent \agent{j} $\neq$ \agent{i} if \agent{j} \codetext{is\ looking} then \agent{j} is fully observant" (Lines 16-17).
+The same schema is used to define partial observers, the ones that are aware of the action execution but do not know the results of such action, with the field \emph{p\_observers}; an example of partial observability is at Line 27.
+%\ff{Don't worry about formatting, once the paper is completely finished I will make sure that these Listings are in in one column only}
+%\begin{minipage}{1\linewidth}
+\begin{lstlisting}[
+  caption={E-PDDL Coin in the Box \probdom.},
+  captionpos=b,
+  breaklines=true,
+  basicstyle=\footnotesize,
+  numbers=left,
+  stepnumber=1,
+  postbreak=\mbox{{$\hookrightarrow$}\space},
+  label={lst:domain},
+  language=e-PDDL]
+(define (domain coininthebox)
+ (:requirements :strips 
+  :negative-preconditions :mep)
+  
+ (:predicates (opened)
+              (has_key ?i - agent)
+              (looking ?i - agent)
+              (tail))
+ 
+ (:action open
+   :act_type     ontic
+   :parameters   (?i - agent)
+   :precondition ([?i](has_key ?i))
+   :effect       (opened)
+   :observers    (and (?i)
+                 (forall(diff(?j-agent)(?i))
+                 (when(looking ?j) (?j))))
+ )
+
+ (:action peek
+   :act_type	 sensing
+   :parameters   (?i - agent)
+   :precondition (and ([?i](opened))
+                      ([?i](looking ?i)))
+   :effect       (tail)
+   :observers	 (?i)
+   :p_observers  (forall(diff(?j-agent)(?i))
+                 (when(looking ?j) (?j)))
+ )
+
+ (:action announce
+   :act_type	 announcement
+   :parameters   (?i - agent)
+   :precondition ([?i](tail))
+   :effect       (tail)
+   :observers    (and (?i)
+                 (forall(diff(?j-agent)(?i))
+                 (when(looking ?j) (?j))))
+ )
+)
+\end{lstlisting}
+%\end{minipage}
+The introduced fields are tailored for implicit \knobel update but in Section ``\textbf{\impltoexpl}" we will explain how, with the presented syntax, it is possible to generate a valid input also for those planners that need the effects of the action to be completely explicit.
+
+\subsection{Problem \emph{Instance}}
+In Listings~\ref{lst:instance} we present an example of an E-PDDL \probinst.
+In Line 1 and in Line 2 the \probinst name (\ie \codetext{toyinstance}) and the related \probdom name are defined, respectively.
+
+Next, in Line 3, the \emph{object type} \codetext{agent} values are defined.
+In this particular instance we defined three agents \agent{a}, \agent{b} and \agent{c} as in Example~\ref{ex:coin_box}.
+
+Following, in Line 4, the \codetext{depth} is specified.
+The concept of depth of a belief formula is used to identify the number of \emph{nested} epistemic operators.
+For example, given two agents \agent{i} and \agent{j} the belief formula $\B{i}\varphi$ has depth 1 while $\B{i}\C{i,j}\varphi$  has depth 2.
+This field is introduced to accommodate the need for certain planners, \eg \rpmep, to limit the depth of the belief formulae.
+In fact \rpmep relies on grounding the formulae into classical planning ``facts" and without bound on these formulae could be infinite.
+On the other hand, the limit on depth is ignored by the planners, \eg \EFP, that reason directly on epistemic states.
+
+Lines 5-12 present the belief formulae that describe the initial state. The formulae are considered to be in conjunction with each other.
+The \emph{initial conditions} only require to specify when a fluent is true and consider false whichever fluent is not specified (Line 5).
+Moreover the initial conditions are also used to specify what is known in the initial state (Line 6-12).
+While the belief formulae in this field can be of any type, let us remark that in~\cite{son2014finitary} it is demonstrated that to create a finite number of epistemic states from a set of formulae, this set must respect a finitary \textbf{S5} logic and therefore the \knobel must be expressed in terms of common \knobel.
+This means that if the initial conditions do not comply with a finitary \textbf{S5} logic the planners that construct the initial epistemic state from the given specification may not work.
+
+Finally in Line 13 the conjunction of belief formulae that represent the goals is defined.
+Here, to respect Example~\ref{ex:coin_box}, only the goal that reads ``\agent{a} knows that the coin is tails up" is written.
+%\begin{minipage}{1\linewidth}
+\begin{lstlisting}[
+  caption={E-PDDL Coin in the Box \probinst.},
+  captionpos=b,
+  breaklines=true,
+  basicstyle=\footnotesize,
+  numbers=left,
+  stepnumber=1,
+  postbreak=\mbox{{$\hookrightarrow$}\space},
+  label={lst:instance},
+  language=e-PDDL]
+(define (problem toyinstance)
+ (:domain coininthebox)
+ (:agent a b c)
+ (:depth 2)
+ (:init (tails) (has_key a) (looking a)
+        ([a b c](has_key a))
+        ([a b c](not (has_key b)))
+        ([a b c](not (has_key c))))
+        ([a b c](not (opened)))
+        ([a b c](looking a))
+        ([a b c](not (looking b)))
+        ([a b c](not (looking c))))
+ (:goal ([a](tails)))
+)\end{lstlisting}
+%\end{minipage}
+%(:depth 1) ; Only used by System 1 planner
+
+\subsection{\impltoexpl}\label{subsec:expl}
+Since we tailored E-PDDL syntax to represent actions with implicit \knobel update we need to explain how E-PDDL itself is a suitable language also for those planner, \eg \rpmep, that need the \knobel update to be explicit.
+That is, we need a standard way of deriving the explicit agents' \knobel update from an E-PDDL action description.
+While deriving explicit \knobel update is not a method that is embedded in the language itself in what follows we propose the strategy that we adopted in our implemented parser (presented in the following Section).
+
+The strategy that we adopted in our parser is based on~\cite{baral2015action} transition function where the idea of agents' observability is used to derive consistent agents' \knobel about the actions effects and/or execution.
+In what follows we present a \emph{\knobel derivation schema} that, starting from the agents' observability, is able to generate the explicit \knobel update related to a single action. These updates generate all the \knobel-chains of finite length $\ell$ where $\ell \in \{0,\dots,\mathtt{d}\}$ and  $\mathtt{d}$ is the value assigned to the field \codetext{:depth} in the \probinst (in Listings~\ref{lst:instance} $\mathtt{d} = 2$).
+Namely we will have all the following chains:
+\begin{itemize}
+    \item a fully observant knows the action's effect ($\ell = 1$);
+    \item a fully observant knows that another fully observant knows the action's effect ($\ell = 2$);
+    \item a fully observant knows the chains of length 2 ($\ell = 3$);
+    \item and so on until we have that $\ell = \mathtt{d}$.
+\end{itemize}
+
+\noindent Moreover, when partially observant agents are defined we also need to take into consideration their perspective on the \knobel update.
+To do that we will need to automatically generate the following \knobel-chains (still limited by the given depth):
+\begin{itemize}
+    \item a partially observant knows that any chain of fully observant agents knows the action's effect ($\ell = 2$); and
+    \item any chain, with $\ell \leq \mathtt{d}-2$, of fully/partially observant knows the chain of \knobel presented in the previous point.
+\end{itemize}
+In order to better integrate explicit \knobel update we decided to incorporate E-PDDL with an extra, non-mandatory field for the actions' specification.
+This field, identified by \codetext{:exp\_effect} can be used to the identify the explicit \knobel update of the action by using an arbitrary belief formula.
+Let us note that when this field is defined it will completely override the automatically derived \knobel update for the planners that make use of explicit \knobel update, \eg \rpmep.
+On the other hand, planners that make use of a full fledged epistemic transition function, \eg \EFP, will ignore the \codetext{:exp\_effect} field.

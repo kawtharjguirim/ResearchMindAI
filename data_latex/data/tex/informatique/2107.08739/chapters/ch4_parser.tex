@@ -1,0 +1,176 @@
+\section{An E-PDDL Parser}
+%\ff{This chapter is just missing the listings that represent the output of the solvers}
+In this Section we will present the implementation of an E-PDDL parser.
+This parser is able to take E-PDDL \probdom and \probinst files and automatically generate corresponding inputs for the solvers \rpmep and \EFP.
+That is, the main objective of our parser is to generate a \pdkbpddl and a \mar description of the given input.
+While this is just a first step of the integration of E-PDDL in the epistemic planning community, thanks to our parser  \rpmep and \EFP can already exploit the newly presented syntax.
+Moreover, this parser allows to better compare and/or even combine the two approaches.
+Therefore, the presented approach may help in building a more general epistemic planning environment where, thanks also to a meta-cognitive reasoning module, takes a planning problem in E-PDDL, identifies and assesses some of its features, and autonomously decides which planner is the best one to solve it.
+
+The parser source code, along with some examples and a small guide on how to use the code itself, is available at the following url: \url{https://github.com/FrancescoFabiano/E-PDDL}.
+Our E-PDDL parser is written in Python3~\cite{10.5555/1593511} and inherits its basic structure from an open source PDDL parser~\cite{pddlparser}.
+
+As already said the objective of the parser is to ``transform" an E-PDDL input into files that can be directly used as input for either \rpmep or \EFP.
+The idea is to provide the researchers with a tool that generates an output that can be directly used by the two above-mentioned planners. 
+
+While elaborating upon the details of the code will be tedious and not informative we decide to show the result of the parsing process.
+In Listings~\ref{lst:rpmepdom} and~\ref{lst:rpmepinst} show the \probdom and the \probinst (partial) input files for the planner \rpmep resulted by calling the parser on the \textbf{Coin in the Box} instance described in Listings~\ref{lst:domain} and~\ref{lst:instance}.
+Listings~\ref{lst:efp}, on the other hand, presents (part of) the encoding of the same problem for the planner \mar.
+Let us remark that Listings~\ref{lst:rpmepdom} and~\ref{lst:rpmepinst} follow the syntax of \pdkbpddl while Listings~\ref{lst:efp} respects the syntax of \mar.
+
+\begin{lstlisting}[
+  caption={\pdkbpddl Coin in the Box \probdom generated through the parsing process of Listings~\ref{lst:domain}.},
+  captionpos=b,
+  breaklines=true,
+  basicstyle=\footnotesize,
+  numbers=left,
+  stepnumber=1,
+  postbreak=\mbox{{$\hookrightarrow$}\space},
+  label={lst:rpmepdom},
+  language=e-PDDL]
+(define (domain coininthebox)
+ (:agents a b c)
+ (:constants)
+ (:types)
+ (:predicates (opened) (has_key ?i - agent)
+              (looking ?i - agent) (tails))
+
+ (action: open
+  :parameters	(?i - agent)
+  :derive       (looking $agent$)
+  :precondition ([?i](has_key ?i))
+  :effects      (and (opened))
+ )
+
+ (action: peek
+  :parameters	(?i - agent)
+  :derive       (never)
+  :precondition (and ([?i](opened))
+                     ([?i](looking ?i)))
+  :effects      (and [?i](tails)
+                (forall (?j - agent)
+                (when (looking ?j)
+                [?j][?i](or(tails)(!tails)))))
+ )
+
+ (action: announce
+  :parameters	(?i - agent)
+  :derive       (looking $agent$)
+  :precondition ([?i](tails))
+  :effects      (and (tails))
+ )
+)
+\end{lstlisting}
+
+In Lines 10 and 28 of Listings~\ref{lst:rpmepdom} we can see how, thanks to the \pdkbpddl field \codetext{:derive-condition} (shorten to \codetext{:derive}), we are able to define which agents are aware of an action's execution and its effects. This special field automatically expand the \knobel update for \rpmep.
+This conversion (that only allows belief formulae of depth up to 2 as indicated by Line 4 of Listings~\ref{lst:instance}) correctly captures the idea that fully observant agents are aware of the actions' effects and also know that the other fully observants know these effects.
+
+On the other hand, to express the complete \knobel update of the action \codetext{peek} we need to account also for partial observability.
+In Lines 20-23 the effects of the action are written so that the acting agent, \ie agent \agent{i}, knows that the coin is tails up.
+The other agents, which are partially observant, only knows that \agent{i} knows the coin position but they do not the position themselves.
+Given that the max depth of the formulae is set to 2 these effects suffice in capturing the behavior of \codetext{peek}.
+Let us remark that the syntax presented in Lines 20-23 of Listings~\ref{lst:rpmepdom} is not fully compatible with \pdkbpddl but nicely captures the idea we are trying to express.
+Partial observability, while supported by the parser, is not yet fully supported during the conversion to \pdkbpddl and is currently under development.
+
+\begin{lstlisting}[
+  caption={\pdkbpddl Coin in the Box \probinst generated through the parsing process of Listings~\ref{lst:instance}.},
+  captionpos=b,
+  breaklines=true,
+  basicstyle=\footnotesize,
+  numbers=left,
+  stepnumber=1,
+  postbreak=\mbox{{$\hookrightarrow$}\space},
+  label={lst:rpmepinst},
+  language=e-PDDL]
+(define (problem pb1)
+ (:domain coininthebox)
+ (:depth 2)
+ (:projection )
+ (:task valid_generation)
+ (:init-type complete)
+ 
+ (:init
+  (tails)
+  (has_key a)
+  (looking a)
+
+  ;Length 1
+  (forall ?ag1 - agent
+	[?ag1](has_key a))
+
+  ;Length 2
+  (forall ?ag1 - agent
+    (forall ?ag2 - agent
+      [?ag2][?ag1](has_key a)))
+
+ )
+
+ (:goal 
+  [a](tails)
+ )
+)
+\end{lstlisting}
+While Listings~\ref{lst:rpmepinst} has some extra fields w.r.t. to Listings~\ref{lst:instance} that are used by \rpmep to set some internal parameters the only notable difference is the conversion of the common \knobel operator, not supported by \rpmep, into chain of belief formulae.
+These chains, bounded by the depth limit (that is our case is set to two), are the chains of \knobel that are used to define the common \knobel operator.
+The conversion, if applied for example to Line 6 of Listings~\ref{lst:instance} ``\codetext{[\agent{a\ b\ c}](has\_key\ \agent{a})}", generates all the belief formulae where:
+    \begin{enumerate*}[label= ]
+        \item every agent in $\{\agent{a};\agent{b};\agent{c}\}$ knows \codetext{has\_key\ \agent{a}} ($\ell = 1$); and
+        \item every agent in  $\{\agent{a};\agent{b};\agent{c}\}$ knows that every agent in  $\{\agent{a};\agent{b};\agent{c}\}$ knows \codetext{has\_key\ \agent{a}} ($\ell = 2$).
+    \end{enumerate*}
+    
+\begin{minipage}{1.0\linewidth}
+\begin{lstlisting}[
+  caption={\mar Coin in the Box problem generated through the parsing process of Listings~\ref{lst:domain} and~\ref{lst:instance}.},
+  captionpos=b,
+  breaklines=true,
+  basicstyle=\footnotesize,
+  numbers=left,
+  stepnumber=1,
+  postbreak=\mbox{{$\hookrightarrow$}\space},
+  label={lst:efp},
+  language=MAR]
+fluent has_key_a, has_key_b, .., tails;
+
+action open_a, open_b, .., announce_c;
+
+agent a, b, c;
+
+executable open_a if B(a,has_key_a);
+open_a causes opened;
+b observes open_a if look_b;
+c observes open_a if look_c;
+a observes open_a;
+
+executable peek_a if B(a,opened),B(a,look_a)
+peek_a determines tails if look_a;
+a observes peek_a;
+b aware_of peek_a if look_b;
+c aware_of peek_a if look_c;
+
+executable announce_a if B(a,tails);
+announce_a announces tails;
+b observes announce_a if look_b;
+c observes announce_a if look_c;
+a observes announce_a;
+
+initially tails, has_key_a, look_a;
+initially -look_b, -look_c, ...;
+
+
+initially C([a,b,c],look_a);
+initially C([a,b,c],has_key_a);
+initially C([a,b,c],-opened);
+...
+initially C([a,b,c],-has_key_c);
+
+goal B(a,tails);
+\end{lstlisting}
+\end{minipage}
+
+
+Finally, in Listings~\ref{lst:efp}, we show a partial results of the conversion of E-PDDL into \mar.
+Since \mar does not allow to use variables and types to define the problem specification the parser grounds the instance of E-PDDL and use the result to generate the input for \EFP.
+In particular, this grounded instance contains grounded fluents, \eg \codetext{has\_key\_a}, \codetext{has\_key\_b} and \codetext{has\_key\_c}, and grounded actions, \eg \codetext{open\_a}. %\codetext{has\_key\ ?i\ -\ agent} is transformed in 
+The grounded actions are instantiated versions of the ones declared in E-PDDL where each variable is associated with one of its possible values.
+Other small syntactical changes are then applied, \eg ontic actions are associated with keyword \codetext{causes} and partial observability is identified by the keyword \codetext{aware\_of}.
+%In the planner we removed by default the duplicate value, that is if two agents are declared we never instanciate those agents eith the same value

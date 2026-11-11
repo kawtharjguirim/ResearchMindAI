@@ -1,0 +1,140 @@
+\section{Background}
+Recently the concept of Artificial Intelligence has gained a lot of momentum both inside and outside the computer science research community. % \Lior{it is true, but probably obvious, maybe a more refined statement, as for planning in the context of AI is more appropriate / informative}
+We are, in fact, witnessing an increasing number of autonomous tools that help users in tasks that range from the trivial and ordinary to the complex and very specialized.
+In particular, the area of automated planning, that has always been widely employed especially at the industrial level, has been constantly pushed towards improvement.
+Nowadays planners and schedulers are able to solve complex tasks in very short times while also accounting for factors such as incomplete knowledge, non-determinism, fault occurrences and so on \cite{helmert2006fast,lipovetzky2017best,richter2010lama}.
+
+However, the main focus of these research efforts has been about reasoning within single agent domains. 
+This type of setting mainly requires the agent to characterize her knowledge about the world and understand in which way she can manipulate it in order to achieve a particular goal.
+But, while the single-agent setting can be satisfactory in many scenarios, multi-agent planning can be adopted to characterize a wider spectrum of real-world situations.
+It is therefore natural that, thanks to the increasing interest in the area and the more powerful hardware support, the planning problem is now also broadly studied in the context of multiple agents.
+
+
+
+\subsection{Multi-Agent Epistemic Planning}
+
+
+Nevertheless, the presence of numerous agents in the planning setting poses a number of challenges: among which is to study the information flows that occurs between the agents. % and how the agents themselves can use these streams of ``knowledge".
+The area of planning that reasons in an environments where these streams of ``knowledge" need to be considered is known as \emph{Epistemic Multi-Agent Planning}, or simply MEP (see~\cite{fagin1994reasoning,bolander2017gentle} for a more detailed introduction to the topic).
+MEP derives from the well-known research area of \emph{Dynamic Epistemic Logic} which uses logic to formalize and reason and reason on both the state of the world and on the \emph{information change} in dynamic domains. %\jl{Would change from ``...where thanks to the use of logics it is possible to formalize and reason....'' to ``which uses logic to formalize and reason....''}
+To be more concrete, as stated in~\cite{van2007dynamic}, ``\emph{information} is something that is relative to a subject who has a certain perspective on the world, called an \emph{agent}, and that is meaningful as a whole, not just loose bits and pieces. This makes us call it \emph{knowledge} and, to a lesser extent, \emph{belief}.'' %\Lior{I wonder whether there are information theoretic terms that can streamline the terminology, information change' is something that requires a proper definition of information itself (such as in terms of entropy, etc), a system that is rich with knowledge, may have less entropy (and ability to change) compare to a system that comprises of little knowledge, the change in entropy is referred as mutual information, what would be the equivalent of a change on information? (probably this is too philosophical for this discussion, sorry for that) }
+In what follows, for brevity, we use the term ``\knobel'' to encapsulate \textit{both} the notions of an agent's knowledge and beliefs with respect to some information.
+The concepts of knowledge and beliefs are captured by the same modal operator in Dynamic Epistemic Logic and their difference resides in structural properties that the epistemic states respect (see~\cite{fagin1994reasoning} for more details).
+This means that thanks to epistemic planners we are able to reasons on domains where the actions of the agents affect, and are affected, by the state of the world and the \knobel of the agents (about both the world and the others' \knobel).
+
+As already mentioned, MEP is concerned with information change and inherits concepts from Dynamic Epistemic Logic (DEL).
+In particular, the language of well-formed DEL formulae used to express agents' \knobel, is defined as follows:
+	\begin{equation*}
+	    \varphi ::= \fluent{f} \mid \neg \varphi \mid \varphi \wedge \psi \mid \B{i} \varphi \mid \C{\alpha} \varphi,
+	\end{equation*}
+	%\jl{What is the meaning of the vertical bars? $\varphi \land \varphi$ looks funny -- is this correct? I suspect that you are defining $\varphi$ to be one of the things on the right. Is using $\varphi$ on both sides OK, or should you perhaps use $\varphi$ on the left and $\psi$ on the right?} 
+	%5The vertical bars are usually used to separate elements of a BNF syntax
+	\noindent where $\fluent{f}$ is a propositional atom called a \emph{fluent}, $ \agent{i} $ is an agent that belongs to the set of agents $\agentSet$ s.t. $|\agentSet| \geq 1$, $\varphi$ and $\psi$ are belief formulae and $ \emptyset \neq \alpha \subseteq \agentSet $.
+	A \emph{fluent formula} is a DEL formula with no occurrences of modal operators.
+    A \emph{belief formula} is recursively defined as follows:
+	\begin{itemize}%[label=\textbf{(\roman*)}]
+		\item A fluent formula is a belief formula;
+		\item If $\varphi$ is a belief formula and $\agent{i} \in \sAG$, then $\B{i}{\varphi}$ (``$ \agent{i} $ knows/believes that $ \varphi$'') is a belief
+		      formula where the modal operator $\B{}$ captures the concept of \emph{\knobel};
+		\item If $\varphi_1, \varphi_2$ and $\varphi_3$ are belief formulae,
+		      then $\neg \varphi_3$ and $\varphi_1 \,\mathtt{op}\, \varphi_2$ are belief
+		      formulae, where $\mathtt{op} \in \bra{\wedge,\vee, \shortimplies}$;
+		\item If $\varphi$ is a belief formula and  $\emptyset \neq \alpha \subseteq \sAG$
+		      then $\C{\alpha}\varphi$
+		      is a belief formula where $\C{\alpha}$ captures the \emph{Common \knobel} of the set of agents $\alpha$.
+		  \end{itemize}
+    The formula $\C{\alpha}\varphi$ translates intuitively into the conjunction of the following belief formulae:
+    \begin{itemize}%[label= ]
+        \item every agent in $\alpha$ knows $\varphi$;
+        \item every agent in $\alpha$ knows that every agent in $\alpha$ knows $\varphi$;
+        \item and so on \emph{ad infinitum}.
+    \end{itemize}
+
+	
+	The semantics of DEL formulae is traditionally expressed using \emph{pointed Kripke structures}~\cite{Kripke1963-KRISCO}. We refer the interested reader to~\cite{fagin1994reasoning,bolander2017gentle,Gerbrandy1997} for a comprehensive introduction to how Kripke structures or similar formalisms are used to capture the idea of an epistemic state and how the concept of entailment is defined.
+	
+	In this paper, we will make use of the \textbf{Coin in the Box} domain (Example~\ref{ex:coin_box}), first introduced in~\cite{baral2015action}, as a running example. In particular, we will present a three agent instance of this epistemic domain that will allow us to better illustrate some of the concepts we will later introduce.
+	
+	\begin{example}[\textbf{Coin in the Box}]\label{ex:coin_box}
+	Three agents, \agent{A}, \agent{B}, and \agent{C}, are in a room where in the middle there
+	is a box containing a coin. In the initial state it is known that:
+	\begin{itemize}%[label=(\roman*)]
+		\item none of the agents know whether the coin lies heads or tails up;
+		\item the box is locked and one needs a key to open it;
+		\item some agents (usually only \agent{A}) have the key to the box;
+		\item in order to learn whether the coin lies heads or tails up, an agent
+		  can peek into the box, but this requires the box to be open; and
+		\item agents can be either attentive or not towards the box.
+	\end{itemize}
+    Agents can perform the following actions, which have a straightforward meaning: 
+	\begin{itemize}%[label=(\arabic*)]
+		\item\emph{Opening} the box;
+		\item\emph{Peeking} into the box;
+		\item\emph{Signaling} another agent; 
+		\item\emph{Distracting} another agent; and
+		\item\emph{Announcing} the coin position.
+	\end{itemize}
+\end{example}
+		
+\subsection{Action Languages}
+
+The field of planning has seen many representations. For example, in classical planning, there was STRIPS~\cite{strips}, Action Description Language (ADL)~\cite{adl} and SAS+~\cite{comparison-pl-backstorm} before Planning Domain Description Language (PDDL)~\cite{pddl,pddl2.1} standardized the notations. Nowadays, planners routinely use PDDL for problem specification even if they may convert to other representations later for solving  efficiency \cite{pddl-conversion-finite}.  PDDL envisages two files, a domain description file which specifies information independent of a problem like predicates and actions, and a problem description file which specifies the initial and goal states. PDDL provides a relaxed specification of the output plan --  it is a series of time steps, each of which can have one or more  instantiated actions with concurrency semantics. Specification of the correctness of plans was formalized much later when tools like VAL were created~\cite{plan-verif-val}.% \jl{Would change this last sentence to: ``Specification of the correctness of plans was formalized much later when tools like VAL were created....''}
+
+In PDDL, a planning  environment is described in terms of objects in  the world, predicates that describe relations that hold between these objects, and actions that bring change to the world by manipulating relations. % A problem is characterized by an  initial state (configuration of objects) from where the agent wants to transition to the goal state. \jl{Would change to: ``"}
+A problem is characterized by an initial state, together with a goal state that the agent wants to transition to, both states specified as configurations of objects.
+When planning is used for epistemic reasoning, the objects in the problem can be physical (real world objects) as well as abstract (knowledge and beliefs).
+
+% -------------------------
+
+
+\subsubsection{Epistemic Action Languages}
+We briefly present the action languages adopted by two different epistemic solvers: \rpmep~\cite{muise2015planning} and \EFP~\cite{Fab20}.
+We chose these solvers as, in is our opinion, they represent the state of the art epistemic planners. %\jl{Would combine these first two sentences to read: ``In what follows, we briefly describe the action languages adopted by two different, state-of-the-art, epistemic solvers....'' It would also be fine to just cut out the words ``In what follows''.} 
+The former, \ie \rpmep, adopts a conversion to classical planning in order to tackle epistemic reasoning while the latter, \ie \EFP, comprehensively reasons on full-fledged epistemic states.
+While the two planners are able to solve the same families of domains, important differences in their solving strategies make certain problem instances more suited to one approach rather than the other. For a detailed comparison of the solvers refer to~\cite{Fab20,le2018EFP}.
+The main objective of this paper is to present a unified way of providing problem specification for the epistemic planning community so that the planners, starting from the two considered here, can be easily tested, confronted or even combined.
+%
+%
+%
+\mypar{\pdkbpddl} Let us start by presenting the main characteristics of the action language \pdkbpddl adopted by the solver \rpmep~\cite{muise2015planning,rpmep}.
+%We will only presents an overview of the language, the interested reader is referred to~\cite{muise2015planning} or \url{https://github.com/QuMuLab/pdkb-planning} for more details.
+This action language clearly stems from PDDL, the  de-facto standard for single-agent action languages, and allows one to express formulae that contain the modal operator $\B{}$.
+While this language seems to represent a version of PDDL that is suitable for epistemic reasoning, %, our main objective,
+there are some limitations that render \pdkbpddl not general enough for this purpose. % We will discuss such limitations in details in Section~\ref{sec:}.
+In fact, while this language inherits the files schema from PDDL, also allowing for parametric action definitions, the epistemic components of the actions' description are tailored for the \rpmep solving process. This makes \pdkbpddl not flexible enough to be adopted as an input specification language for other planners (\eg \EFP). 
+In particular, what makes this language not suitable for every epistemic approach is that, in order to have a valid \pdkbpddl domain, each action must specify the entirety of its effects explicitly.
+While this is a common procedure in other types of reasoning in epistemic planning, the need for explicit effects specification brings some limitations.
+To be more concrete, each action in \pdkbpddl needs to define not only how the action itself modifies the world but also how the \knobel of the agents are updated---that is, the belief update of each action needs to be explicit. 
+This requirement is limiting because epistemic planners (\eg \EFP) may reason through implicit \knobel update\footnote{The distinction between explicit and implicit \knobel update derives from the fact that \rpmep grounds the problem while \EFP reasons directly on epistemic states.} and therefore ``automatically" derive how the the agents change their \knobel after an action execution.
+%On the same line \pdkbpddl makes use of other fields, such as the fields \texttt{derive-condition}, to explicitly capture the \knobel updates.
+%This concept is somewhat similar to the concept of ``observabilty" that we will see in \mar.
+While having explicit updates allows one to freely characterize each action's effects (\eg in Example~\ref{ex:coin_box} it would be possible to define a new action in which an agent opens the box but will believe that the coin is tails up), we feel that leaving such detail as input is partially in contrast with the idea of autonomous epistemic reasoning. %\jl{I would change the end of this sentence to ``... we argue that leaving such a detail as input is contrary to the idea of autonomous epistemic reasoning.'' Also, although Lior suggested the word ``argue'' here I would revert back to ``feel'' since you are not really arguing the point but rather asserting it.}
+Furthermore, it is easy for the user to inadvertently omit or mis-characterize ``intricate'' \knobel relations that should instead be handled by the autonomous solving process. For example, in writing the effects \emph{peeking} of Example~\ref{ex:coin_box} the effect ``the agent who peeked inside the box knows that the attentive agents know that he knows the coin position but the attentive agents themselves do not know the position of the coin" may be misrepresented.
+This chain of \knobel is derived by partial observability (explained in the following paragraph) and, as well as other complex \knobel structures, may be easily mis-characterized given its complex and not intuitive nature.
+
+%\jl{It would be nice to give an example here. I don't quite understand what you are referring to. I would also replace ``In fact'' with ``Further'' or ``Furthermore''.}
+%
+%
+%
+\mypar{\mar} We can now introduce \mar, the language used to describe inputs for \EFP~\cite{Fab20}.
+This language is an evolution of \mAP\ first introduced in~\cite{baral2015action}.
+Unlike \pdkbpddl, \mar does not take inspiration from PDDL and introduces an ad-hoc syntax to define epistemic problems.
+This syntax, illustrated in detail in~\cite{baral2015action,cilc19Epistemic}, describes an input problem through a single file that specifies initial and goal states (or rather the belief formulae that identify such states) along with the actions making each file a problem instance.
+Moreover, unlike the input language of \rpmep, \mar defines only implicit effects and by associating each action with the agents' observability relations (which agent is aware of the action's occurrence and/or effects) and with a ``type" (\textit{world-altering}, \textit{sensing} and \textit{announcement}) is able to derive the complete \knobel update.
+In particular, in~\cite{baral2015action}, each action execution \texttt{act} associates each agent  \agent{ag} to one of the following observibility relations:
+\begin{itemize}
+	\item \emph{fully observant} if \agent{ag} knows about the execution of \texttt{act} and about its effects on the world (\eg any attentive agent that witnessed the opening of the box in Example~\ref{ex:coin_box});
+	\item \emph{partially observant} if \agent{ag} knows about the execution of \texttt{act} but she does not know how \texttt{act} affected the world (\eg any attentive agent that sees another agent \emph{peeking} inside the box in Example~\ref{ex:coin_box}); and
+	\item \emph{oblivious} if \agent{ag} does not know about the execution of \texttt{act} (\eg any non-attentive agent during the execution of any action in Example~\ref{ex:coin_box}).
+\end{itemize}
+Moreover, as noted before, each action is associated with one of the following ``types":
+\begin{itemize}
+ \item \emph{World-altering} (or \emph{ontic}) action, used to modify certain properties (\ie fluents) of the world, \eg
+	the action of \emph{opening} of Example~\ref{ex:coin_box}.
+	\item \emph{Sensing} action: used by an agent to refine her beliefs about the world, \eg
+	the action of \emph{peeking}.
+	\item \emph{Announcement} action: used by an agent to affect the beliefs of other
+	agents \eg in Example~\ref{ex:coin_box} the action of \emph{announcing}.
+\end{itemize}
+While this language is able to characterize implicit \knobel updates (from which the explicit effects can be derived), it lacks the structure of PDDL and relies on a custom syntax that may pose an obstacle to any researcher that is trying to approach the area of epistemic planning.
+Moreover, another problem of \mar is the lack of parametric actions that, in several cases, forces the user to repeat the definition of the same action, with small variations, over and over.% \Lior{just hope that the authors of this package will not be reviewing this paper...}\ff{I am one of the authors of \mar:)}.

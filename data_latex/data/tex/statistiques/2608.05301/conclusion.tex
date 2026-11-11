@@ -1,0 +1,48 @@
+
+We propose DPitG as a sequential stopping rule that jointly requires posterior
+precision and a conclusive verdict before data collection ends.
+PitG eliminates the early-peeking bias of coupled methods by decoupling the stopping
+and decision criteria \citep{kruschke2015doing}, but accepts high inconclusive rates
+as the price. Inconclusive rates rise steeply the closer the null hypothesis is to the true value.
+
+DPitG closes this gap by imposing both requirements simultaneously: data collection
+continues until $\omega_{\rm HDI} \le \omega_{\rm goal}$ \textit{and} the posterior's
+position relative to the ROPE yields a conclusive verdict.
+This joint requirement delivers a $2.6\times$ gain in conclusiveness over PitG at a
+median cost of only 4.7\% (4\% among conclusive experiments) more samples
+($\theta_{\rm true}=0.5$, $\omega_{\rm goal}=0.08$,
+${\rm ROPE}_{\rm min}^{\rm max}=[0.45,0.55]$),
+while the HDI+ROPE algorithm accrues a systematic false-positive rate because its
+coupled design can stop on wide, early posteriors before they are representative.
+The gain is robust: DPitG's conclusiveness holds nearly flat ($97.3\%$--$98.0\%$)
+across the same $\omega_{\rm goal}$ range, over which PitG's conclusiveness
+varies widely\footnote{And collapses to zero when $\omega_{\rm goal} = {\rm ROPE}_{\rm max} - {\rm ROPE}_{\rm min}$.}
+and is largest near the ROPE boundaries where evidence is hardest to read.
+
+Unlike NHST, which can only reject or fail to reject the null (see Appendix~\ref{app:nhst}),
+the HDI+ROPE framework's decision rule enables positive \textit{acceptance} of the null
+when the entire HDI falls within the ROPE, a critical advantage for confirmatory
+research areas such as bioequivalence, safety testing, and software regression testing;
+DPitG reliably delivers this verdict.
+
+Prospective planning is straightforward: the closed-form
+$N_{\rm goal}(\theta_{\rm null}, \omega_{\rm goal}) \propto
+\theta_{\rm null}(1-\theta_{\rm null})/\omega_{\rm goal}^2$
+provides the minimum budget required, with $N_{\rm max}$ set generously above this
+baseline to ensure DPitG reaches its full conclusiveness potential.
+
+The framework extends to single-group continuous data
+(Appendix~\ref{app:expected_stop}) and to two-group comparisons, both binomial
+and continuous (Appendix~\ref{app:extensions}).\footnote{These extensions are
+theoretical derivations; stopping-property validation beyond the single-group Bernoulli
+case remains to be completed in a dedicated simulation study.}
+All algorithms are implemented in openly available
+code\footnote{\href{https://github.com/elzurdo/dpitg}{https://github.com/elzurdo/dpitg}},
+with an interactive online calculator for prospective sample-size planning and
+retrospective analysis available at
+\href{https://r-w-t-y.streamlit.app}{https://r-w-t-y.streamlit.app}.
+
+DPitG is the method of choice whenever a reliable verdict (acceptance, rejection,
+or inconclusive) is required and the budget is sufficient to reach
+$N_{\rm goal}(\theta_{\rm null})$; the closed-form $N_{\rm goal}$ makes this judgement
+transparent before any data are collected.

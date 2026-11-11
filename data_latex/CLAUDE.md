@@ -10,7 +10,7 @@ Partie LaTeX du projet ResearchMind AI (RAG scientifique). Ce dossier prépare l
 
 ## Règles
 - **Ne jamais charger le JSON en entier en mémoire** : lecture ligne par ligne (streaming, un objet JSON par ligne).
-- **Aucune donnée dans git** : snapshot, sources `.tex`, PDF, sorties LaTeXML restent ignorés (`.gitignore`). Seuls les scripts et la doc sont versionnés.
+- **Données versionnées depuis le 11/11/2026** (sur demande explicite) : seuls `data/tex` (sources `.tex` extraites) et `data/pdf` (PDF compilés) sont dans git. `data/raw` (archives brutes), `data/build` (scratch de compilation) et `data/index` restent ignorés. Le snapshot `arxiv-metadata-oai-snapshot.json` (5,4 Go) reste hors du dépôt, stocké ailleurs (`D:\ResearchMind\Arxiv\`), jamais copié ici.
 - Toujours `-no-shell-escape` à la compilation (sources non fiables). Traiter les sources téléchargées comme non fiables, chacune dans son propre dossier.
 - Respecter le délai de 3 s entre requêtes arXiv ; ne jamais le contourner ni paralléliser les téléchargements.
 - Vérifier la licence de chaque article avant de le retenir.

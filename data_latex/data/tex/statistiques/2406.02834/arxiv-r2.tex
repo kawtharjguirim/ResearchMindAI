@@ -1,0 +1,630 @@
+\documentclass[12pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{amsfonts}
+\usepackage{graphicx}
+\usepackage{multirow}
+\usepackage{enumerate}
+\usepackage{url} % not crucial - just used below for the URL
+\usepackage{float}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{tikz}
+\usetikzlibrary{calc}
+\usepackage{authblk}
+\usepackage{array}
+\usepackage[top=1in,bottom=1in,left=1in,right=1in]{geometry}
+\renewcommand{\arraystretch}{0.6}
+
+\usepackage{natbib}
+\usepackage[unicode=true,bookmarks=true,bookmarksnumbered=false,bookmarksopen=false,breaklinks=false,pdfborder={0 0 1},backref=false,colorlinks=true]{hyperref}
+\hypersetup{citecolor=blue}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{corollary}{Corollary}
+\newtheorem{proposition}{Proposition}
+\newtheorem{condition}{Condition}
+\newtheorem{assumption}{Assumption}
+\newtheorem{definition}{Definition}
+\newtheorem{remark}{Remark}
+\newtheorem{example}{Example}
+\newtheorem{claim}{Claim}
+\newcommand{\bX}{\boldsymbol{X}}\newcommand{\bO}{\boldsymbol{O}}
+\newcommand{\bW}{\boldsymbol{W}}
+\newcommand{\bI}{\boldsymbol{I}}
+\newcommand{\bZ}{\boldsymbol{Z}}
+\newcommand{\bU}{\boldsymbol{U}}
+\newcommand{\bR}{\boldsymbol{R}}
+\newcommand{\bD}{\boldsymbol{D}}
+\newcommand{\bL}{\boldsymbol{L}}
+\newcommand{\bY}{\boldsymbol{Y}}
+
+
+\newcommand{\ba}{\boldsymbol{a}}
+\newcommand{\bo}{\boldsymbol{o}}
+\newcommand{\bz}{\boldsymbol{z}}
+\newcommand{\bl}{\boldsymbol{l}}
+
+
+\newcommand{\bone}{\boldsymbol{1}}
+\newcommand{\bzero}{\boldsymbol{0}}
+\newcommand{\balpha}{\boldsymbol{\alpha}}
+\newcommand{\bbeta}{\boldsymbol{\beta}}
+\newcommand{\btheta}{\boldsymbol{\theta}}
+\newcommand{\bTheta}{\boldsymbol{\Theta}}
+\newcommand{\bpsi}{\boldsymbol{\psi}}
+
+\newcommand{\bfB}{\mathbf{B}}
+\newcommand{\bfV}{\mathbf{V}}
+\newcommand{\bfI}{\mathbf{I}}
+\def\revision{\textcolor{purple}}
+
+
+%\title{M-estimation and efficient estimation under rerandomization and stratified rerandomization}
+\title{Asymptotic inference with flexible covariate adjustment under rerandomization and stratified rerandomization}
+\author{Bingkai Wang$^{1}$ and Fan Li$^{2,3}$
+\vspace{10pt}
+
+$^1$Department of Biostatistics, School of Public Health, University of Michigan, Ann Arbor, MI, USA
+
+$^{2}$Department of Biostatistics, Yale School of Public Health, New Haven, CT, USA
+
+$^{3}$Center for Methods in Implementation and Prevention Science, Yale School of Public Health, New Haven, CT, USA}
+
+\begin{document}
+\def\spacingset#1{\renewcommand{\baselinestretch}%
+{#1}\small\normalsize} \spacingset{1}
+
+\date{\vspace{-5ex}}
+
+\maketitle
+\begin{abstract}
+%In the context of randomized trials/experiments, rerandomization, also known as covariate-constrained randomization, refers to a treatment allocation procedure that effectively controls treatment imbalances among baseline covariates. Under rerandomizaiton, it has been proved that the unadjusted estimator and the linearly-adjusted estimator of the average treatment effect are consistent and can improve precision over simple randomization. However, it remains unclear whether such results extend to general covariate-adjusted estimators, including g-computation estimators based on generalized linear regression, double-robust estimators, or more broadly, estimators involving machine learning algorithms for nuisance function estimation. In practice, these estimators are often the default choices when the outcomes are binary, there are missing outcomes, or optimal precision is aimed, thereby representing important considerations of applicability for rerandomizaiton. In this paper, we first focus on M-estimators, a large class of estimators defined as solutions to estimating equations, and develop their asymptotics under rerandomization. Next, we extend the theory for M-estimators to stratified rerandomziation, a design combining stratification and rerandomization for achieving a stronger covariate balance. For both designs, we examine commonly-used M-estimators and show when asymptotic normality is achieved, so that rerandomization is ``ignorable'' in the analysis stage. Finally, we study efficient inference via cross-fitted machine learning algorithms, and prove their asymptotic efficiency under rerandomization and stratified rerandomizaiton. These results are demonstrated via simulations and re-analyses of a cluster-randomized experiment.
+Rerandomization is an effective treatment allocation procedure to control for baseline covariate imbalance. For estimating the average treatment effect, rerandomization has been previously shown to improve the precision of the unadjusted and the linearly-adjusted estimators over simple randomization without compromising consistency. However, it remains unclear whether such results apply more generally to the class of M-estimators, including the g-computation formula with generalized linear regression and doubly-robust methods, and more broadly, to efficient estimators with data-adaptive machine learners. In this paper, we develop the asymptotic theory for a more general class of covariate-adjusted estimators under rerandomization and its stratified extension. We prove that the asymptotic linearity and the influence function remain identical for any M-estimator under simple randomization and rerandomization, but rerandomization may lead to a non-Gaussian asymptotic distribution. We further explain, drawing examples from several common M-estimators, that asymptotic normality can be achieved if rerandomization variables are appropriately adjusted for in the final estimator. These results are extended to stratified rerandomization. Finally, we study the asymptotic theory for efficient estimators based on data-adaptive machine learners, and prove their efficiency optimality under rerandomization and stratified rerandomization. Our results are demonstrated via simulations and re-analyses of a cluster-randomized experiment that used stratified rerandomization.
+\end{abstract}
+\noindent%
+{\it Keywords:} covariate adjustment, doubly-robust estimator, M-estimation, machine learning, influence function, randomized trials.
+\vspace{20pt}
+
+\spacingset{1.7}
+\setcounter{page}{1}
+\section{Introduction}
+In randomized experiments, rerandomization \citep{morgan2012rerandomization} refers to a restricted randomization procedure that discards treatment allocation schemes corresponding to large baseline imbalance. That is, treatment assignments will be randomly re-generated until the balance statistics fall within a pre-specified threshold. In biomedical research, such a randomization procedure is also referred to as covariate-constrained randomization \citep{li2016evaluation,li2017evaluation} and increasingly applied to cluster randomization. Compared with simple randomization that assigns treatment by independent coin flips, rerandomization can provide effective design-based control of imbalance associated with a number of covariates, possibly of different types, and improve the study power. Compared to covariate-adaptive randomization, such as stratified randomization \citep{Zelen1974} for balancing discrete baseline variables, rerandomization can easily handle continuous baseline variables with continuously valued design parameters to control the randomization space, thereby offering additional flexibility. Given these potential advantages, rerandomization has become popular in economics \citep{bruhn2009pursuit} and biomedical research \citep{ivers2012allocation}.
+
+Under rerandomization, the statistical properties of the unadjusted and linearly-adjusted estimators for the average treatment effect have been extensively studied under a finite-population design-based framework. \cite{li2018asymptotic} first established the design-based asymptotic theory for the unadjusted estimator (i.e., the two-sample difference-in-means estimator) under rerandomization. \cite{li2020rerandomization} generalized their results to covariate-adjusted estimators based on linear regression, and recommended the combination of rerandomization and regression adjustment to optimize statistical precision. Rerandomization has also been extended to accommodate tiers of covariates with varying importance \citep{morgan2015rerandomization}, sequential rerandomization in batches \citep{zhou2018sequential}, high-dimensional settings with a diverging number of covariates \citep{wang2022rerandomization}, split-plot designs \citep{shi2022rerandomization}, {survey experiments \citep{cytrynbaum2021optimal, yang2023rejective},} cluster rerandomization \citep{lu2023design}, stratified rerandomization \citep{wang2023rerandomization}, rerandomization based on p-values from regression-based balance assessment \citep{zhao2024no}, {finely stratified designs \citep{bai2022optimality,cytrynbaum2024finely}}, {and best-choice rerandomization \citep{WangLi2025}}.  A notable feature of much of this literature is its focus on unadjusted and linearly-adjusted estimators, natural estimator choices under the finite-population design-based framework. 
+%forstatistical inference.
+
+However, the analysis of randomized experiments in practice frequently involves more general covariate adjustment strategies than linear regression \citep{benkeser2021improving}, and the validity and efficiency of such general estimators remain unexplored in the existing literature on rerandomization. For example, with binary outcomes, the recent guidance from the U.S. Food and Drug Administration \citep{FDA2023} pointed out that ``\emph{Nonlinear models such as logistic regression \dots are commonly used in many clinical settings}''. In this guidance, the g-computation estimator based on logistic regression has been delineated with details as a reliable method for covariate adjustment and model-robust inference.
+% the g-computation estimator based on logistic regression can target the causal risk ratio estimand and effectively leverage baseline covariates for precision gain \citep{colantuoni2015leveraging}.
+When the outcomes are missing at random, doubly-robust estimators \citep{robins2007} offer two opportunities for consistent estimation of the average treatment effect; i.e., consistency holds when either the missingness propensity score model or the outcome model is correctly specified but not necessarily both. In cluster-randomized experiments, mixed-effects models are used by 52\% of the primary analysis \citep{fiero2016statistical} and can simultaneously adjust for covariates and account for the intracluster correlation \citep{wang2021mixed}. Finally, data-adaptive machine learners have shown promise to maximally leverage baseline information to achieve full efficiency in randomized experiments 
+\citep{chernozhukov2018double,wang2023CRT}. Only for selected scenarios under cluster randomization, previous simulations have demonstrated that rerandomization improved precision for mixed-effects models and generalized estimating equations estimators \citep{li2016evaluation, li2017evaluation}. However, to the best of our knowledge, there has been no formal development of the asymptotic theory for a more general class of covariate-adjusted estimators under rerandomization; thus few explicit recommendations exist for rerandomized experiments when inference involves flexible covariate adjustment.%proceeds with a more flexible covariate-adjusted estimator.
+
+In this paper, we introduce formal asymptotic results for the class of M-estimators as well as efficient estimators (nuisance models estimated via data-adaptive machine learners) under rerandomization and stratified rerandomization. First, we prove that, under standard regularity conditions for M-estimators, the asymptotic linearity and the influence function remain identical under simple randomization and rerandomization, but rerandomization may lead to a non-Gaussian asymptotic distribution. This result justifies the consistency of M-estimators under rerandomization, and obviates the need to re-derive the influence function under rerandomization. Next, we survey several common M-estimators in randomized experiments, and show that asymptotic normality can be achieved if rerandomization variables are appropriately adjusted for in the final estimator. This result clarifies when rerandomization is asymptotically \emph{ignorable} during the analysis stage, in which case one can conveniently draw inference under rerandomization as if simple randomization were carried out. Then, we develop parallel results to stratified rerandomization---a restricted randomization procedure combining stratification and rerandomization to achieve stronger control of chance imbalance. Finally, we turn to asymptotically efficient estimators based on the efficient influence functions and data-adaptive machine learners. 
+We prove that, as long as the rerandomization variables are adjusted for in the machine learners, the efficient estimators continue to be optimally efficient without the need to invoke any additional regularity assumptions.
+%under the usual assumptions that are invoked in randomized experiments with simple randomization. 
+%For arriving at these asymptotic results, a key challenge is to address correlation among individual observations introduced by (stratified) rerandomization, for which we develop general technical arguments to accommodate flexible covariate adjustment.
+A key challenge in establishing these asymptotic results is addressing the correlation among individual observations induced by (stratified) rerandomization, for which we develop general technical arguments that accommodate flexible forms of covariate adjustment.
+
+% All of our above asymptotic results are based on a novel technical argument 
+% %our general technique 
+% to handle correlations introduced by rerandomization and to control for the remainder terms shifted due to rerandomization. 
+
+Throughout, we adopt a super-population sampling-based framework, which is an effective framework to study more general covariate-adjusted estimators in randomized experiments \citep{wang2023model}. We refer to \cite{robins2002} and \cite{ding2017bridging} for a comparison between the super-population sampling-based and finite-population design-based framework, and {more recent work of \cite{xu2021potential} and \cite{qu2025randomization} on alternative, designed-based asymptotic theory for M-estimators.} When the unadjusted and linear regression estimators are considered under rerandomization and stratified randomization, our results can be viewed as the sampling-based counterparts of earlier design-based results \citep{li2018asymptotic,li2020rerandomization,lu2023design,wang2023rerandomization}. However, our results go beyond linear regression and address a wider class of covariate-adjusted estimators under rerandomization and stratified rerandomization. {Finally, after posting the first version of our preprint, we became aware of the independent work of \citet{cytrynbaum2024finely}, who develops asymptotic theory for M-estimators under finely stratified randomization \citep{bai2022optimality} and whose result coincides with our Theorem~\ref{thm1} under rerandomization. \citet{cytrynbaum2024finely} further studies finite-population causal estimands and nonlinear imbalance criteria, whereas our analysis emphasizes super-population inference, identifies conditions under which M-estimators have normal limits without ex-post adjustment, and covers theory for addressing missing outcomes and debiased machine-learning estimators under (stratified) rerandomization. As such, these two parallel works remain distinct and are complementary contributions to the growing literature on rerandomization.}
+
+The remainder of the paper is organized as follows. In Section \ref{sec:setup}, we introduce the super-population framework, randomization procedures, and M-estimation. Section~\ref{sec: main} characterizes the asymptotic distributions for M-estimators under rerandomization, and Section~\ref{sec:examples} surveys familiar M-estimators and provides sufficient conditions to achieve asymptotic normality under rerandomization. Section~\ref{sec: stratified-reran} presents parallel development under stratified rerandomization. Section~\ref{sec: eff} introduces the asymptotic theory for estimators based on the efficient influence function under rerandomization and stratified rerandomization. We report simulations in Section~\ref{sec:sim} and re-analyses of a completed cluster-randomized experiment in Section~\ref{sec:data}. Section~\ref{sec: discussion} concludes. R code for reproducing the numerical results is available at \url{https://github.com/BingkaiWang/Rerandomization}. 
+
+\section{Notation, rerandomization, and M-estimation}\label{sec:setup}
+\subsection{Assumptions and estimands}
+We consider a randomized experiment with $n$ individuals. Each individual $i\ (i=1,\dots,n)$ has an outcome $Y_i$, a non-missing indicator of outcome $R_i$ ($R_i=1$ if $Y_i$ observed and $0$ if missing), a treatment assignment indicator $A_i$ ($A_i=1$ if assigned treatment and $0$ otherwise), and a vector of baseline covariates $\bX_i$. The observed data are $(\bO_1,\dots, \bO_n)$ with $\bO_i = (R_iY_i, R_i, A_i, \bX_i)$. We adopt the potential outcomes framework and define $Y_i(a)$ as the potential outcome if individual $i$ were assigned to treatment group $a, a\in \{0,1\}$. Similarly, we denote $R_i(a)$ as the potential non-missing indicator given treatment $a$. We assume causal consistency such that $Y_i = A_iY_i(1)+(1-A_i)Y_i(0)$ and $R_i = A_iR_i(1)+(1-A_i)R_i(0)$. Denoting the complete data vector for each individual as $\bW_i = (Y_i(1), Y_i(0), R_i(1), R_i(0),\bX_i)$, we make the following assumptions on $(\bW_1,\dots, \bW_n)$.
+
+\begin{assumption}[Super-population sampling]\label{assp1}
+    Each complete data vector $\bW_i, i=1,\dots,n$ is an independent and identically distributed draw from an unknown distribution $\mathcal{P}^{\bW}$ on $\bW = (Y(1), Y(0), R(1), R(0),\bX)$ with finite second moments.
+\end{assumption}
+
+\begin{assumption}[Missing at random]\label{assp2}
+For each $a =0,1$, $R(a)$ is independent of $Y(a)$ given $\bX$ and $P(R(a)=1|\bX)$ is uniformly bounded away from 0.
+\end{assumption}
+
+Assumption~\ref{assp1} is a standard condition for making inference under a sampling-based framework. It postulates a notional super-population of units, from which the observed sample is randomly drawn and for which the target estimands may be defined. 
+%This assumption marks a technical difference from the design-based framework where $\bW_i$ are assumed fixed quantities within a finite-population. We adopt the super-population framework because it is widely-used for clinical studies and, additionally, offers tools for more general estimators beyond linear regression, e.g., the class of M-estimators considered in this work. 
+%By Assumption~\ref{assp1}, the expectation $E$ on $\bW_i$ is taken with respect to $\mathcal{P}^W$.
+We invoke Assumption~\ref{assp2} as a standard condition to accommodate missing outcomes in randomized experiments. This assumption is required for the doubly-robust estimators in Theorems~\ref{thm2}, \ref{thm4}, \ref{thm: ml-rerandomization}, and \ref{thm: ml-stratified-rerandom}, but is not required for other results without missing data. 
+%. For Theorems~\ref{thm1} and \ref{thm3} that target general estimators, Assumption~\ref{assp2} is not required. 
+
+Our goal is to estimate the average treatment effect, defined in a general form as
+\begin{equation*}
+    \Delta^* = f(E[Y(1)], E[Y(0)])
+\end{equation*}
+where $f(x,y)$ is a pre-specified function defining the scale of effect measure. For example, $f(x,y) = x-y$ corresponds to the treatment effect on the difference scale, whereas $f(x,y) = x/y$ corresponds to the risk ratio scale, which is a standard choice when the outcome is binary. 
+Finally, by Assumption~\ref{assp1}, the expectation operator in the estimand definition (and throughout the paper) is defined with respect to the super-population distribution $\mathcal{P}^W$.
+
+\subsection{Simple randomization and rerandomization}\label{sec: trt-assign}
+Simple randomization assigns treatment via independent coin flips, that is, $A_i$ is independently determined by a Bernoulli distribution $\mathcal{P}^A$ with $P(A_i=1)=\pi\in (0,1)$.  By design, each $A_i$ is independent of $(\bW_1,\dots, \bW_n)$, and the observed data $(\bO_1,\dots, \bO_n)$ are independent and identically distributed given Assumption~\ref{assp1}.
+
+Rerandomization improves simple randomization by controlling imbalance on a subset of measured baseline covariates, which we denote as $\bX^r$ with $\bX^r \subset \bX$ \citep{morgan2012rerandomization}; we refer to $\bX^r$ as rerandomization variables.  
+% We allow $\bX^r$ to be not a subset of $\bX$; if that is the case, we update $\bW_i$ to include $\bX^r_i$ in Assumption~\ref{assp1}.
+Rerandomization involves the following three steps. First, we independently generate $A_1^*,\dots, A_n^*$ from a Bernoulli distribution with $P(A_i^*=1) = \pi\in (0,1)$ as in simple randomization. In the second step, we compute the imbalance statistic on $\bX^r_i$ and its variance estimator as
+\begin{align*}
+    \bI &= \frac{1}{N_1} \sum_{i=1}^n A^*_i \bX^r_i - \frac{1}{N_0} \sum_{i=1}^n (1-A_i^*) \bX^r_i, \\
+    \widehat{Var}(\bI) &= \frac{1}{N_1N_0} \sum_{i=1}^n (\bX^r_i - \overline{\bX^r})(\bX^r_i - \overline{\bX^r})^\top,
+\end{align*}
+where $N_1 = \sum_{i=1}^n A_i^*$,  $N_0 = n - N_1$ and $\overline{\bX^r} = n^{-1} \sum_{i=1}^n \bX^r_i$. Lastly, given a pre-specified balance threshold $t >0$, we check whether $\bI^\top \{\widehat{Var}(\bI)\}^{-1} \bI < t$. If true, the final treatment assignment $(A_1,\dots, A_n)$ is set to be $(A_1^*,\dots, A_n^*)$; otherwise, we repeat the steps until we obtain the first randomization scheme that satisfies the balance criterion. 
+
+The above rerandomization procedure considers the Mahalanobis distance to define the balance criterion, and $\bI^\top \{\widehat{Var}(\bI)\}^{-1} \bI$ follows a chi-squared distribution asymptotically. The balance threshold $t$ can then be selected to adjust the rejection rate. For example, letting $q$ denote the dimension of $\bX^r$, then $t$ being the $\alpha$-quantile of $\mathcal{X}^2_q$ leads to an approximate rejection rate $1-\alpha$. In general, a smaller $t$ corresponds to stronger control over imbalance; if $t\rightarrow +\infty$, then rerandomization reduces to simple randomization. From a statistical perspective, rerandomization introduces correlation among $(A_1,\dots, A_n)$ and hence correlation among observed data $(\bO_1,\dots,\bO_n)$, leading to a key complication in studying large-sample results of treatment effect estimators.
+{Of note, this rerandomization scheme is based on simple randomization, and thus differs from complete randomization, which fixes the numbers of treated and control units. The latter can be viewed as a special case of stratified randomization with a single stratum, as discussed in Section~\ref{sec: stratified-reran}.}
+
+Beyond the Mahalanobis distance, rerandomization can also be more generally based on $\bI^\top \widehat{\mathbf{H}}^{-1} \bI < t$, where $\widehat{\mathbf{H}}$ is any positive definite matrix (e.g., a diagonal matrix collecting the sample variance for each component of $\bI$). 
+% Letting $\sqrt{|\bI|}$ denote the element-wise squared-root on the absolute values of $\bI$, selection can also be based on $\sqrt{|\bI|}^\top \widehat{\mathbf{H}}^{-1} \sqrt{|\bI|} < t$. 
+For our main theorems, we focus on rerandomization using the Mahalanobis distance, which leads to the most interpretable results. Nevertheless, we show how our results can be extended to accommodate such a more general distance function in Remarks~\ref{remark1} and \ref{remark3}. %In Section~\ref{sec: stratified-reran}, we further introduce versions of our results under rerandomization with stratification \citep{wang2023rerandomization}.  
+
+
+% \begin{enumerate}
+%     \item Independently sample $A_1^*,\dots, A_n^*$ from a Bernoulli distribution with probability $\pi$ for $A_i^*=1$, as in simple randomization.
+%     \item Compute $\bI$ based on the sampled  $(A_1^*,\dots, A_n^*)$ and check whether
+%     \begin{equation}\label{eq: rerandomization}
+%         \bI^\top \{\widehat{Var}(\bI)\}^{-1} \bI < t,
+%     \end{equation}
+%     where $t>0$ is a pre-specified threshold and $\widehat{Var}(\bI) = (N_1N_0)^{-1} \sum_{i=1}^n (\bX^r_i - \overline{\bX^r})(\bX^r_i - \overline{\bX^r})^\top$ with $\overline{\bX^r} = n^{-1} \sum_{i=1}^n \bX^r_i$. If the criterion~\eqref{eq: rerandomization} holds, the final treatment assignment $(A_1,\dots, A_n)$ is set to be $(A_1^*,\dots, A_n^*)$; otherwise, return to the first step. 
+% \end{enumerate}
+
+\subsection{M-estimation}
+M-estimator \citep[Section 5]{vaart_1998} refers to a wide class of estimators that are solutions to estimating equations. Specifically, let $\btheta = (\Delta, \bbeta) \in \mathbb{R}^{l+1}$ be an $(l+1)$-dimensional vector of parameters, where $\Delta \in \mathbb{R}$ is the parameter of interest and  $\bbeta \in \mathbb{R}^l$ is an $l$-dimensional vector of nuisance parameters. An M-estimator $\widehat{\btheta} = (\widehat{\Delta}, \widehat{\bbeta})$ for $\btheta$ is the solution to $$\sum_{i=1}^n \bpsi(\bO_i;\btheta) = \bzero,$$
+where $\bpsi$ is a pre-specified $(l+1)$-dimensional estimating function. For example, $\bpsi$ is the score function if $\widehat{\btheta}$ is obtained by maximum likelihood estimation. The M-estimator for $\Delta^*$ is $\widehat{\Delta}$. For $a= 0,1$, we denote $\bO(a) = (R(a)Y(a), R(a), a, \bX)$ and $||\cdot||_2$ as the $L_2$ matrix norm. Throughout, we assume the following regularity conditions for M-estimators.
+\begin{assumption}[Regularity conditions]\label{assp3} (1) $\btheta \in \bTheta$, a compact subset of $\mathbb{R}^{l+1}$. \\
+(2) $E[||\bpsi(\bO(a);\btheta)||_2^2] < \infty$ for all $\btheta \in \bTheta$ and $a \in \{0,1\}$.
+(3) There exists a unique solution $\underline{\btheta} = (\underline{\Delta}, \underline{\bbeta})$, an inner point of $\bTheta$, to the equations $\pi E[\bpsi(\bO(1);\btheta)] + (1-\pi)E[\bpsi(\bO(0);\btheta)] = \bzero$.
+(4) The function $\btheta \mapsto \bpsi(\bo;\btheta)$ is twice continuously differentiable for every $\bo$ in the support of $\bO$ and is dominated by an integrable function. 
+(5) There exist an integrable function $v(\bo)$ that dominates the first and second derivatives of $\bpsi(\bo;\btheta)$ in  $||\btheta-\underline{\btheta}||_2 < C$ for some $C>0$. 
+% such that  $||\frac{\partial}{\partial \btheta }\bpsi(\bo;\btheta)||_2 < v(\bo)$ and $||\frac{\partial^2}{\partial \btheta \partial \btheta^\top}\psi_j(\bo;\btheta)||_2 < v(\bo)$ for every $\bo$ in the support of $\bO$ and $\btheta$ with $||\btheta-\underline{\btheta}||_2 < C$, and
+(6) $E\left[||\frac{\partial}{\partial \btheta} \bpsi(\bO(a);\btheta)\big|_{\btheta=\underline{\btheta}}||_2^2\right] < \infty$ for $a \in \{0,1\}$, and $\pi E\left[\frac{\partial}{\partial \btheta} \bpsi(\bO(1);\btheta)\big|_{\btheta=\underline{\btheta}}\right] + (1-\pi)E\left[\frac{\partial}{\partial \btheta} \bpsi(\bO(0);\btheta)\big|_{\btheta=\underline{\btheta}}\right]$ is invertible.
+\end{assumption}
+
+Assumption~\ref{assp3} are largely moment and continuity assumptions to rule out irregular or degenerate M-estimators, which are similar to those invoked in Section 5.3 of \cite{vaart_1998}. It is important to note that when the M-estimator is defined based on a working regression model, Assumption~\ref{assp3} does not necessarily imply the working model is correctly specified. For example, if the analysis of covariance (ANCOVA, Example \ref{eg:ancova} in Section~\ref{sec:examples}) is used, Assumption~\ref{assp3} (2)-(6) reduce to assuming $\bW$ has finite fourth moments and invertible covariance matrices, rather than assuming the ANCOVA model is correctly specified.%the true data generating process. 
+
+Under simple randomization, it has been established that Assumptions~\ref{assp1} and \ref{assp3} yield $\widehat{\Delta} \xrightarrow{p} \underline{\Delta}$, i.e., $\widehat{\Delta}$ converge  in probability to a limit quantity $\underline{\Delta}$, and $\sqrt{n}(\widehat{\Delta} - \underline{\Delta}) \xrightarrow{d} N(0,V)$, i.e., $\sqrt{n}$-rate asymptotic normality of $\widehat{\Delta}$ \citep{vaart_1998} with a certain asymptotic variance matrix $V$. To achieve consistent estimation, i.e., $\widehat{\Delta} \xrightarrow{p} \Delta^*$, one needs to choose appropriate working models (e.g., ANCOVA in randomized experiments) or make additional assumptions (e.g., Assumption~\ref{assp2} in the presence of missing outcomes) such that $\Delta^* = \underline{\Delta}$; we refer to Section~\ref{sec:examples} for detailed examples. In the next section, we formally describe the asymptotic behavior of $\widehat{\Delta}$ under rerandomization.
+
+
+\section{Asymptotics for M-estimators under rerandomization}\label{sec: main}
+% We state our first asymptotic result below.
+\begin{theorem}\label{thm1}
+    Given Assumptions~\ref{assp1} and \ref{assp3}, and under either simple randomization or rerandomization, we have $\widehat{\Delta} \xrightarrow{p} \underline{\Delta}$ and asymptotic linearity, i.e., 
+    \begin{equation}
+    \sqrt{n}(\widehat{\Delta} - \underline{\Delta}) = \frac{1}{\sqrt{n}}\sum_{i=1}^nIF(\bO_i) + o_p(1), \label{asymptoticlinearity}
+    \end{equation} 
+	where the influence function $IF(\bO_i)$ is the first entry of $-\bfB^{-1}\bpsi(\bO_i;\underline{\btheta})$ with\\ $\bfB = \pi E\left[\frac{\partial}{\partial \btheta} \bpsi(\bO(1);\btheta)\big|_{\btheta=\underline{\btheta}}\right] + (1-\pi)E\left[\frac{\partial}{\partial \btheta} \bpsi(\bO(0);\btheta)\big|_{\btheta=\underline{\btheta}}\right]$.
+
+ Furthermore, under rerandomization with Mahalanobis distance as the balance criterion,
+ \begin{equation}\label{eq: asymptotic distribution}
+     \sqrt{n}(\widehat{\Delta} - \underline\Delta) \xrightarrow{d} \sqrt{V}\left(\sqrt{1-R^2}\ z + \sqrt{R^2}\ r_{q,t}\right),
+ \end{equation}
+where $z \sim N(0,1)$, $r_{q,t} \sim D_1|( \bD^\top  \bD < t)$ for $\bD \sim N(\bzero, \mathbf{I}_q)$ with $D_1$ being the first element of $\bD$ and $r_{q,t}$ being independent of $z$, $V$ is the asymptotic variance of $\widehat{\Delta}$ under simple randomization, and
+\begin{equation*}
+    R^2 = \frac{\pi(1-\pi)}{V} Cov[IF\{\bO(1)\}- IF\{\bO(0)\}, \bX^r]Var(\bX^r)^{-1}Cov[\bX^r, IF\{\bO(1)\}- IF\{\bO(0)\}].
+\end{equation*}
+Consistent estimators for $V$ and $R^2$ are provided in Supplementary Material A.
+\end{theorem}
+
+A central finding in Theorem \ref{thm1} is that the convergence in probability and asymptotic linearity properties remain identical under simple randomization and rerandomization. 
+%Theorem~\ref{thm1} first shows that rerandomization keeps the convergence in probability and asymptotic linearity properties as in simple randomization. 
+As a result, if an M-estimator is consistent to the average treatment effect ($\underline{\Delta} = \Delta^*$) under simple randomization, then it remains consistent under rerandomization. Furthermore, the influence function of an M-estimator remains unchanged under rerandomization.
+
+In addition, Equation~\eqref{eq: asymptotic distribution} provides the asymptotic distribution of an M-estimator under rerandomization. 
+This result resembles Theorem 1 of \cite{li2018asymptotic} and Theorem 1 of \cite{li2020rerandomization} (derived under a finite-population design-based framework) if $\Delta^*=E[Y(1)-Y(0)]$ and $\widehat{\Delta}$ is the unadjusted estimator or the linearly-adjusted estimator. 
+%Under a super-population sampling-based framework, 
+Our new contribution in Theorem \ref{thm1} is to establish the asymptotic theory for a broad class of M-estimators and estimands with different scales of effect measure under rerandomization.%Our new contribution via Theorem \ref{thm1} is to provide the asymptotic theory for a wider class of M-estimators as well as estimands with different scale of measures under rerandomization.
+
+Different from simple randomization that leads to asymptotic normality of an M-estimator, rerandomization may correspond to a non-normal asymptotic distribution. By Theorem \ref{thm1}, the M-estimator converges weakly to a distribution given by a summation of two independent components---a normal variate $\sqrt{V}\sqrt{1-R^2}\ z$ and an independent \emph{truncated normal variate} $\sqrt{V}\sqrt{R^2}\ r_{q,t}$. 
+{Here, \(R^2\in[0,1]\) measures the degree of alignment between the estimator and the rerandomized covariates \(\bX^r\). With a larger \(R^2\), rerandomization can yield a larger efficiency gain \citep{li2018asymptotic}. The magnitude of \(R^2\) is determined by the choice of estimator and by how strongly \(\bX^r\) are associated with the potential outcomes. For example, for the unadjusted estimator under equal allocation, \(R^2\) is driven by the covariance between \(\bX^r\) and $Y(1)-Y(0)$; thus, more prognostic rerandomization variables generally lead to greater variance reduction. In contrast, for covariate-adjusted estimators that already fully account for \(\bX^r\), the resulting influence function may be nearly orthogonal to the imbalance vector \(\bI\), leading to \(R^2\) close to zero. In this case, the efficiency gain from rerandomization overlaps with that from covariate adjustment, as discussed in Section~\ref{sec:examples}.}
+
+% and can be interpreted as the fraction of unexplained variance in the M-estimator by rerandomization variables. 
+
+Based on \cite{morgan2012rerandomization} and \citet{li2018asymptotic}, the density of $\sqrt{V}\left(\sqrt{1-R^2}\ z + \sqrt{R^2}\ r_{q,t}\right)$ is symmetric about zero and bell-shaped, resembling a normal distribution. However, its variance is $V\{1- (1-v_{q,t})R^2\}$, where $v_{q,t} = P(\mathcal{X}^2_{q+2} < t)/P(\mathcal{X}^2_{q} < t) < 1$, and therefore $V\{1- (1-v_{q,t})R^2\} \le V$. As a result, compared to simple randomization, rerandomization does not increase the asymptotic variance of an M-estimator. Under a design-based framework, Theorem 2 of \cite{li2018asymptotic} %provided insights into this variance reduction. %as well as the corresponding change in the confidence interval lengths. 
+%That is, the difference in asymptotic variances 
+showed that the variance reduction for an unadjusted estimator is non-decreasing in $R^2$ and non-increasing in both $t$ and $q$. {Correspondingly, rerandomization can also reduce the asymptotic quantile ranges of the asymptotic distribution.} Owing to Theorem \ref{thm1}, these previous observations made for the unadjusted estimator continue to hold for general M-estimators. 
+
+For statistical inference, we propose consistent estimators $\widehat{V}$ and $\widehat{R}^2$ in Supplementary Material A. The 95\% confidence interval for $\widehat{\Delta}$ can then be approximated by the following Monte Carlo approach. We first generate a large number of draws ($m=10,000$) of $z$ and $r_{q,t}$, e.g., via rejection sampling {or following the more efficient construction by Proposition 2 of \cite{li2018asymptotic}}. We then compute the interval $\widehat{\Delta}+\sqrt{\widehat{V}/n} \left(\sqrt{1-\widehat{R}^2}\ z + \sqrt{\widehat{R}^2}\ r_{q,t}\right)$ for each draw, and take the $2.5\%$ and $97.5\%$ quantiles of its empirical distribution to obtain the final confidence interval estimator $\widehat{CI}$. As $m,n\rightarrow \infty$, we have asymptotic nominal coverage such that $P(\Delta^*\in \widehat{CI}) \rightarrow 0.95$.
+
+\begin{remark}\label{remark1}
+When rerandomization is based on a more general balance criterion $\bI^\top \widehat{\mathbf{H}}^{-1} \bI < t$, Theorem~\ref{thm1} remains the same, except that the asymptotic distribution in \eqref{eq: asymptotic distribution} is now $\sqrt{V}\sqrt{1-R^2}\ z +  Cov[IF\{\bO(1)\}- IF\{\bO(0)\}, \bX^r]\bfV_I^{-1/2} \boldsymbol{R}_{\mathbf{H},t}$, where $\boldsymbol{R}_{\mathbf{H},t} \sim \bD|(\bD^\top\bfV_I^{1/2} \underline{\mathbf{H}}^{-1}\bfV_I^{1/2} \bD < t)$ and $\bfV_I = \{\pi(1-\pi)\}^{-1} Var(\bX^r)$ with $\underline{\mathbf{H}}$ being the probability limit of $n\widehat{\mathbf{H}}$. 
+% If, alternatively, the rerandomization is based on $\sqrt{|\bI|}^\top \widehat{\mathbf{H}}^{-1} \sqrt{|\bI|} < t$, then $\boldsymbol{r}_{\mathbf{H},t}$ is substituted by $\widetilde{\boldsymbol{r}}_{\mathbf{H},t} \sim \bD| (\sqrt{|\bfV_I^{-1/2}\bD|}^\top\underline{\mathbf{H}}^{-1}\sqrt{|\bfV_I^{-1/2}\bD|} < t)$.
+Compared to Equation~\eqref{eq: asymptotic distribution}, the first component of the asymptotic distribution remains the same, but the second component becomes more complex and depends on the choice of $\widehat{\mathbf{H}}$. Nevertheless, as long as $\underline{\mathbf{H}}$ is positive definite, rerandomization still leads to no increase in the asymptotic variance. In addition, the confidence interval can be similarly constructed with a Monte Carlo approach. Similar results were first pointed out by \cite{lu2023design} under a design-based framework with cluster rerandomization (for unadjusted and linearly-adjusted estimators); we extend their results to the class of M-estimators (proof in Supplementary Material B).
+\end{remark}
+
+% \begin{remark}\label{rmk: tiers-of-covariates}
+% {Theorem~1 can be further extended to accommodate rerandomization with tiers of covariates \citep{morgan2015rerandomization}. Specifically, we partition the $q$ rerandomization variables into $B$ non-overlapping groups. For each group $b = 1, \dots, B$, we define the rerandomization variables as $\bX^{r,b}$ with dimension $q_b\leq q$, the $q_b$-dimensional imbalance statistics as $\bI_b = \frac{1}{N_1} \sum_{i=1}^n A_i^*\bX_i^{r,b}-\frac{1}{N_0} \sum_{i=1}^n (1-A_i)^*\bX_i^{r,b}$,  the $q_b\times q_b$ weighting matrix as $\widehat{\mathbf{H}}_b$, and the balancing threshold as $t_b>0$. The second step of rerandomization is changed to accepting randomization if $\bI_b^\top \widehat{\mathbf{H}}_b^{-1} \bI_b < t_b$ for all $b=1,\dots, B$. Thus, different tiers of covariates can be assigned separate balance criteria.}
+%   % Theorem~\ref{thm1} can be further extended to handle rerandomization given tiers of covariates \citep{morgan2015rerandomization}. To elaborate, for $b=1,\dots, B$, let $\bI_b= \mathbf{G}_b \bI$ be any subvector of $\bI$ with $\mathbf{G}_b$ being the transformation matrix. In addition, $\widehat{\mathbf{H}}_b$ and $t_b>0$ are the weighting matrix and threshold defining the balance criterion for the $b$-th tier of covariates. The second step of rerandomization is changed to accepting randomization if $\bI_b^\top \widehat{\mathbf{H}}_b^{-1} \bI_b < t_b$ for all $b=1,\dots, B$. 
+%   Under this design, Theorem~\ref{thm1} still holds with the asymptotic distribution described in Remark~\ref{remark1}, except that here $\boldsymbol{R}_{\mathbf{H},t} \sim \bD|(\bD^\top\bfV_I^{1/2} \mathbf{G}_b\underline{\mathbf{H}}_b^{-1}\mathbf{G}_b^\top \bfV_I^{1/2} \bD < t_b: b = 1,\dots, B)$, with $\underline{\mathbf{H}}_b$ defined as the probability limit of $n\widehat{\mathbf{H}}_b$. 
+% \end{remark}
+
+\begin{remark}\label{rmk: tiers-of-covariates}
+{Theorem 1 can be extended to accommodate rerandomization 
+with tiers of covariates \citep{morgan2015rerandomization}. Specifically, we partition the $q$ rerandomization variables into $B$ non-overlapping groups. For each group $b = 1, \dots, B$, we denote the rerandomization variables as $\bX^{r,b}$ with dimension $q_b \leq q$, so that $\sum_{b=1}^B q_b = q$. 
+Let $\mathbf{G}_b$ be the $q \times q_b$ selection matrix satisfying $\bX^{r,b} = \mathbf{G}_b^\top \bX^r$, where the columns of $\mathbf{G}_b$ are the standard basis vectors in $\mathbb{R}^q$ corresponding to the indices of tier $b$. The $q_b$-dimensional imbalance statistic is $\bI_b = \mathbf{G}_b^\top \bI$, where $\bI \in \mathbb{R}^q$ is defined in Section~\ref{sec: trt-assign}.
+We define the $q_b \times q_b$ weighting matrix $\widehat{\mathbf{H}}_b$ and balancing threshold $t_b > 0$, and accept a randomization if $\bI_b^\top \widehat{\mathbf{H}}_b^{-1} \bI_b < t_b$ for all $b = 1, \dots, B$, allowing different tiers of covariates to be assigned separate balance criteria. Under this design, Theorem 1 still holds with the asymptotic distribution described in Remark 1, except that $\boldsymbol{R}_{\mathbf{H},t} \sim \bD|(\bD^\top\bfV_I^{1/2} \mathbf{G}_b \underline{\mathbf{H}}_b^{-1} \mathbf{G}_b^\top \bfV_I^{1/2} \bD < t_b: b = 1,\dots, B)$, with $\underline{\mathbf{H}}_b$ defined as the probability limit of 
+$n\widehat{\mathbf{H}}_b$.}
+\end{remark}
+
+
+% \begin{remark}\label{remark:finite-sample}
+%     {While rerandomization guarantees no efficiency loss asymptotically, it may \textit{increase} variance in finite samples. To illustrate the idea, consider an extreme case of a randomized experiment with $N_1 = 1$ and $N_0=2$, where $X^r$ is dichotomous with $P(X^r=2) = p,\ p < 0.5$ and $P(X^r=-1)=1-p$ and $Y(a) \sim N(0, 1 + M a I\{X^r = -1\})$ with $M$ being a positive constant. Using rerandomization with threshold $t=1$, the variance of the unadjusted estimator, $\widehat{\Delta} = \sum_{i=1}^n {A_iY_i/N_1 - (1-A_i)Y_i/N_0}$, increases by $Mp(1-p)(1-2p)$. Detailed derivations are provided in Supplementary Material B.1.5. Intuitively, rerandomization selects allocations with the most balanced covariates, which in this example correspond to settings with larger outcome variance, yielding a larger variance of the estimator. This finite-sample efficiency loss vanishes asymptotically as higher-order terms become negligible. Moreover, $X^r$ is non-prognostic in this example; in practice, rerandomization based on prognostic covariates typically improves precision with sufficient sample sizes.}
+% \end{remark}
+
+\section{Examples}\label{sec:examples}
+In this section, we survey common M-estimators used for analyzing randomized experiments and provide important special cases where $R^2=0$, meaning that the M-estimator has fully accounted for rerandomization. 
+%(in other words, its variance, $V$, cannot be further explained by $\bX^r$). 
+% (there is no additional unexplained variance in the M-estimator by rerandomization variables $\bX^r$), 
+Therefore, in these cases, each M-estimator remains asymptotically normal under rerandomization.
+% such that according to Theorem \ref{thm: ml-rerandomization} the each M-estimator remains asymptotically normal under reramdomization. 
+These examples serve as important clarifications on when standard inference may be carried out ignoring rerandomization. Among the four examples, estimators in Examples \ref{eg:ancova}, \ref{eg:gcomp}, and \ref{eg:mixed} are model-robust and hence consistent under arbitrary working model misspecification under simple randomization; see discussions in \citet{Tsiatis2008, colantuoni2015leveraging, wang2021mixed}; this model-robustness property is carried under rerandomization as implied by Theorem~\ref{thm1}. Example \ref{eg:dr} focuses on experiments with missing outcomes, and we additionally require Assumption~\ref{assp2} to establish the double robustness property under simple randomization \citep{robins2007}; this property remains to hold under rerandomization as a result of Theorem \ref{thm1}. 
+
+%\noindent\textbf{Example 1 (The ANCOVA estimator).} 
+\begin{example}[\textbf{ANCOVA estimator}]\label{eg:ancova}
+In randomized experiments, the ANCOVA estimator considers the working model $E[Y|A,\bX] = \beta_0 + \beta_AA + \bbeta_{\bX}^\top \bX$ and uses ordinary least squares to obtain estimators $(\widehat\beta_0, \widehat\beta_A, \widehat{\bbeta}_X)$ for parameters $(\beta_0, \beta_A, \bbeta_X)$. In this context, $\widehat{\Delta}=\widehat\beta_A$ is the ANCOVA estimator for the average treatment effect estimand, $\Delta^* = E[Y(1)-Y(0)]$. 
+% Under simple randomization, the ANCOVA estimator is consistent under arbitrary working model specifications; this robustness property carries over to rerandomization as implied by Theorem~\ref{thm1}.
+\end{example}
+
+%\noindent\textbf{Example 2 (The g-computation estimator with logistic regression).} 
+\begin{example}[\textbf{G-computation estimator with working logistic regression}]\label{eg:gcomp}
+When the outcome is binary, the logistic regression model, $\text{logit}\{P(Y=1|A,\bX)\} = \beta_0 + \beta_AA + \bbeta_{\bX}^\top \bX$, is commonly used to analyze randomized experiments. With maximum likelihood estimators $(\widehat\beta_0, \widehat\beta_A, \widehat{\bbeta}_X)$, we construct $\widehat{p}_i(a) = \text{logit}^{-1}(\widehat{\beta}_0 + \widehat{\beta}_Aa + \widehat{\bbeta}_{\bX}^\top \bX_i)$ for $a = 0,1$. The g-computation estimator for the average treatment effect on any scale $\Delta^*=f(E[Y(1)], E[Y(0)])$ is $\widehat{\Delta} = f(n^{-1}\sum_{i=1}^n \widehat{p}_i(1), n^{-1}\sum_{i=1}^n \widehat{p}_i(0))$. 
+% Like the ANCOVA estimator, the g-computation estimator with logistic regression is robust under simple randomization and so rerandomization.
+\end{example}
+
+
+%\noindent\textbf{Example 3 (The DR-WLS estimator for handling missing outcomes).} 
+\begin{example}[\textbf{DR-WLS estimator for handling missing outcomes}]\label{eg:dr}
+In the presence of missing outcomes, the doubly-robust weighted least squares (DR-WLS) estimator involves the following steps. First, we fit a logistic regression working model to predict missingness, i.e., $\text{logit}\{P(R=1|\bX)\} = \alpha_0 + \alpha_A A + \balpha_X \bX$, and obtain the missingness propensity score as $\widehat{P}(R=1|A,\bX) = \text{logit}^{-1}(\widehat{\alpha}_0 + \widehat{\alpha}_A A + \widehat{\balpha}_X \bX)$. Second, we fit an outcome regression working model, $E[Y|A,\bX] = g^{-1}(\beta_0 + \beta_A A + \bbeta_X \bX)$, using data with $R_i=1$ and canonical link function $g$, weighted by the inverse propensity score $\{\widehat{P}(R=1|A_i, \bX_i)\}^{-1}$. We denote the model fit as $\widehat{E}[Y|A,\bX] = g^{-1}(\widehat{\beta}_0 + \widehat{\beta}_A A + \widehat{\bbeta}_X \bX)$. Finally, we apply a g-computation estimator $\widehat{\Delta} = f\left(n^{-1}\sum_{i=1}^n \widehat{E}[Y|1,\bX_i], n^{-1}\sum_{i=1}^n \widehat{E}[Y|0,\bX_i]\right)$ to estimate the average treatment effect estimand, $\Delta^*=f(E[Y(1)], E[Y(0)])$. We assume missing at random (Assumption~\ref{assp2}) and at least one of the two working models is correctly specified.
+% , then $\widehat{\Delta}$ is a consistent estimator for $\Delta^*$ under simple randomization and hence under rerandomization. 
+\end{example}
+
+\begin{example}[\textbf{Mixed-ANCOVA estimator under cluster randomization}]\label{eg:mixed}
+When rerandomization is at the cluster level, the outcomes for each cluster become an $N_i$-dimensional vector $\bY_i = (Y_{i1},\dots, Y_{iN_i})$, where $N_i$ is the size of cluster $i$. In addition, the covariates $\bX_i$ is a collection of individual covariates $\{\bX_{i1}, \dots, \bX_{iN_i}\}$. For simplicity, we assume non-informative cluster sizes, i.e., $N_i$ is independent of all $(Y_{ij}, A_i, \bX_{ij})$, and all $(Y_{ij}, A_i, \bX_{ij})$ are {marginally identically distributed within and across clusters}, but they can have an arbitrary with-cluster correlation structure. Then, rerandomization is based on $\bX_i^r$ being a summary function of $(\bX_{i1}^r,\dots, \bX_{iN_i}^r)$, e.g., ${N_i}^{-1} \sum_{j=1}^{N_i} \bX_{ij}^r$.
+The mixed-ANCOVA estimator involves fitting the linear mixed model $Y_{ij} = {\beta}_0 + {\beta}_A A_i + {\bbeta}_X \bX_{ij} + \delta_i + \varepsilon_{ij}$, where $\delta_i \sim N(0,\tau^2)$ is the random intercept and $\varepsilon_{ij} \sim N(0,\sigma^2)$ is the independent error. Under maximum likelihood estimation, we can construct a model-robust estimator $\widehat{\Delta} = \widehat{\beta}_A$ for the average treatment effect estimand $\Delta^* = E[Y_{ij}(1)-Y_{ij}(0)]$ \citep{wang2021mixed}. 
+% This estimator is robust to arbitrary working model misspecification under simple randomization and rerandomization. 
+{With informative cluster sizes and heterogeneous within-cluster distributions, the mixed-ANCOVA estimator can be adapted to target cluster-level or individual-level estimands following \cite{wang2023CRT}.}
+\end{example}
+
+Each estimator described in Examples \ref{eg:ancova}-\ref{eg:mixed} is an M-estimator (with the corresponding estimating function provided in Supplementary Material B.1.3), and its consistency and asymptotic linearity properties directly carry from simple randomization to rerandomization. Furthermore, Theorem~\ref{thm2} clarifies, for each estimator, when asymptotic normality holds under rerandomization and thus inference can proceed by ignoring rerandomization. 
+
+
+\begin{theorem}\label{thm2}
+    Assume Assumptions~\ref{assp1}-\ref{assp3} and that $\bX$ includes $\bX^r$ as a subset for covariate adjustment. Then, for the ANCOVA, logistic regression, DR-WLS, and mixed-ANCOVA estimators described in Examples \ref{eg:ancova}-\ref{eg:mixed}, we have $\sqrt{n}(\widehat{\Delta} - \Delta^*) \xrightarrow{d} N(0,V)$ under rerandomization if at least one of the following conditions holds: (1) $\pi = 0.5$ and $\Delta^* = E[Y(1)-Y(0)]$ is the estimand on the difference scale, or (2) the outcome regression model further includes a treatment-by-covariate interaction term $\bbeta_{AX^r}A\bX^r$ for $\bX^r$, or (3) the outcome regression model is correctly specified. In other words, $R^2=0$ under any of conditions (1), (2), or (3).
+\end{theorem}
+
+\begin{remark}
+While the ANCOVA and mixed-ANCOVA estimators target $\Delta^* = E[Y(1)-Y(0)]$ through the treatment coefficient, they can be adapted to estimate treatment effect estimands on other scales through a g-computation procedure (as described in Examples \ref{eg:gcomp} and \ref{eg:dr}). When treatment-by-covariate interaction terms are included, they become the ANCOVA2 \citep{Tsiatis2008} and mixed-ANCOVA2 estimators \citep{wang2021mixed}, for which g-computation (instead of simply interpreting $\widehat{\beta}_A$) is needed for consistent estimation. {For the DR-WLS estimator, Theorem~\ref{thm2} can still hold if $\bX^r$ is omitted from the missingness model. However, including $\bX^r$ is recommended as it facilitates the correct specification of the missingness model and increases the chance for consistency. 
+% In addition, adjusting for $\bX^r$ in the missingness model may further improve efficiency.
+}
+%For the DR-WLS estimator, Theorem~\ref{thm2} {still hold if $\bX^r$ is not adjusted for in the missingness model}, whereas as including $\bX^r$ may further improve efficiency and is recommended. \textcolor{red}{Fan: can we still discuss this last sentence - including $X^r$ in what seems important and we want to be more precise? Also, it is not only an efficiency issue right? If missingness depends on $X^r$, including them in missingness model also ensures greater chance for no bias?}%is prognostic for outcome missingness.
+\end{remark}
+
+Theorem~\ref{thm2} highlights the benefit of adjusting for baseline variables that are used for rerandomization. In this case, inference with many commonly used estimators under rerandomization can be performed as if simple randomization were used in the design stage; thus rerandomization becomes asymptotically ignorable in the analysis stage. This result has two implications. First, the choice of threshold $t$ or the weighting matrix $\widehat{\mathbf{H}}$ has no impact asymptotically for the estimators considered in Examples \ref{eg:ancova}-\ref{eg:mixed}. Therefore, the question of how one should select these design parameters for optimizing the asymptotic precision is immaterial in large samples. Second, many existing results about variance under simple randomization naturally extend to rerandomization. For example, for estimating the average treatment effect on the difference scale, the ANCOVA estimator under condition (1) or (2) in Theorem \ref{thm2} does not reduce the asymptotic precision by adjusting for baseline covariates under simple randomization \citep{Tsiatis2008}; the same result holds under rerandomization as long as the adjustment set included $\bX^r$. As another example, when condition (1) holds, not only ANCOVA and mixed-ANCOVA provide consistent point estimates, their model-based variance estimators are also consistent \citep{wang2019analysis,wang2021mixed}; such properties hold under rerandomization by Theorem \ref{thm2}. 
+
+{In addition, covariate adjustment in Examples \ref{eg:ancova}-\ref{eg:mixed} sets $R^2 = 0$, which does not mean that the asymptotic variance in Theorem~\ref{thm1} is increased. This is because adjusting for prognostic covariates can reduce $V$, which often dominates the precision gain. Since rerandomization and covariate adjustment target the same prognostic variation, when the analysis correctly orthogonalizes with respect to the rerandomized covariates (so the relevant $R^2$ terms vanish), rerandomization offers no further asymptotic precision gain, and the variance equals that under simple randomization (Remark~\ref{remark:bound}). This finding refines the traditional view that rerandomization always improves efficiency: such gains arise for the unadjusted difference-in-means estimator \citep{morgan2012rerandomization} but asymptotically disappear once covariate adjustment fully accounts for the rerandomized variables \citep{li2020rerandomization}. In practice, however, covariate adjustment may be under-specified or constrained by model form or sample size, in which case rerandomization continues to deliver meaningful finite-sample gains and better covariate balance, as also observed in our simulations. %and prior simulations \citep{li2016evaluation,li2017evaluation}.} %as also observed in our simulations and prior simulations \citep{li2016evaluation,li2017evaluation}.}
+%Since rerandomization and covariate adjustment target the same prognostic variation, when the analysis correctly orthogonalizes with respect to the rerandomized covariates (so the relevant $R^2$ terms vanish), rerandomization offers no further asymptotic precision gain and the variance equals that under simple randomization (Remark~7). This does not diminish the practical value of rerandomization: with imperfect adjustment it delivers tangible variance reductions and better finite-sample balance.}
+
+
+
+On the contrary, if $\bX^r$ is not included in the adjustment set, Theorem~\ref{thm2} may not hold, and the asymptotic distribution of the estimator is non-normal (Theorem \ref{thm1}). 
+Intuitively, this is the scenario where $\bX^r$ can further explain the variance of $\widehat{\Delta}$ so that $R^2> 0$. If inference is based on asymptotic results derived under simple randomization, the resulting confidence interval may be too wide, leading to overly conservative inference.
+We thus recommend adjusting for rerandomization variables whenever using M-estimators described in Examples  \ref{eg:ancova}-\ref{eg:mixed}, such that conventional inferential procedure based on asymptotic normality can be justified by Theorem~\ref{thm2}.
+
+
+\section{Extensions to stratified rerandomization}\label{sec: stratified-reran}
+\subsection{Defining stratified rerandomization}\label{subsec: st-reran}
+Stratified rerandomization is effective when we want to control the imbalance on $\bX^r$ at level $t$ but eliminate the imbalance on certain categorical variables via stratification \citep{wang2023rerandomization}. 
+%Compared to rerandomization defined in Section~\ref{sec: trt-assign}, this design further ensures a perfectly balanced assignment within each stratum. 
+To formalize this scheme, we first introduce stratified randomization without rerandomization. 
+{Stratified (block) randomization refers to a scheme that achieves exact balance within each pre-specified stratum. Let $S \in \bX$ be a categorical baseline variable encoding the randomization strata with domain $\mathcal{S}$.
+For example, $S$ takes values in $\mathcal{S}=\{\textup{male smoker},\ \textup{female smoker},\ \textup{male non-smoker},\ \textup{female non-smoker}\}$ if the strata are defined by sex and smoking status. We assume the domain $\mathcal{S}$ has fixed size with $P(S =s ) > 0$ for each $s \in \mathcal{S}$, which precludes matched-pair designs. Assumption 1 implies that $S_1,\dots, S_n$ are independent and identically distributed.   }
+
+{Within each randomization stratum, a size-$k$ permutation block with $\pi k$ ones and $(1-\pi)k$ zeros in random order is independently sampled to assign the treatment for the first $k$ participants (1 for treatment and 0 for control). When a permutation block is exhausted, a new one is sampled to assign the treatment for the next $k$ participants. In practice, the block size $k$ is chosen to make $\pi k$ an integer, and a smaller $k$ yields a stronger balance at intermediate stages of enrollment but increases predictability of future outcomes. However, 
+{size-$k$ permutation blocks will be first-order equivalent to complete randomization asymptotically \citep{bugni2018}, and thus different choices of $k$ do not influence our asymptotic results.}
+Unlike simple randomization where treatment assignment is independent, stratified randomization directly introduces correlation among treatment assignment and observed data $(\bO_1,\dots, \bO_n)$.}
+
+Stratified rerandomization combines stratified randomization and rerandomization through the following steps. First, we generate $\widetilde{A}_1,\dots, \widetilde{A}_n$ by stratified randomization based on randomization strata $\{S_1,\dots, S_n\}$ and parameter $\pi \in (0,1)$. Second, we compute
+    \begin{align*}
+        \widetilde{\bI} &= \frac{1}{\widetilde{N}_1}\sum_{i=1}^n \widetilde{A}_i \bX_i^r - \frac{1}{\widetilde{N}_0} \sum_{i=1}^n (1-\widetilde{A}_i) \bX_i^r, \\
+        \widehat{Var}(\widetilde{\bI}) &=  \frac{n}{\widetilde{N}_1\widetilde{N}_0} \left[\frac{1}{n}\sum_{i=1}^n \bX^r_i\bX^r_i{}^\top - \sum_{s \in \mathcal{S}} \frac{1}{n}\sum_{i=1}^n I\{S_i=s\}\overline{\bX_s^r}\overline{\bX_s^r}^\top\right],
+    \end{align*}
+where $\widetilde{N}_1 = \sum_{i=1}^n \widetilde{A}_i$, $\widetilde{N}_0 = n - \widetilde{N}_1$, and $\overline{\bX_s^r} = (\sum_{i=1}^n I\{S_i=s\})^{-1}\sum_{i=1}^n \bX_i^r I\{S_i=s\}$. In the last step, if $\widetilde{\bI}^\top \{\widehat{Var}(\widetilde{\bI})\}^{-1} \widetilde{\bI} < t$ for a pre-specified balance threshold $t$, we set the final treatment assignment $(A_1,\dots, A_n)$ to be $(\widetilde{A}_1,\dots, \widetilde{A}_n)$; otherwise, we return to the first step to obtain the first randomization scheme that satisfies the balance criterion.
+
+Compared to rerandomization defined in Section~\ref{sec: trt-assign}, stratified rerandomization involves two changes: the first step replaces simple randomization by stratified randomization, and the variance estimator $\widehat{Var}(\widetilde{\bI})$ is updated to reflect the true variance of the imbalance statistic under stratification, which is smaller than under simple randomization. 
+{This design is asymptotically equivalent to the first stratified rerandomization criterion (overall Mahalanobis distance) of \cite{wang2023rerandomization} since we assume $\pi$ is constant across randomization strata---the most common setting in randomized experiments.} 
+Without loss of generality, we assume $S \notin \bX^r$; otherwise, rerandomization is effectively controlling for imbalance on $\bX^r\setminus S$.
+Under stratified rerandomization, we next develop the large-sample properties for M-estimators regarding the general estimand $\Delta^*$.
+
+\subsection{Asymptotics theory under stratified rerandomization}
+\begin{theorem}\label{thm3}
+    Given Assumptions~\ref{assp1} and \ref{assp3}, and under stratified rerandomization, we have $\widehat{\Delta} \xrightarrow{p} \underline{\Delta}$ and asymptotic linearity as in Equation~\eqref{asymptoticlinearity}, and
+     \begin{align}\label{eq: stratified-rerandom}
+     \sqrt{n}(\widehat{\Delta} - \underline\Delta) \xrightarrow{d} \sqrt{\widetilde{V}}\left\{\sqrt{1-\widetilde{R}^2}\ z + \sqrt{\widetilde{R}^2}\ r_{q,t} \right\},
+ \end{align}
+ where  $z \sim N(0,1)$, $r_{q,t} \sim D_1|( \bD^\top  \bD < t)$ for $\bD \sim N(\bzero, \mathbf{I}_q)$ with $D_1$ being the first element of $\bD$ and $r_{q,t}$ being independent of $z$, and
+     \begin{align*}
+        \widetilde{V} &= V - \pi(1-\pi) E\left[E[IF\{\bO(1)\}- IF\{\bO(0)\}|S]^2\right], \\
+         \widetilde{R}^2 &= \frac{\pi(1-\pi)}{\widetilde{V}} \boldsymbol{C}^\top E[Var(\bX^r|S)]^{-1}\boldsymbol{C}.
+    \end{align*}
+with $\boldsymbol{C} = E[Cov[\bX^r, IF\{\bO(1)\}- IF\{\bO(0)\}|S]]$ and $V$ being the asymptotic variance under simple randomization. Consistent estimators for $\widetilde{V}$ and $\widetilde{R}^2$ are provided in Supplementary Material A.
+\end{theorem}
+
+Theorem~\ref{thm3} parallels Theorem~\ref{thm1} in terms of convergence in probability, asymptotic linearity, and weak convergence results. The major difference lies in the constant factors of the asymptotic distribution. In particular, $\widetilde{V}$ substitutes $V$ in Equation~\eqref{eq: stratified-rerandom} to 
+%reflect the asymptotic variance under stratified randomization, which 
+account for the variance reduction from stratification. Likewise, compared to Theorem \ref{thm1}, $\widetilde{R}^2$ is also updated by replacing marginal covariance with the expectation of conditional covariance. Despite these changes, the properties of the asymptotic distribution remain similar to those under rerandomization, and statistical inference considerations under rerandomization discussed in Section~\ref{sec: main} still apply to stratified rerandomization. Finally, as a special case, if we consider the unadjusted estimator, the difference estimand $\Delta^*=E[Y(1)-Y(0)]$, and fixed strata categories, Theorem~\ref{thm3} becomes the counterpart of Theorem 3 of \cite{wang2023rerandomization} under a sampling-based framework. %Theorem \ref{thm3}, however, includes a wider class of M-estimators and addresses a more general class of estimands $\Delta^*$ (e.g. to allow for ratio estimands). 
+%we notice that Theorem~\ref{thm3} extends Theorem 3 of \cite{wang2023rerandomization} from the unadjusted estimator for $\Delta^*=E[Y(1)-Y(0)]$ to M-estiamtors for a variety of estimands. 
+
+\begin{remark}\label{remark3}
+    If rerandomization is based on $\bI^\top \widehat{\mathbf{H}}^{-1} \bI < t$, Theorem~\ref{thm3} remains the same with the asymptotic distribution in Equation~\eqref{eq: stratified-rerandom} updated to  $\sqrt{\widetilde{V}}\sqrt{1-\widetilde{R}^2}\ z +  \boldsymbol{C}^\top\widetilde{\bfV}_I^{-1/2} \widetilde{\boldsymbol{R}}_{\mathbf{H},t}$, where $\widetilde{\boldsymbol{R}}_{\mathbf{H},t} \sim \bD|(\bD^\top\widetilde{\bfV}_I^{1/2} \underline{\mathbf{H}}^{-1}\widetilde{\bfV}_I^{1/2} \bD < t)$ and $\widetilde{\bfV}_I = \{\pi(1-\pi)\}^{-1} E[Var(\bX^r|S)]$, and $\underline{\mathbf{H}}$ is the probability limit of $n\widehat{\mathbf{H}}$. As long as $\underline{\mathbf{H}}$ is positive definite, stratified rerandomization does not lead to asymptotic precision reduction over stratified or simple randomization.
+\end{remark}
+
+\begin{remark}
+    Like rerandomization, stratified rerandomization can also accommodate tiers of covariates in a similar way as in Remark~\ref{rmk: tiers-of-covariates}. When we enforce $\sum_{i=1}^n A_i = \pi n$ in rerandomization as done in \cite{li2018asymptotic}, rerandomization with tiers of covariates accommodates stratified randomization as a special case \citep{wang2023rerandomization}; these schemes all fit into stratified rerandomization with tiers of covariates under our framework. 
+    
+    % and because rerandomization described in Section~\ref{sec: trt-assign} does not enforce $\sum_{i=1}^n A_i = \pi_a n$ so that one stratification level in $\mathcal{S}$ can be dropped. In contrast, since \cite{li2018asymptotic} enforces $\sum_{i=1}^n A_i = \pi_a n$ for rerandomization, stratified randomization is accommodated by tiers of covariates under their framework \citep{wang2023rerandomization}. 
+\end{remark}
+
+
+\subsection{Continued examples}
+
+For Examples 1-4 in Section~\ref{sec:examples}, their model-robustness or double-robustness property remains the same under stratified rerandomization. We thus extend Theorem~\ref{thm3} for stratified rerandomization given below. 
+
+\begin{theorem}\label{thm4}
+Assume Assumptions~\ref{assp1}-\ref{assp3} and that $\bX$ includes $\bX^r$ as a subset and $S$ as dummy variables for covariate adjustment.  Then, for the ANCOVA, logistic regression, DR-WLS, or mixed-ANCOVA estimator in Examples \ref{eg:ancova}-\ref{eg:mixed}, we have $\sqrt{n}(\widehat{\Delta} - \Delta^*) \xrightarrow{d} N(0,V)$ under stratified rerandomization if at least one of the following conditions holds: (1) $\pi = 0.5$ and $\Delta^* = E[Y(1)-Y(0)]$, or (2) the outcome regression model further includes treatment-by-covariate interaction terms for both $\bX^r$ and $S$, or (3) the outcome regression model is correctly specified. In other words, $\widetilde{R}^2=0$ and $\widetilde{V} = V$ under condition (1), (2), or (3).    
+\end{theorem}
+
+Theorem~\ref{thm4} clarifies that adjusting for both $\bX^r$ and $S$ in the working models offers asymptotic normality of the considered M-estimators under stratified rerandomization. In this case, the asymptotic distribution for each estimator is no different from that under simple randomization, and asymptotic results developed for those estimators under simple randomization can directly apply even though the actual assignment comes from a stratified rerandomization procedure. %which means the precision gain from both stratification and rerandomization have been accounted for. 
+Among the three conditions, conditions (1) and (3) remain the same as Theorem~\ref{thm3}, but condition (2) is modified to further include additional treatment-by-stratum interaction terms (as intuitively, the stratum variable is part of the randomization procedure). Similar to Theorem~\ref{thm3}, the threshold $t$ and weighting matrix $\widehat{\mathbf{H}}$ do not contribute to the asymptotic distribution, suggesting that the choice of these design parameters in general does not impact the asymptotic inference of the considered treatment effect estimators. %indicating a large flexibility in the rerandomization procedure. 
+Due to the appeal of applying normal approximation for inference, we maintain our recommendation that adjusted for rerandomization variables (including rerandomization variables and dummy stratum variables) in the analysis. 
+
+
+
+\section{Efficient inference with machine learning}\label{sec: eff}
+Beyond traditional M-estimators based on parametric working models, data-adaptive machine learning models have emerged for analysis of randomized experiments under simple randomization, typically through the vehicle of efficient influence function \citep{van2011targeted, chernozhukov2018double}. %constructing efficient estimators for the average treatment effect based on the efficient influence function and machine learning algorithms has been extensively studied (for examples, \citealp{van2011targeted, chernozhukov2018double}). 
+While these estimators provide flexible covariate adjustment and achieve the asymptotic efficiency lower bound under simple randomization, 
+%When adopting rerandomization or stratified rerandomization, a natural question is whether these estimators remain valid and efficient. 
+their properties under rerandomization or stratified rerandomization remain unknown. In this section, we turn our focus to a class of efficient estimators via the efficient influence function and obtain their asymptotic distribution under rerandomization and stratified rerandomization. We focus on the setting where outcomes are missing at random (Assumption~\ref{assp2}), but our theory can be straightforwardly extended to accommodate other settings (e.g., cluster-randomized experiments), where efficient estimation has been previously investigated under simple randomization \citep{wang2023CRT}. 
+
+\subsection{Efficient inference under rerandomization}\label{subsec: eff-rerandom}
+Under rerandomization, we focus on the efficient estimator that uses double machine learning (DML) for estimating nuisance functions with cross-fitting \citep{chernozhukov2018double}. Let $\widehat{\eta}_a(\bX;\mathcal{D}), \widehat{\kappa}_a(\bX;\mathcal{D})$ denote the pre-specified estimators for $E[Y(a)|\bX], E[R(a)|\bX]$ trained on data $\mathcal{D}$ and evaluated at $\bX$. For cross-fitting, we randomly partition the index set $\{1,\dots,n\}$ into $K$ folds with approximately equal sizes. Specifically, let $\mathcal{I}_k$ denote the index set for the $k$-th fold, we have $\{1,\dots,n\}=\cup_{k=1}^K \mathcal{I}_k$ and $|\mathcal{I}_k| = K^{-1}n$. If $K$ does not divide $n$, we require $||\mathcal{I}_k|- K^{-1}n| \le 1$ instead. Defining $\mathcal{O}_{a,-k} = \{(R_iY_i,R_i,\bX_i): i = 1,\dots, n;i \notin \mathcal{I}_k; A_i =a\}$ as the training data for fold $k$ within treatment group $a$, we specify the nuisance function estimators as $\widehat{\eta}_a(\bX_i) = \sum_{k=1}^K I\{i \in \mathcal{I}_k\}\widehat{\eta}_a(\bX_i;\mathcal{O}_{a,-k})$ and $\widehat{\kappa}_a(\bX_i) = \sum_{k=1}^K I\{i \in \mathcal{I}_k\}\widehat{\kappa}_a(\bX_i;\mathcal{O}_{a,-k})$. Next, the efficient estimator for $E[Y(a)]$ is constructed based on the efficient influence function as
+\begin{equation}\label{eq: eff}
+    \widehat{\mu}_a^{\textup{dml}} = \frac{1}{n}\sum_{i=1}^n \left[\frac{I\{A_i=a\}}{\pi^a(1-\pi)^{1-a}}\frac{R_i}{\widehat{\kappa}_a(\bX_i)}\{Y_i - \widehat{\eta}_a(\bX_i)\} + \widehat{\eta}_a(\bX_i)\right],
+\end{equation}
+and output $\widehat{\Delta}^{\textup{dml}} = f(\widehat{\mu}_1^{\textup{dml}}, \widehat{\mu}_0^{\textup{dml}})$.  For this estimator, we assume the following conditions. 
+
+\begin{assumption}[Conditions for nuisance function estimators]\label{assp: machine-learning}
+  For $a = 0,1$, we assume (1) $E[\left\{\widehat{\eta}_a(\bX;\mathcal{D}_n)-E[Y(a)|\bX]\right\}^2]^{1/2} = o(n^{-1/4})$ and $E[\left\{\widehat{\kappa}_a(\bX;\mathcal{D}_n)-E[R(a)|\bX]\right\}^2]^{1/2} = o(n^{-1/4})$ for $\mathcal{D}_n = \{R_i(a)Y_i(a), R_i(a),\bX_i\}_{i=1}^n$; (2) $ \{\widehat{\kappa}_a(\bX;\mathcal{D}_n)\}^{-1}$ and $ E[Y^2(a)|\bX]$ are uniformly bounded with probability 1.
+\end{assumption}
+
+Assumption~\ref{assp: machine-learning}(1) requires that the nuisance function estimators converge to their target in $L_2$-norm with a rate faster than $n^{1/4}$, if the training data consist of independent and identically distributed data. This rate can be achieved by existing machine learning methods, including random forests \citep{wager2018estimation}, deep neural networks \citep{Farrell2021}, and highly adaptive lasso \citep{benkeser2016highly}, under mild regularity conditions. 
+Of note, for the outcome model, the training data $\mathcal{D}_n$ are used to learn  $E[R(a)Y(a)|R(a), \bX]$, which yields $E[Y(a)|R(a)=1, \bX]$ and thus $E[Y(a)|\bX]$ under Assumption~\ref{assp2}.
+In Assumption~\ref{assp: machine-learning}(2), we assume uniform boundedness on several components of $\mathcal{P}^W$ and the estimators so that the remainder terms can be appropriately controlled. Overall, Assumption~\ref{assp: machine-learning} resembles the standard assumptions for efficient inference made in \cite{chernozhukov2018double}, and importantly, no extra condition is specifically assumed for addressing rerandomization. Theorem~\ref{thm: ml-rerandomization} below provides the asymptotic results for $\widehat{\Delta}^{\textup{dml}}$.
+
+\begin{theorem}\label{thm: ml-rerandomization}
+ Given Assumptions~\ref{assp1}, \ref{assp2}, and \ref{assp: machine-learning}, and under rerandomization, we have consistency, i.e., $\widehat{\Delta}^{\textup{dml}} \xrightarrow{p} \Delta^*$, and asymptotic linearity, i.e., $\sqrt{n}(\widehat{\Delta}^{\textup{dml}}-\Delta^*) = \frac{1}{\sqrt{n}} \sum_{i=1}^n EIF(\bO_i) + o_p(1)$ with 
+\begin{equation}\label{eq: eif}
+    EIF(\bO_i) = \sum_{a=0}^1 f_a' \left[\frac{I\{A_i=a\}}{\pi^a(1-\pi)^{1-a}}\frac{R_i}{E[R_i(a)|\bX_i]}\{Y_i - E[Y_i(a)|\bX_i]\} + E[Y_i(a)|\bX_i] - E[Y_i(a)]\right],
+\end{equation}
+where $f_a'$ is the partial derivative of $f$ with respect to $E[Y(a)]$.
+
+Furthermore, $\sqrt{n}(\widehat{\Delta}^{\textup{dml}}-\Delta^*) \xrightarrow{d} \sqrt{V}\left(\sqrt{1-R^2}\ z + \sqrt{R^2}\ r_{q,t}\right)$ as described in Equation~\eqref{eq: asymptotic distribution} with $V$ being the asymptotic variance under simple randomization and $R^2$ defined in Theorem \ref{thm1} by setting $IF(\bO_i)=EIF(\bO_i)$. Additionally, $R^2=0$ if the adjustment set $\bX$ includes the rerandomization variables $\bX^r$. Consistent estimators for $V$ and $R^2$ are provided in Supplementary Material A.
+\end{theorem}
+
+Theorem~\ref{thm: ml-rerandomization} justifies the validity of efficient estimation of the average treatment effect estimand under rerandomization. Additionally, the overall structure of its asymptotic expansion resembles that for M-estimators in Theorem~\ref{thm1}, with the only difference being that the influence function is given in Equation~\eqref{eq: eif}, which is the efficient influence function under simple randomization. If covariate adjustment includes the rerandomization variables, then $\widehat{\Delta}^{\textup{dml}}$ is asymptotically normal with asymptotic variance $V$---the usual efficiency lower bound given by the variance of $EIF(\bO_i)$ under simple randomization. On the contrary, if $\bX$ does not include all rerandomization variables, then  $V$ does not fully account for the precision gain from rerandomization, which leads to a positive $R^2$ and non-normal asymptotic distribution.
+
+
+% then there remains unexplained variance in the de-biased machine learning estimator by a subset of $\bX^r$ such that $R^2>0$. Putting it in a complementary perspective, the fitted de-biased machine learning estimator does not fully capitalize on the correlation between $\bX^r$ and $\{Y(a), R(a)\}$, leaving room for rerandomization to improve the precision of $\widehat{\Delta}^{\textup{dml}}$ based on partial adjustment of $\bX^r$.
+% resulting in additional variance reduction from randomization as reflected in $\sqrt{1-R^2}\ z + \sqrt{R^2}\ r_{q,t}$.
+
+%Comparing efficient estimators with parametric M-estimators, 
+%Finally, although efficient estimators have the advantage of optimal theory efficiency, machine learners often require a large sample size to avoid over-fitting. {In comparison, when parametric models are correctly specified or nearly correct, M-estimators may outperform efficient estimators in finite samples.} We recommend using the efficient estimators only if the sample size per arm is sufficiently large, and caution against data-adaptive fitting with small sample sizes, e.g., $n \le 50$. 
+% A similar recommendation has been discussed in \citet{wang2023CRT} for efficient inference in cluster-randomized experiments.
+
+{Finally, although efficient estimators are asymptotically optimal, they may require large sample sizes to realize efficiency gains and to prevent overfitting of data-adaptive nuisance estimators. In comparison, when parametric models are correctly specified or nearly correct, M-estimators often outperform efficient estimators in finite samples with greater numerical stability and smaller variance estimates. The relative performance thus depends on the sample size, model misspecification, and complexity of the nuisance structure, and should be evaluated on a case-by-case basis. Consistent with prior recommendations for efficient inference in cluster-randomized experiments \citep{wang2023CRT}, efficient estimators are more likely to show improvement when the sample size per arm is relatively large (e.g., $n>100$).}
+
+\begin{remark}\label{remark:bound}
+{\cite{bai2023efficiency} in Theorem 4.1  showed that the semiparametric lower bound is unchanged across a variety of randomization schemes, including rerandomization schemes we study. In Supplementary Material B.3.3, we provide additional results that the observed-data tangent space and efficient influence function are also invariant to randomization schemes. Therefore, rerandomization may reduce the variance of estimators that are not orthogonal to prognostic covariates, but it cannot lower the classical efficiency bound. In particular, the DML estimator $\widehat{\Delta}^{\textup{dml}}$ remains semiparametrically efficient under rerandomization and stratified rerandomization.}
+\end{remark}
+
+
+\begin{remark}\label{rmk: ml}
+    With no missing outcomes, we have $R_i \equiv1$, and the efficient estimator is simplified by setting $\widehat{\kappa}_a(\bX;\mathcal{D}_n) \equiv 1$. In this case, Assumption~\ref{assp: machine-learning}(1) is relaxed to only requiring a consistency assumption $E[\left\{\widehat{\eta}_a(\bX;\mathcal{D}_n)- E[Y(a)|\bX]\right\}^2] = o(1)$ without the need for regulating rate of convergence. Under this modified Assumption~\ref{assp: machine-learning}, Theorem~\ref{thm: ml-rerandomization} still holds and extends a special case of \cite{chernozhukov2018double} from simple randomization to rerandomization.
+\end{remark}
+
+
+
+
+
+\subsection{Results under stratified rerandomization}
+When using stratified rerandomization, the efficient estimator in Section~\ref{subsec: eff-rerandom} requires modification to achieve our target asymptotic results. This is because stratification introduces additional correlation among observed data, which cannot be handled by the standard cross-fitting procedure. To overcome this challenge, we perform cross-fitting within each stratum $s \in \mathcal{S}$ and treatment group $a \in \{0,1\}$, an approach proposed by \cite{rafi2023efficient} to address stratification. 
+% Under stratified rerandomization, the cross-fitting procedure needs to be stratified within each stratum $s$ and treatment group $a$ so that the correlation introduced by stratified randomization can be addressed. 
+Specifically, for each $s \in \mathcal{S}$ and $a \in \{0,1\}$, we randomly partition $\{i=1,\dots, n: S_i=s, A_i=a\}$ into $k$ folds and denote $\mathcal{I}_{ask}$ as the index set of the $k$-th fold. Similarly, we require roughly equal fold sizes across $k$ given $a$ and $s$. We next define the $k$-th fold in stratum $s$ as $\mathcal{I}_{sk} = \mathcal{I}_{1sk} \cup \mathcal{I}_{0sk}$ and define the training data for this fold as $\mathcal{O}_{as,-k} = \{(R_iY_i,Y_i,\bX_i): i = 1,\dots, n;i \notin \mathcal{I}_{sk}; A_i =a;S_i=s\}$. The nuisance function estimators are updated to $\widehat{\eta}_a(\bX_i) = \sum_{k=1}^K \sum_{s\in \mathcal{S}} I\{i \in \mathcal{I}_{sk}, S_i=s\}\widehat{\eta}_a(\bX_i;\mathcal{O}_{as,-k})$ and $\widehat{\kappa}_a(\bX_i) = \sum_{k=1}^K \sum_{s\in \mathcal{S}} I\{i \in \mathcal{I}_{sk}, S_i=s\}\widehat{\kappa}_a(\bX_i;\mathcal{O}_{as,-k})$. Then $\widehat{\mu}_a^{\textup{dml}}$ is defined as in Equation~\eqref{eq: eff} and $\widehat{\Delta}^{\textup{dml}} = f(\widehat{\mu}_1^{\textup{dml}}, \widehat{\mu}_0^{\textup{dml}})$. 
+%(where ``dml" stands for double machine learning).
+Based on this modified cross-fitting scheme, Theorem~\ref{thm: ml-stratified-rerandom} gives the counterpart of Theorem~\ref{thm: ml-rerandomization} under stratified rerandomization.
+
+\begin{theorem}\label{thm: ml-stratified-rerandom}
+Given Assumptions~\ref{assp1}, \ref{assp2}, and \ref{assp: machine-learning}, and under stratified rerandomization, we have the same consistency and asymptotic linearity as in Theorem~\ref{thm: ml-rerandomization}. Furthermore, $\sqrt{n}(\widehat{\Delta}^{\textup{dml}}-\Delta^*) \xrightarrow{d} \sqrt{\widetilde{V}}\left(\sqrt{1-\widetilde{R}^2}\ z + \sqrt{\widetilde{R}^2}\ r_{q,t}\right)$ as described in Equation~\eqref{eq: stratified-rerandom} with $\widetilde{V}$ and $\widetilde{R}^2$ now defined by setting $IF(\bO_i)=EIF(\bO_i)$. Additionally, $\widetilde{R}^2=0$ if the adjustment set $\bX$ includes the rerandomization variables $\bX^r$ and the dummy stratum variables $S$. Consistent estimators for $\widetilde{V}$ and $\widetilde{R}^2$ are provided in the Supplementary Material A.
+\end{theorem}
+
+
+\section{Simulations}\label{sec:sim}
+We conduct simulation studies to demonstrate our asymptotic results. The first simulation focuses on continuous outcomes with a difference estimand $\Delta^*=E[Y(1)-Y(0)]$, and the second simulation focuses on binary outcomes with a ratio estimand $\Delta^*=E[Y(1)]/E[Y(0)]$. Both simulations consider complete outcomes and outcomes under missing at random, with simple randomization, rerandomization, and stratified rerandomization. 
+
+\subsection{Simulation design}
+For the first simulation with continuous outcomes, we set $n=400$ and independently generate three baseline covariates $X_{i1} \sim \mathcal{N}(1,1)$, $S_i|X_{i1} \sim \mathcal{B}(0, 0.4 + 0.2 I\{X_{i1}<1\})$, and $X_{i2}|(X_{i1},S_i) \sim \mathcal{N}(0,1)$ for $i=1,\dots, n$, where $\mathcal{N}, \mathcal{B}$ represent normal and Bernoulli distributions, respectively. Next, we independently generate $Y_i(a) \sim \mathcal{N}\left(4aS_iX_{i2}^2 + 2 e^{X_{i1}} + |X_{i2}|, 1\right)$, $R_i(a) \sim \mathcal{B}\left\{\textup{expit}(0.6 + 0.6a + X_{i2} + S_i)\right\}$ 
+% \begin{align*}
+%     Y_i(a) &\sim \mathcal{N}\left(4aS_iX_{i2}^2 + 2 e^{X_{i1}} + |X_{i2}|, 1\right),\\
+%     R_i(a) &\sim \mathcal{B}\left\{\textup{expit}(0.6 + 0.6a + X_{i2} + S_i)\right\},
+% \end{align*}
+for $a = 0,1$ and $i =1,\dots, n$, where $\textup{expit}(x) = 1/(1+e^{-x})$. For treatment allocation, we set the randomization variables as $\bX^r_i = (X_{i1},X_{i2})$ and stratification variable as $S_i$. Then $(A_1,\dots, A_n)$ are generated under simple randomization, rerandomization, and stratified rerandomization as described in Sections~\ref{sec: trt-assign} and \ref{subsec: st-reran} with Mahalanobis distance, $\pi=0.5$, and threshold $t=1$ (corresponding to an acceptance rate of approximately $40\%$). Denoting $Y_i = A_iY_i(1) + (1-A_i)Y_i(0)$ and $R_i = A_iR_i(1) + (1-A_i)R_i(0)$, the observed data are $\{Y_i, A_i, X_{i1},X_{i2}, S_i:i=1,\dots, n\}$ under the no missing outcome scenario, and $\{R_iY_i, R_i, A_i, X_{i1},X_{i2}, S_i:i=1,\dots, n\}$ under the missing outcome scenario. We repeat the above procedure to generate $1000$ simulated data sets.
+
+For each simulated data set, we implement the following three estimators under the no-missing-outcome scenario. The unadjusted estimator is given by the difference in mean outcomes between treatment groups and ignores covariates. The ANCOVA estimator (Example \ref{eg:ancova}) adjusts for all covariates $\bX_i=(X_{i1},X_{i2},S_i)$. The ML estimator refers to the efficient estimator described in Section~\ref{sec: eff} but setting $R_i = \widehat{\kappa}_a(\bX_i)=1$ as discussed in Remark~\ref{rmk: ml}. For the outcome regression model $\widehat{\eta}_a(\bX_i)$, we adopt an ensemble learner of generalized linear models, regression trees, and neural networks via SuperLearner \citep{van2007super}. Under the outcome missing at random scenario, we instead compute the DR-WLS estimator (described in Example \ref{eg:dr}) and the efficient DML estimator (as described in Section~\ref{sec: eff}); we use the same ensemble learners for estimating the two nuisance functions for the latter. Of note, since the outcome missingness is generated by a generalized linear model, the missingness propensity score model is correctly specified in both the DR-WLS and DML estimators.
+
+For each estimator, we report the following performance metrics: bias, empirical standard error (ESE), average of standard error estimators assuming simple randomization (ASE$^*$, i.e., no extra adjustment is performed for rerandomization or stratified rerandomization), coverage probabilities and average confidence-interval lengths (computed either using normal approximations under simple randomization, or using the derived asymptotic distribution that accounts for the actual randomization procedure). 
+
+In the second simulation study with binary outcomes, the data generating process is the same as the first simulation except that $Y_i(a) \sim \mathcal{B}\left\{\textup{expit}(-4+4aS_iX_{i2}^2 + e^{X_{i1}}-|X_{i2}|)\right\}$. Here, the unadjusted estimator is the ratio of mean outcomes between treatment groups. The outcome model used in the ANCOVA estimator and DR-WLS estimator is substituted by GLM2, which denotes logistic regression in Example~\ref{eg:gcomp} with all treatment-by-covariate interaction terms. The ML and DML estimators are also modified to target the ratio estimand, but the nuisance function estimators remain the same as in the first simulation study. %We use the same performing metrics as in the first simulation study. 
+
+\subsection{Simulation results}
+
+Table~\ref{tab:sim1} summarizes the results of the first simulation study. Across different settings, all estimators have negligible bias and achieve nominal coverage probability based on our derived asymptotic distributions in Theorems~\ref{thm1}-\ref{thm: ml-stratified-rerandom}, thereby empirically supporting our theoretical results. For the unadjusted estimator, we observe that rerandomization and stratified rerandomization can improve precision, reflected by ESE being $\sim 20\%$ smaller than ASE$^*$ and CP-Normal being close to 1. Under rerandomization and stratified rerandomization, the ANCOVA, ML, DR-WLS, and DML estimators all have similar performance compared to simple randomization, and the corresponding coverage probabilities are all close to 0.95; this is expected because asymptotic normality holds for these covariate-adjusted estimators under rerandomization. These results further support Theorems~\ref{thm2}, \ref{thm4}, \ref{thm: ml-rerandomization}, and \ref{thm: ml-stratified-rerandom}, by which the ANCOVA, ML, DR-WLS, and DML estimators have been shown to fully account for the variance reduction brought by the rerandomization procedure ($R^2=0$). Of note, the empirical standard error tends to be slightly larger than the average standard error estimators for the adjusted estimators (especially when there are missing outcomes and data-adaptive estimation is used); this is driven by outlier estimates from a few simulated data sets, which have negligible impact on the coverage probability. We have repeated the simulation with $n=1000$, and this variance underestimation issue disappears (results omitted for brevity). Finally, in terms of finite-sample efficiency, we observe that parametric working models can improve precision over the unadjusted estimator, and machine learning estimators often lead to further variance reduction.
+
+\begin{table}[ht]
+    \centering
+    \caption{\small Simulation results for continuous outcomes. ESE denotes the empirical standard error. ASE$^*$ denotes the average estimated standard error computed under the assumption of simple randomization. {CP-Normal and wCI-Normal denote the coverage probability and average width of confidence intervals based on normal approximations, respectively. CP-True and wCI-True denote the coverage probability and average width of confidence intervals based on the derived asymptotic distribution that accounts for rerandomization, respectively.} }\label{tab:sim1}
+    \resizebox{\textwidth}{!}{
+    \begin{tabular}{cccccccccc}
+    \hline
+    \begin{tabular}[c]{@{}c@{}}Missing\\     Outcomes?\end{tabular}   & Randomization & Estimator & Bias & ESE & ASE$^*$ & CP-Normal & CP-True & wCI-Normal & wCI-True\\
+    \hline
+    \multirow{9}{*}{No}     &  \multirow{3}{*}{\shortstack{Simple\\ randomization}} & Unadjusted & 0.00 & 1.23 & 1.19 & 0.95 & 0.95 & 4.67 & 4.62 \\ 
+          & & ANCOVA & 0.01 & 0.82 & 0.79 & 0.95 & 0.96 & 3.10 & 3.07 \\ 
+          & & ML & -0.00 & 0.43 & 0.40 & 0.94 & 0.95  & 1.57 & 1.56 \\ 
+    \cmidrule(lr){2-10}
+&  \multirow{3}{*}{\shortstack{Rerandomization}} & Unadjusted & -0.01 & 0.95 & 1.19 & 0.99 & 0.94 & 4.67 & 3.49 \\ 
+          & & ANCOVA & -0.00 & 0.83 & 0.79 & 0.95 & 0.95 & 3.10 & 3.07 \\ 
+          & & ML & 0.02 & 0.45 & 0.41 & 0.94 & 0.94 & 1.59 & 1.56 \\ 
+    \cmidrule(lr){2-10}
+&  \multirow{3}{*}{\shortstack{Stratified\\rerandomization}} & Unadjusted & 0.02 & 0.92 & 1.19 & 0.99 & 0.94 & 4.67 & 3.45 \\  
+          & & ANCOVA & 0.02 & 0.82 & 0.79 & 0.94 & 0.95 & 3.10 & 3.07 \\ 
+          & & ML & 0.01 & 0.51 & 0.47 & 0.95 & 0.94  & 1.83 & 1.78 \\  
+          \hline
+\multirow{6}{*}{Yes} & \multirow{2}{*}{\shortstack{Simple\\ randomization}} & DR-WLS & -0.00 & 1.00 & 0.94 & 0.95 & 0.94 & 3.67 & 3.74 \\ 
+          & &  DML & 0.05 & 0.69 & 0.61 & 0.96 & 0.95 & 2.38 & 2.42 \\  
+              \cmidrule(lr){2-10}
+& \multirow{2}{*}{\shortstack{Rerandomization}} & DR-WLS & 0.03 & 0.97 & 0.94 & 0.95 & 0.95 & 3.68 & 3.74 \\ 
+          & &  DML & 0.07 & 0.87 & 0.63 & 0.95 & 0.95 & 2.45 & 2.47 \\ 
+              \cmidrule(lr){2-10}
+& \multirow{2}{*}{\shortstack{Stratified\\ rerandomization}} & DR-WLS & 0.06 & 0.99 & 0.94 & 0.96 & 0.95 & 3.67 & 3.73 \\  
+          & &  DML & 0.10 & 0.82 & 0.69 & 0.95 & 0.94 & 2.72 & 2.72 \\ 
+\hline
+    \end{tabular}
+    }
+\end{table}
+
+Table~\ref{tab:sim2} presents the results for the second simulation, with similar overall findings to those from the first simulation. Here, since the ANCOVA estimator is replaced by logistic regression with treatment-by-covariate interactions, the GLM2 estimator is asymptotically normal as stated in Theorem~\ref{thm2}(2) and Theorem~\ref{thm4}(2). 
+
+\begin{table}[ht]
+    \centering
+    \caption{\small Simulation results for binary outcomes. ESE denotes the empirical standard error. ASE$^*$ denotes the average estimated standard error computed under the assumption of simple randomization. {CP-Normal and wCI-Normal denote the coverage probability and average width of confidence intervals based on normal approximations, respectively. CP-True and wCI-True denote the coverage probability and average width of confidence intervals based on the derived asymptotic distribution that accounts for rerandomization, respectively.} }\label{tab:sim2}
+    \resizebox{\textwidth}{!}{
+    \begin{tabular}{cccccccccc}
+    \hline
+    \begin{tabular}[c]{@{}c@{}}Missing\\     Outcomes?\end{tabular}   & Randomization & Estimator & Bias & ESE & ASE$^*$ & CP-Normal & CP-True &wCI-Normal & wCI-True\\
+    \hline
+    \multirow{9}{*}{No}     &  \multirow{3}{*}{\shortstack{Simple\\ randomization}} & Unadjusted & 0.02 & 0.25 & 0.24 & 0.94 & 0.93 & 0.93 & 0.93 \\ 
+          & & GLM2 &0.01 & 0.19 & 0.18 & 0.94 & 0.94& 0.72 & 0.71 \\  
+          & & ML & 0.01 & 0.19 & 0.18 & 0.94 & 0.94 & 0.73 & 0.72 \\ 
+    \cmidrule(lr){2-10}
+&  \multirow{3}{*}{\shortstack{Rerandomization}} & Unadjusted & 0.02 & 0.21 & 0.24 & 0.97 & 0.94 & 0.93 & 0.82 \\ 
+          & & GLM2 & 0.01 & 0.19 & 0.18 & 0.94 & 0.94 & 0.72 & 0.71 \\  
+          & & ML & 0.02 & 0.20 & 0.19 & 0.94 & 0.94 & 0.77 & 0.76 \\  
+    \cmidrule(lr){2-10}
+&  \multirow{3}{*}{\shortstack{Stratified\\rerandomization}} & Unadjusted & 0.01 & 0.21 & 0.24 & 0.97 & 0.93 & 0.93 & 0.90 \\  
+          & & GLM2 & 0.00 & 0.19 & 0.18 & 0.94 & 0.94 & 0.72 & 0.71 \\  
+          & & ML & 0.01 & 0.19 & 0.18 & 0.95 & 0.94 & 0.73 & 0.72 \\  
+          \hline
+\multirow{6}{*}{Yes} & \multirow{2}{*}{\shortstack{Simple\\ randomization}} & DR-WLS & 0.02 & 0.21 & 0.21 & 0.95 & 0.95 & 0.82 & 0.81 \\  
+          & &  DML & 0.03 & 0.26 & 0.22 & 0.96 & 0.96 & 0.86 & 0.85 \\  
+              \cmidrule(lr){2-10}
+& \multirow{2}{*}{\shortstack{Rerandomization}} & DR-WLS & 0.02 & 0.22 & 0.21 & 0.94 & 0.94 & 0.82 & 0.81 \\  
+          & &  DML & 0.03 & 0.23 & 0.21 & 0.94 & 0.94 & 0.84 & 0.83 \\  
+              \cmidrule(lr){2-10}
+& \multirow{2}{*}{\shortstack{Stratified\\ rerandomization}} & DR-WLS & 0.02 & 0.22 & 0.21 & 0.94 & 0.94 & 0.82 & 0.81 \\ 
+          & &  DML &  0.03 & 0.28 & 0.23 & 0.95 & 0.95 & 0.89 & 0.89 \\  
+\hline
+    \end{tabular}
+    }
+\end{table}
+
+{To illustrate the performance of different approaches under moderate or small sample sizes, we replicate the first simulation without missing outcomes, setting $n=100$ and $n=30$. Table~\ref{tab:sim3} presents the results, mirroring the patterns in Table~\ref{tab:sim1}. Specifically, the unadjusted estimator continues to overestimate variance if rerandomization is ignored, and ANCOVA and ML estimators yield similar coverage probabilities with or without accounting for rerandomization. As sample size decreases, small biases and under-coverage emerge, reflecting the expected impact of model misspecification and numerical instability in finite samples.}
+
+
+\begin{table}[ht]
+    \centering
+    \caption{\small Simulation results for continuous outcomes with moderate and small sample sizes (no missing outcomes).  {CP-Normal and wCI-Normal denote the coverage probability and average width of confidence intervals based on normal approximations, respectively. CP-True and wCI-True denote the coverage probability and average width of confidence intervals based on the derived asymptotic distribution that accounts for rerandomization, respectively.} }\label{tab:sim3}
+    \resizebox{\textwidth}{!}{
+    \begin{tabular}{cccccccccc}
+    \hline
+    Sample size & Randomization & Estimator & Bias & ESE & ASE$^*$ & CP-Normal & CP-True & wCI-Normal & wCI-True \\
+    \hline
+    \multirow{9}{*}{$n=100$}     &  \multirow{3}{*}{\shortstack{Simple\\ randomization}} & Unadjusted &  0.02 & 2.41 & 2.30 & 0.95 & 0.96 & 9.00 & 9.24 \\ 
+          & & ANCOVA & -0.01 & 1.72 & 1.45 & 0.93 & 0.93 & 5.70 & 5.86 \\
+          & & ML & 0.02 & 1.30 & 1.15 & 0.94 & 0.95& 4.52 & 4.64 \\  
+    \cmidrule(lr){2-10}
+&  \multirow{3}{*}{\shortstack{Rerandomization}} & Unadjusted & 0.02 & 1.85 & 2.30 & 0.99 & 0.96 & 9.02 & 6.77 \\  
+          & & ANCOVA & -0.00 & 1.64 & 1.46 & 0.94 & 0.94 & 5.72 & 5.87 \\  
+          & & ML & 0.06 & 1.31 & 1.15 & 0.95 & 0.95 & 4.50 & 4.47 \\ 
+    \cmidrule(lr){2-10}
+&  \multirow{3}{*}{\shortstack{Stratified\\rerandomization}} & Unadjusted &  -0.07 & 1.87 & 2.30 & 1.00 & 0.94& 9.02 & 6.66 \\ 
+          & & ANCOVA &-0.07 & 1.63 & 1.46 & 0.95 & 0.95 & 5.71 & 5.86 \\ 
+          & & ML & -0.04 & 1.53 & 1.31 & 0.95 & 0.95 & 5.13 & 5.06 \\ 
+          \hline
+    \multirow{9}{*}{$n=30$}     &  \multirow{3}{*}{\shortstack{Simple\\ randomization}} & Unadjusted &   -0.03 & 4.45 & 3.84 & 0.94 & 0.94 & 15.06 & 15.04 \\ 
+          & & ANCOVA & -0.13 & 3.20 & 2.19 & 0.88 & 0.88 & 8.57 & 8.56 \\  
+          & & ML &  0.02 & 3.39 & 2.80 & 0.95 & 0.95 & 10.98 & 10.97 \\ 
+    \cmidrule(lr){2-10}
+&  \multirow{3}{*}{\shortstack{Rerandomization}} & Unadjusted & -0.02 & 3.36 & 3.86 & 1.00 & 0.94 & 15.11 & 11.12 \\ 
+          & & ANCOVA & -0.10 & 2.99 & 2.16 & 0.88 & 0.89 & 8.48 & 8.47 \\  
+          & & ML &  0.08 & 3.22 & 2.81 & 0.95 & 0.94 & 11.00 & 10.48 \\ 
+    \cmidrule(lr){2-10}
+&  \multirow{3}{*}{\shortstack{Stratified\\rerandomization}} & Unadjusted & 0.02 & 3.30 & 3.85 & 0.99 & 0.94 & 15.09 & 10.75 \\  
+          & & ANCOVA &0.01 & 2.84 & 2.16 & 0.90 & 0.90 & 8.48 & 8.47 \\ 
+          & & ML & -0.03 & 3.49 & 3.09 & 0.95 & 0.94 & 12.11 & 11.44 \\  
+\hline
+    \end{tabular}
+    }
+\end{table}
+
+\section{Data application}\label{sec:data}
+The Effectiveness of Group Focused Psychosocial Support for Adults Affected by Humanitarian Crises (GroupPMPlus) study is a cluster-randomized experiment in Nepal designed to improve the mental health of people affected by humanitarian emergencies such as pandemics, war, and environmental disasters \citep{jordans2021effectiveness}. The cluster-level intervention was Group Problem Management Plus, a psychological treatment of 5 weekly sessions (versus standard care). %, and the cluster-level control was the usual care. 
+In this study, 72 wards (the smallest administrative units in Nepal, representing clusters) were enrolled, consisting of 609 individuals in total. Stratified rerandomization was used for equal treatment allocation on clusters: stratification was based on gender (all individuals in the same ward have the same gender), and rerandomization was based on three binary cluster-level covariates: high or low access to mental health service, high or low disaster risk, and rural/urban status. However, we are unable to obtain detailed rerandomization parameters from the published report, including the weighting matrix or balance threshold. Therefore, we carry out our analysis assuming simple randomization: this choice will lead to conservative confidence intervals for an unadjusted analysis but has no impact on the covariate-adjusted estimators, as supported by our theory and simulations. 
+The primary outcome was a continuous measure of psychological distress at the 3-month follow-up evaluated by the General Health Questionnaire (GHQ-12). The baseline variables we adjust for include the baseline GHQ-12 score and all variables used in stratified rerandomization. For this study, we implement the mixed-ANCOVA estimator (Example \ref{eg:mixed}) with individual-level data \citep{wang2021mixed}, and the unadjusted, ANCOVA, and ML estimators with cluster-level means (implemented as in the first simulation) to estimate the average treatment effect. For all estimators, we compute their point estimates, standard errors assuming simple randomization, and confidence intervals under normal approximation. 
+
+The results are summarized in Table~\ref{tab:data1}. While all estimators have similar point estimates, their standard error estimates differ. For the unadjusted estimator, since we are unaware of the detailed rerandomization parameters, 0.78 should be a conservative estimate, leading to failure to reject the null at the 5\% level. In contrast, the standard error estimates for all three covariate-adjusted estimators should have fully accounted for the precision gain from stratified rerandomization as clarified by our theoretical results. For these estimators, it is important to highlight that validity of the standard error estimator is achieved without knowing the exact rerandomization parameters, which further endorses the recommendation of adjusting for stratification and rerandomization variables. Among the three covariate-adjusted estimators, the ANCOVA estimator appears to have the highest precision, while the machine learning estimator leads to the least variance reduction. This may be because either the sample size is relatively limited for machine learning to fully demonstrate asymptotic efficiency gain or the true data-generating distribution is nearly linear in covariates.
+
+\begin{table}[ht]
+    \centering
+    \caption{Data analysis results for the GroupPMPlus study.}\label{tab:data1}
+    \begin{tabular}{rrrrr}
+  \hline
+Estimator & Estimate & Standard error &  95\% confidence interval \\ 
+  \hline
+Unadjusted & -1.25 & 0.78 & (-2.77,\,\ 0.28) \\ 
+  ANCOVA & -1.45 & 0.56 & (-2.55, -0.35) \\ 
+  Mixed-ANCOVA & -1.35 & 0.62 & (-2.57, -0.13) \\ 
+  ML & -1.44 & 0.64 & (-2.69, -0.18) \\ 
+   \hline
+\end{tabular}
+\end{table}
+
+\section{Discussion}\label{sec: discussion}
+Covariate adjustment in randomized experiments can be achieved at the design stage, e.g., via rerandomization, and at the analysis stage, e.g., by outcome modeling. In this paper, our primary contribution is to clarify the impact of (stratified) rerandomization for the general class of M-estimators, and to further demonstrate when rerandomization can be asymptotically ignorable (and hence conventional asymptotic normality results can apply). These results provide clarifications to earlier simulation findings, for example, in cluster-randomized experiments \citep{li2016evaluation,li2017evaluation} where mixed-model ANCOVA was evaluated under rerandomization. We have also extended the theoretical development to efficient machine learning estimators, which maximally leverage baseline covariates to optimize asymptotic efficiency gain. Importantly, our results significantly expanded the existing rerandomization theory \citep{li2018asymptotic,li2020rerandomization,lu2023design,wang2023rerandomization,zhao2024no} from linear-adjusted estimators to essentially all commonly used covariate-adjusted estimators, and hence should have wide implications for randomized experiments, especially given the diversity of covariate-adjustment methods used in practice \citep{FDA2023}.
+%that covariate adjustment via a wide range of modeling is valid when we have performed covariate adjustment by design with rerandomization or stratified rerandomization. 
+%In terms of efficiency, covariate adjustment by design on top of modeling never decreases the precision compared to covariate adjustment by modeling itself. For this comparison, we characterize when their precision is the same, which covers commonly used M-estimators and efficient estimators based on machine learning. The key to this equivalence in precision is appropriately adjusting for covariates used in treatment allocation. In practice, this result shows how to simply account for the precision gain from rerandomization without losing power or requiring approximating a complex distribution.  
+
+%We have primarily focused on asymptotic results, which may not apply well to studies with small sample sizes, e.g., $n=20$. For such settings, simulations have shown that overly constrained randomization space may harm the power \citep{li2016evaluation, li2017evaluation}, and randomization inference for the sharp null hypothesis remains valid and can serve as the alternative method. 
+
+% {The stratified rerandomization analyzed in this paper assumes a fixed number of strata as $n$ grows and therefore does not cover finely stratified designs \citep{bai2022optimality} such as matched pairs. Shortly after the first version of this paper appeared on arXiv, \citet{cytrynbaum2024finely} independently developed asymptotic theory for M-estimators under finely stratified randomization, which includes matched-pair rerandomization and also nests the randomization schemes we investigate. Their results thus coincide with our Theorem~\ref{thm1} in this sense; we additionally characterize the asymptotic linearity with influence functions that are invariant across randomization schemes. Furthermore, \citet{cytrynbaum2024finely} established the large-sample theory for finite-population causal estimands and extended rerandomization to imbalance criteria based on nonlinear estimators. Regarding asymptotic normality, our Theorem~\ref{thm2} identifies scenarios under which normal limits are obtained, whereas \citet{cytrynbaum2024finely} propose an ex-post linear adjustment for M-estimators to restore normality. Finally, our analysis also treats missing outcomes and develops efficient inference via debiased machine learning, which has not been previously studied in the context of (stratified) rerandomization. Taken together, our contributions and those of \citet{cytrynbaum2024finely} provide complementary evidence to support valid statistical inference under rerandomization.}
+
+
+% {Rerandomization and other covariate-adaptive randomization schemes can substantially reduce covariate imbalance in finite samples, thereby strengthening the validity of treatment comparisons. In small samples, exact design-based randomization tests for sharp null hypotheses can be conducted under rerandomization by sampling from the accepted allocation set (or via importance sampling), providing complementary finite-sample validity. For inference on population-average causal estimands, our simulations show that covariate adjustment effectively captures precision gains from rerandomization across a range of sample sizes. While Remark~\ref{remark:finite-sample} highlights that rerandomization does not universally guarantee finite-sample efficiency gains, balancing prognostic covariates at the design stage remains a powerful and widely used strategy to enhance both statistical precision and scientific rigor.}
+
+A practical question for conducting rerandomization is how to specify design parameters. 
+%e.g., rerandomization variables, weighting matrix, and balance threshold. 
+%, is often a case-by-case problem and may not have a definite answer.
+%Although this is often evaluated in a case-by-case fashion, 
+Our general recommendation is to balance only prognostic covariates via the Mahalanobis distance and choose $t$ such that the rejection rate is no larger than 95\%. We retain our recommendation to adjust for rerandomization variables during analysis for maximum efficiency gain and convenience in inference. Finally, with our example estimators, although the choices of weighting matrices and $t$ have no impact asymptotically, they could have finite-sample implications. Alternatively, $t$ may be specified in a data-driven fashion, i.e., $t_n = f_n(\bX_1^r,\dots, \bX_n^r)$. Asymptotic analysis with an arbitrary $t_n$ is challenging as it requires special convergence results for conditional quantiles. {On this topic, \citet{wang2022rerandomization} developed asymptotic theory for sample-size-dependent thresholds \(t_n\) and discussed finite-sample diagnostics for choosing \(t_n\). More recently, \citet{WangLi2025} developed asymptotic theory for best-choice rerandomization. Although these works focus primarily on unadjusted estimators, we conjecture that their approaches can be extended to accommodate general \(M\)-estimators and machine learning estimators.}
+
+{A potential limitation of the present theory is that it is formulated within the super-population framework routinely used for studying general covariate-adjusted estimators. This framework is useful for comparing estimators and deriving first-order properties, but it may not fully represent the finite-sample trade-offs that motivate rerandomization. For example, when covariate adjustment is constrained by model form, pre-specification requirements, or sample size, rerandomization can still improve covariate balance and may yield operating characteristics that are not fully captured by first-order asymptotic comparisons alone. A promising direction for future work is to develop refined asymptotic approximations that retain such practically relevant finite-sample features, perhaps through local asymptotic regimes in which the sequence of populations, the strength and dimension of covariate imbalance, and the degree of adjustment misspecification or regularization drift jointly.}
+
+\section*{Acknowledgements}
+Research in this article was supported by a Patient-Centered Outcomes Research Institute Award\textsuperscript{\textregistered} (PCORI\textsuperscript{\textregistered} Award ME-2022C2-27676) and the National Institute Of Allergy And Infectious Diseases of the National Institutes of Health under Award Number R00AI173395. The statements presented in this article are solely the responsibility of the authors and do not necessarily represent the official views of the National Institutes of Health or PCORI\textsuperscript{\textregistered}, its Board of Governors, or the Methodology Committee. 
+
+
+{
+\bibliographystyle{apalike}
+\bibliography{references}
+}
+
+\end{document}

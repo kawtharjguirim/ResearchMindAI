@@ -1,0 +1,260 @@
+\usepackage{ifthen}
+%%% Style
+% Font and layout
+\newcommand*{\defemph}[1]{\ensuremath{\mathsf{#1}}}
+\newcommand*{\sota}{state-of-the-art}
+% Heavily used symbol style
+\newcommand*{\agentstyle}[1]{{\ensuremath{\uppercase{\defemph{#1}}}}}
+\newcommand*{\agentstyleMin}[1]{{\ensuremath{\lowercase{\defemph{#1}}}}}%}
+% \newcommand{\agent}[1]{%
+% 	\ifthenelse{\equal{\detokenize{#1}}{\detokenize{A}}}{\agentstyle{#1}}{%
+% 		\ifthenelse{\equal{\detokenize{#1}}{\detokenize{a}}}{\agentstyle{#1}}{%
+% 			\ifthenelse{\equal{\detokenize{#1}}{\detokenize{B}}}{\agentstyle{#1}}{%
+% 				\ifthenelse{\equal{\detokenize{#1}}{\detokenize{b}}}{\agentstyle{#1}}{%
+% 					\ifthenelse{\equal{\detokenize{#1}}{\detokenize{C}}}{\agentstyle{#1}}{%
+% 						\ifthenelse{\equal{\detokenize{#1}}{\detokenize{c}}}{\agentstyle{#1}}{%
+% 							\ifthenelse{\equal{\detokenize{#1}}{\detokenize{D}}}{\agentstyle{#1}}{%
+% 								\ifthenelse{\equal{\detokenize{#1}}{\detokenize{d}}}{\agentstyle{#1}}{%
+% 									\ifthenelse{\equal{\detokenize{#1}}{\detokenize{E}}}{\agentstyle{#1}}{%
+% 										\ifthenelse{\equal{\detokenize{#1}}{\detokenize{e}}}{\agentstyle{#1}}{%
+% 											\ifthenelse{\equal{\detokenize{#1}}{\detokenize{i}}}{\agentstyleMin{#1}}{%
+% 												\ifthenelse{\equal{\detokenize{#1}}{\detokenize{x}}}{\agentstyleMin{#1}}{%
+% 													\ifthenelse{\equal{\detokenize{#1}}{\detokenize{y}}}{\agentstyleMin{#1}}{%
+% 														\ifthenelse{\equal{\detokenize{#1}}{\detokenize{ag}}}{\agentstyleMin{#1}}{%
+% 															\ifthenelse{\equal{\detokenize{#1}}{\detokenize{AG}}}{\agentstyleMin{#1}}{%
+% 																\ifthenelse{\equal{\detokenize{#1}}{\detokenize{ag_1}}}{\agentstyleMin{#1}}{%
+% 																	\ifthenelse{\equal{\detokenize{#1}}{\detokenize{ag_2}}}{\agentstyleMin{#1}}{%
+% 																		\ifthenelse{\equal{\detokenize{#1}}{\detokenize{ag_i}}}{\agentstyleMin{#1}}{%
+% 																			\ifthenelse{\equal{\detokenize{#1}}{\detokenize{ag_n}}}{\agentstyleMin{#1}}{??
+% 	}}}}}}}}}}}}}}}}}}}%
+% }
+
+\newcommand*{\possarg}[2]{\ensuremath{\defemph{#1}(#2)}}
+\newcommand*{\poss}[1]{\ensuremath{\defemph{#1}}}
+\newcommand*{\fluent}[1]{\ensuremath{\defemph{#1}}}
+\newcommand*{\agent}[1]{\ensuremath{\defemph{#1}}}
+\newcommand*{\act}[1]{\ensuremath{\defemph{#1}}}
+
+\newcommand{\domain}{\ensuremath{\mathcal{D}}}
+\newcommand{\fluentSet}{\ensuremath{\mathcal{F}}}
+\newcommand{\agentSet}{\ensuremath{\mathcal{AG}}}
+\newcommand{\actionSet}{\ensuremath{\mathcal{A}}}
+\newcommand{\actionInstSet}{\ensuremath{\mathcal{AI}}}
+\newcommand{\stateSet}{\ensuremath{\mathcal{S}}}
+\newcommand{\trustRel}{\ensuremath{\mathcal{T}}}
+
+\newcommand*{\frameSet}[1]{\ensuremath{\ensuremath{\textbf{#1}_{\act{a}}\xspace}}}
+
+\newcommand*{\trFunc}[3]{\ensuremath{\Phi_{#1}(\act{#2},\poss{#3})}}
+\newcommand*{\trFuncVal}[4]{\ensuremath{\Phi_{#1}(\act{#2},\poss{#3},#4)}}
+
+\newcommand{\overbar}[1]{\mkern 1.5mu\overline{\mkern-1.5mu#1\mkern-1.5mu}\mkern 1.5mu}
+
+\newcommand*{\pov}[2]{\ensuremath{\Pi_{\agent{#1}}^{\poss{#2}}}}
+\newcommand*{\negpov}[3]{\ensuremath{{\overbar{\Pi}_{\agent{#1}}^{\poss{#2}}}{[\fluent{#3}]}}}
+
+%%% Operators, Actions and Syntax
+% Epistemic logic operators
+\newcommand{\B}[1]{\ensuremath{\textbf{B}_{\agent{#1}}}}
+\newcommand{\E}[1]{\ensuremath{\textbf{E}_{\agent{#1}}}}
+\newcommand{\C}[1]{\ensuremath{\textbf{C}_{\agent{#1}}}}
+
+\newcommand*{\opC}{\ensuremath{\mathbf{C}}}
+\newcommand*{\cAlpha}[1]{\ensuremath{\opC_\alpha{#1}}}
+\newcommand*{\eAlpha}[1]{\ensuremath{\mathbf{E}_\alpha{#1}}}
+\newcommand*{\eAlphaIter}[2]{\ensuremath{\mathbf{E}^{#1}_\alpha{#2}}}
+%\newcommand*{\initiallyC}[1]{\ensuremath{\texttt{initially\}(#1)}}
+\newcommand*{\bB}[2]{\ensuremath{\mathbf{B}_{\agent{#1}}{#2}}}
+\newcommand*{\del}{DEL}
+% Kripke operators
+\newcommand*{\brel}[1]{\ensuremath{\calB_{\defemph{#1}}}}
+\newcommand*{\rrel}[1]{\ensuremath{\calR_{\defemph{#1}}}}
+% Actions and fluent
+\newcommand*{\distract}[2]{%
+	\ifstrequal{#2}{}%
+	{\ensuremath{\mathtt{distract}(\agent{#1})}}%
+	{\ensuremath{\mathtt{distract}(\agent{#1})\langle\agent{#2}\rangle}}%
+}
+\newcommand*{\open}[1]{%
+	\ifstrequal{#1}{}%
+	{\ensuremath{\mathtt{open}}}%
+	{\ensuremath{\mathtt{open}\tuple{\agent{#1}}}}%
+}
+\newcommand*{\shout}[1]{%
+	\ifstrequal{#1}{}%
+	{\ensuremath{\mathtt{shout\_tails}}}%
+	{\ensuremath{\mathtt{shout\_tails}\tuple{\agent{#1}}}}%
+}
+\newcommand*{\signal}[2]{%
+	\ifstrequal{#2}{}%
+	{\ensuremath{\mathtt{signal}(\agent{#1})}}%
+	{\ensuremath{\mathtt{signal}(\agent{#1})\langle\agent{#2}\rangle}}%
+}
+\newcommand*{\peek}[1]{%
+	\ifstrequal{#1}{}%
+	{\ensuremath{\mathtt{peek}}}%
+	{\ensuremath{\mathtt{peek}\tuple{\agent{#1}}}}%
+}
+\newcommand*{\tell}[2]{%
+	\ifstrequal{#2}{}%
+	{\ensuremath{\mathtt{tell}(\agent{#1})}}%
+	{\ensuremath{\mathtt{tell}(\agent{#1})\langle\agent{#2}\rangle}}%
+}
+\newcommand*{\flip}[1]{%
+	\ifstrequal{#1}{}%
+	{\ensuremath{\mathtt{flip}}}%
+	{\ensuremath{\mathtt{flip}\tuple{\agent{#1}}}}%
+}
+\newcommand*{\haskey}[1]{\ensuremath{\mathtt{key}(\agent{#1})}}
+\newcommand*{\opened}{\ensuremath{\mathtt{opened}}}
+\newcommand*{\head}{\ensuremath{\mathtt{heads}}}
+\newcommand*{\tail}{\ensuremath{\mathtt{tails}}}
+\newcommand*{\looking}[1]{\ensuremath{\mathtt{looking}(\agent{#1})}}
+\newcommand*{\res}[1]{\ensuremath{\defemph{caused}(\defemph{#1})}}
+\newcommand*{\sensed}[2]{\ensuremath{\defemph{sensed}(\defemph{#1})[\defemph{#2}]}}
+% Syntax
+\newcommand*{\exec}[2]{\ensuremath{\mathbf{executable\ }\defemph{#1} \mathbf{\ if\ } #2 }}
+\newcommand*{\causes}[2]{\ensuremath{\defemph{#1} \mathbf{\ causes\ } \defemph{#2} }}
+\newcommand*{\determine}[2]{\ensuremath{\defemph{#1} \mathbf{\ determines\ } \defemph{#2} }}
+\newcommand*{\announce}[2]{\ensuremath{\defemph{#1} \mathbf{\ announces\ } \defemph{#2} }}
+\newcommand*{\initially}[1]{\ensuremath{\mathbf{intially}\ #1}}
+
+
+
+%%% Special words
+% Action languages
+\newcommand*{\ourL}{\mAR}
+\newcommand*{\mAL}{\mbox{\ensuremath{m\mathcal{A}^*}}}
+\newcommand*{\mAP}{\mbox{\ensuremath{m\mathcal{A}+}}}
+\newcommand*{\mar}{\mbox{\ensuremath{m\mathcal{A}^\rho}}\xspace}
+\newcommand*{\kstd}{\mbox{K-MAL}}
+\newcommand*{\kopt}{\mbox{K-BIS}}
+\newcommand*{\pstd}{\mbox{P-MAR}}
+\newcommand*{\applyNV}[1]{\mbox{#1-\texttt{NV}}}
+\newcommand*{\kstdNV}{\applyNV{\kstd}}
+\newcommand*{\koptNV}{\applyNV{\kopt}}
+\newcommand*{\pstdNV}{\applyNV{\pstd}}
+% Multi agent epistemic
+\newcommand*{\mAGep}{multi-agent epistemic}
+\newcommand*{\MAGep}{Multi-agent epistemic}
+\newcommand*{\ck}{common knowledge}
+\newcommand*{\mep}{MEP}
+\newcommand*{\EFP}{\mbox{E{\footnotesize  FP}}\xspace}
+\newcommand*{\newEFP}{\mbox{\EFP 2.0}}
+\newcommand*{\oldEFP}{\mbox{\EFP 1.0}}
+
+% Non-well-founded set
+\newcommand*{\Wf}{Well-founded}
+\newcommand*{\wf}{well-founded}
+\newcommand*{\Nwf}{Non-\wf}
+\newcommand*{\nwf}{non-\wf}
+%Possibilities & Co.
+\newcommand*{\sPoss}{\ensuremath{\Phi_{\mathbf{Poss}}}}
+\newcommand*{\Pos}{Possibility}
+\newcommand*{\pos}{possibility}
+\newcommand*{\PosS}{Possibilities}
+\newcommand*{\posS}{possibilities}
+\newcommand*{\bSetPoss}[2]{\ensuremath{\mathcal{B}^{{#1}}_{{#2}}}}
+\newcommand*{\posSet}{\ensuremath{\mathcal{P}}}
+\newcommand*{\invert}[1]{\defemph{#1}\raisebox{1.0ex}{$\scriptscriptstyle-\!1$}}
+
+
+
+%%%Special Symbols
+% Languages
+\newcommand*{\lAG}{\ensuremath{\mathcal{L}_{\sAG}}}
+\newcommand*{\lag}{\lAG}
+\newcommand*{\lagC}{\ensuremath{\lAG^{\opC}}}
+% Axioms
+\newcommand*{\axT}{\textbf{T}}
+\newcommand*{\axFour}{$\mathbf{4}$}
+\newcommand*{\axFive}{$\mathbf{5}$}
+\newcommand*{\axD}{\textbf{D}}
+\newcommand*{\axK}{\textbf{K}}
+\newcommand*{\logic}[3]{\textbf{#1}$_{#2}^{\mathbf{#3}}$}
+% Kripke structures
+\newcommand*{\state}[2]{\ensuremath{(M_{\defemph{#1}},\defemph{#2})}}
+\newcommand*{\posfunc}[3]{\ensuremath{\Phi_{D_{#1}}(#2,\defemph{#3})}}
+\newcommand*{\trfunc}{\ensuremath{\Phi}}
+\newcommand*{\trfuncD}{\ensuremath{\Phi_D}}
+\newcommand*{\posfull}{\ensuremath{F}}
+\newcommand*{\posfullArg}[1]{\ensuremath{\posfull_{#1}}}
+\newcommand*{\posfullAct}{\ensuremath{\posfullArg{\defemph{a}}}}
+\newcommand*{\posunt}{\ensuremath{U}}
+\newcommand*{\posuntArg}[1]{\ensuremath{\posunt_{#1}}}
+\newcommand*{\posuntAct}{\ensuremath{\posuntArg{\defemph{a}}}}
+\newcommand*{\pospartial}{\ensuremath{P}}
+\newcommand*{\pospartialArg}[1]{\ensuremath{\pospartial_{#1}}}
+\newcommand*{\pospartialAct}{\ensuremath{\pospartialArg{\defemph{a}}}}
+\newcommand*{\posoblivious}{\ensuremath{O}}
+\newcommand*{\posobliviousArg}[1]{\ensuremath{\posoblivious_{#1}}}
+\newcommand*{\posobliviousAct}{\ensuremath{\posobliviousArg{\defemph{a}}}}
+\newcommand*{\interp}[2]{\ensuremath{M_{#1}[\pi](\defemph #2)}}
+% Special Sets
+\newcommand*{\sAG}{\ensuremath{\mathcal{AG}}}
+\newcommand*{\sAC}{\ensuremath{\mathcal{A}}}
+\newcommand*{\sF}{\ensuremath{\mathcal{F}}}
+\newcommand*{\sP}{\sF}
+\newcommand*{\ai}{\calA\calI}
+\newcommand*{\sOBS}{\calO}
+% Domain related
+\newcommand*{\Domain}{\ensuremath{D}}
+\newcommand*{\DomainArg}[1]{\Domain\ensuremath{(#1)}}
+\newcommand*{\sACD}{\DomainArg{\sAC}}
+\newcommand*{\sFD}{\DomainArg{\sF}}
+\newcommand*{\aiD}{\DomainArg{\ai}}
+\newcommand*{\sAGD}{\DomainArg{\sAG}}
+\newcommand*{\stateSetD}{\DomainArg{\stateSet}}
+\newcommand*{\sOBSD}{\DomainArg{\sOBS}}
+\newcommand{\iniDomain}{\ensuremath{\varphi_{i}}}
+\newcommand{\goalDomain}{\ensuremath{\varphi_{g}}}
+% Graph
+\newcommand*{\graphG}{\ensuremath{\mathcal{G}}}
+\newcommand*{\graphVE}[2]{\graphG=\textup{(}$#1, #2$\textup{)}}
+% Generic
+\newcommand*{\func}[3]{#1: #2 \mapsto #3}
+\newcommand*{\shortimplies}{\ensuremath{\Rightarrow}}
+\newcommand*{\WP}{\texttt{WP}}
+\newcommand*{\TO}{\texttt{TO}}
+
+
+
+
+%%% Shortcuts
+\newcommand*{\bra}[1]{\ensuremath{\{#1\}}}
+\newcommand*{\tuple}[1]{\ensuremath{\langle #1 \rangle}}
+
+
+%%% Calligraphics macros by E. Zaffanella
+\newcommand*{\calA}{\ensuremath{\mathcal{A}}}
+\newcommand*{\calB}{\ensuremath{\mathcal{B}}}
+\newcommand*{\calC}{\ensuremath{\mathcal{C}}}
+\newcommand*{\calD}{\ensuremath{\mathcal{D}}}
+\newcommand*{\calE}{\ensuremath{\mathcal{E}}}
+\newcommand*{\calF}{\ensuremath{\mathcal{F}}}
+\newcommand*{\calG}{\ensuremath{\mathcal{G}}}
+\newcommand*{\calH}{\ensuremath{\mathcal{H}}}
+\newcommand*{\calI}{\ensuremath{\mathcal{I}}}
+\newcommand*{\calJ}{\ensuremath{\mathcal{J}}}
+\newcommand*{\calK}{\ensuremath{\mathcal{K}}}
+\newcommand*{\calL}{\ensuremath{\mathcal{L}}}
+\newcommand*{\calM}{\ensuremath{\mathcal{M}}}
+\newcommand*{\calN}{\ensuremath{\mathcal{N}}}
+\newcommand*{\calO}{\ensuremath{\mathcal{O}}}
+\newcommand*{\calP}{\ensuremath{\mathcal{P}}}
+\newcommand*{\calQ}{\ensuremath{\mathcal{Q}}}
+\newcommand*{\calR}{\ensuremath{\mathcal{R}}}
+\newcommand*{\calS}{\ensuremath{\mathcal{S}}}
+\newcommand*{\calT}{\ensuremath{\mathcal{T}}}
+\newcommand*{\calU}{\ensuremath{\mathcal{U}}}
+\newcommand*{\calV}{\ensuremath{\mathcal{V}}}
+\newcommand*{\calW}{\ensuremath{\mathcal{W}}}
+\newcommand*{\calX}{\ensuremath{\mathcal{X}}}
+\newcommand*{\calY}{\ensuremath{\mathcal{Y}}}
+\newcommand*{\calZ}{\ensuremath{\mathcal{Z}}}
+
+%% Checkmark
+\def\checkmark{\tikz\fill[scale=0.4](0,.35) -- (.25,0) -- (1,.7) -- (.25,.15) -- cycle;}
+%\full (Azione, pointed kripke structure(2 argomenti), insieme  )
+%\newcommand*{\Interp}[2]{\ensuremath{M_{#1}[\pi](#2)}}
+%\newcommand*{\nwfeq}[3]{\ensuremath{#1(#2)=#3}}

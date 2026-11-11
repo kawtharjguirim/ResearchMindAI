@@ -1,0 +1,560 @@
+\documentclass[10pt,twocolumn,twoside,letterpaper]{article}
+
+%\draft
+
+\usepackage{dcolumn}% Align table columns on decimal point
+\usepackage{bm}% bold math
+\usepackage[left=0.5in,right=0.5in,top=0.5in,bottom=1in]{geometry}%
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphics}%
+\usepackage{graphicx}
+\usepackage{amsbsy}%
+\usepackage{authblk}%
+\usepackage{mathtools,stmaryrd,soul}%
+\usepackage{amsmath,amssymb}
+\usepackage{cuted}%
+\usepackage{caption}%
+\renewcommand{\figurename}{{\bf Fig.}}%
+\captionsetup[figure]{labelfont={bf}}%
+\usepackage{xcolor}
+\usepackage{mathptmx}
+
+
+\begin{document}
+
+\title{Reference-less complex wavefields characterization with a high-resolution wavefront sensor}
+
+
+\author[1,2,3]{\bf Tengfei Wu}
+\author[2,3]{\bf Pascal Berto}
+\author[1,3,4,*]{\bf Marc Guillon}
+
+\affil[1]{Université de Paris, SPPIN -- Saints-Pères Paris Institute for Neurosciences, CNRS, 75006 Paris, France}
+\affil[2]{Sorbonne Université, CNRS, INSERM, Institut de la Vision, 17 Rue Moreau, 75012 Paris, France}
+\affil[3]{Université de Paris, 75006 Paris, France}
+\affil[4]{Institut Universitaire de France (IUF), Paris, France}
+
+\affil[*]{marc.guillon@u-paris.fr}
+%\date{\today}
+
+\maketitle
+
+%\author{Tengfei Wu,\authormark{1,2,3} Pascal Berto,\authormark{2,3} and Marc Guillon\authormark{1,3,4,*}}
+
+%\address{\authormark{1} Université de Paris, SPPIN -- Saints-Pères Paris Institute for the Neurosciences, CNRS, 75006 Paris, France\\
+%\authormark{2} Sorbonne Université, CNRS, INSERM, Institut de la Vision, 17 Rue Moreau, 75012 Paris, France\\
+%\authormark{3} Université de Paris, 75006 Paris, France}
+%\email{\authormark{*} marc.guillon@u-paris.fr}
+
+%\ociscodes{120.5050,050.4865,030.6140,070.2580}
+%120.5050 Phase measurement.
+%030.6140   Speckle
+%050.4865   Optical vortices 
+%290.2558   Forward scattering 
+%030.6600   Statistical optics
+%070.2580   Paraxial wave optics
+%300.6480   Spectroscopy, speckle
+% 	Wave propagation in random media
+% 	Diffraction and scattering
+% 	Speckle and moiré patterns
+% 	Singularity theory (see also 05.45.-a Nonlinear dynamics and chaos)
+%(180.3170) Interference microscopy. 
+%(170.3880) Medical and biological imaging.
+
+\begin{strip}
+\textbf{
+Wavefront sensing is a widely-used non-interferometric, single-shot, and quantitative technique providing the spatial-phase of a beam. The phase is obtained by integrating the measured wavefront gradient.
+Complex and random wavefields intrinsically contain a high density of singular phase structures (optical vortices) associated with non-conservative gradients making this integration step especially delicate.
+Here, using a high-resolution wavefront sensor, we demonstrate experimentally a systematic approach for achieving the complete and quantitative reconstruction of complex wavefronts. 
+Based on the Stokes' theorem, we propose an image segmentation algorithm to provide an accurate determination of the charge and location of optical vortices. This technique is expected to benefit to several fields requiring complex media characterization.}
+\end{strip}
+
+
+Quantitative phase mesurements of complex wavefields is at the basis of many applications including bio-imaging~\cite{naji,Betzig_NM_14,Jesacher_BioArxiv_21}, fibroscopy~\cite{Choi_PRL_12,Moser_OE_15}, diffractive tomography~\cite{Lauer_MST_08},  astronomy~\cite{Tyler_JOSA_2000}, 
+and more generally for imaging through scattering media by phase conjugation~\cite{Gigan_NC_10,Yang_NP_15}.
+When a coherent reference beam is available, complex wavefields may typically be measured using digital holography~\cite{Cuche1999,Matoba_DH_review_18}. 
+Alternatively, several techniques have been developed for cases when no coherent reference beam is available, such as common-path interferometers~\cite{Marte_OE_06,Yang_APL_12,Marte_OE_14,So_Optica_17,Rosen_AOP_19}, point diffraction interferometry~\cite{Paterson_OC_08}, Shack-Hartman wavefront sensors (WFS)~\cite{Shack2001}, curvature sensing~\cite{Roddier_AO_88}, light-field imaging~\cite{Prevedel_NM_14}, phase diversity approaches~\cite{Khare_AO_15}, or phase retrieval algorithms~\cite{Fienup_AO_82,Paganin_PRE_01,Almoro2006}. All these techniques have their own advantages and try to optimize the compromise between ease of use and measurement reliability.
+Among the latter techniques, WFS generally consist in a so-called ``Hartmann mask'' simply placed before a camera and have the specific advantages to be a robust single-shot technique offering a great ease of use. They have thus been the most used systems to measure distorted wavefronts arising from random refractive index inhomogeneities due to the atmosphere in astronomy, or due to tissues in bio-imaging. The main limitation associated to Shack-Hartmann WFS has long been the limited resolution associated with the low maximum density of micro-lens arrays. 
+The advent of high-resolution WFS, either based on a modified Hartmann mask~\cite{Bon2009} or on a thin diffuser~\cite{Berujon_PRL_12, Berto_OL_17, Heidrich_OE_17, Heidrich_SR_19}, has represented an important step towards making WFS a promising alternative for measuring complex spatial phase profiles~\cite{Vellekoop_PRL_17}. 
+However, despite their promising potential to measure complex WFs, high-resolution WFS have mostly been used, so far, for measuring smooth WF distortions, such as optical aberrations~\cite{naji,Betzig_NM_14} (typically projected onto Zernike polynomials~\cite{Love_AO_97}) or optical-path-length profiles of thin and transparent biological samples~\cite{Bon2009,Berto_OL_17}.
+In contrast, complex and scattered wavefields comprise a high spatial density of phase singularities, namely optical vortices~\cite{Berry_PRSLA_74}, whose separation distance close to nucleation/annihilation centers can be arbitrarily small~\cite{Freund_PRL_94,Dennis_JPA_08, Pascucci_PRL_16}. 
+These singular spiral phase structures are associated with non-conservative gradient fields that are especially challenging for WFS which, unlike interferometric methods, do not provide a direct measurement of the phase, but only measure phase gradients ${\bf g}$ (\emph{i.e.} the transverse component of the local wavevector). 
+The problem of phase-spirals integration has appeared since the early ages of adaptive optics in astronomy~\cite{Fried_AO_92}. In this context, it has been shown that neglecting ``branch-cuts'' significantly degrades adaptive-optics performances~\cite{Tyler_JOSA_2000}. 
+The identification of spiral phase structures in phase gradient maps ${\bf g}$ relies on their Helmholtz decomposition (HD)~\cite{LeBigot_OL_99,Tikhomirova_JOSA_02}. According to Helmholtz's theorem~\cite{Bremer_IEEE_13}, the vector field ${\bf g}$ can be split into an irrotational (curl-free) component and a solenoidal (divergence-free or rotational) component~\cite{Fried_JOSA_98,LeBigot_OL_99,Tyler_JOSA_2000,Senthilkumaran_JOSAA_12}. 
+Most of current integration techniques for WFS basically consist in computing $\nabla\cdot {\bf g}$, 
+so implicitly canceling the solenoidal component of the vector field~\cite{Huang2015}. The vector potential associated with the solenoidal component (so-called ``branch-point'' potential~\cite{Fried_JOSA_98,LeBigot_OL_99}) exhibits peaks at vortex locations, so allowing their localization and reconstruction~\cite{Tyler_JOSA_2000}. However, although WFS have demonstrated their ability to detect and characterize optical vortices~\cite{Fried_AO_92,Dainty_OE_12,Fallah_AO_15}, complete wavefront reconstruction by vortex-gradients integration has given rise to many works considering only simple experimental cases involving a single vortex~\cite{Soldatenkov_OL_07,Dainty_OE_10,Bai_OE_15}, or more vortices but in numerical simulations~\cite{Fried_AO_92,Fried_JOSA_98,Tyler_JOSA_2000,Olivier_JOSA_07,Soldatenkov_OL_07}. 
+We believe that the high density of singular phase structures in complex wavefields has probably been the main obstacle for measuring experimentally complex wavefronts with a WFS. 
+In WF shaping experiments, neglecting a single optical vortex is equivalent to adding a complementary spiral phase mask, which has been described as yielding a two-dimensional Hilbert transform of the field~\cite{Larkin_JOSA_01}. For complex speckled wavefields, such a single spiral transform induces a major change in patterns since resulting in an inversion of intensity contrasts~\cite{Gateau_PRL_17, Gateau_Optica_19}.
+Here, we propose a robust and systematic numerical data-processing technique and demonstrate the experimental quantitative reconstruction of complex wavefronts containing up to $133$ optical vortices with a high-resolution WFS based on a $1.3~{\rm MP}$ camera~\cite{Berto_OL_17}. The camera sensor is thus similar to those typically used by regular WFS based on micro-lens arrays. Wavefront reconstruction was achieved using a segmentation algorithm that optimizes the identification of nearby optical vortices. According to the Stokes' theorem~\cite{Fried_JOSA_98}, segmentation optimizes the computation areas to measure the charge of vortices, based on the integration of the ``branch-point'' potential.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{Figure_105.pdf}
+\caption{ \label{fig:fig1} \textbf{Experimental vortex WF sensing.} A phase profile containing optical vortices~(a) is addressed onto a spatial light modulator (SLM)~(b) illuminated by a colimated laser beam and imaged onto a high-resolution wavefront sensor (WFS) with a telescope ($L_1$, $L_2$). Considering only the irrotational component of the gradient field detected by the WFS leads to an erroneous WF lacking optical vortices~(c), unlike full Helmholtz decomposition (HD) of the gradient field~(d).}
+\end{figure}
+
+To summarize, the problem to rebuild singular WFs is mostly threefold. 
+First, the phase-gradient map ${\bf g}$ measured by a WFS is a non-conservative vector field defined over a multiply connected domain. Direct spatial integration is thus not possible since the integral value depends on the line-path. 
+Second, optical vortices are associated with an infinite phase-gradient ${\bf g}$ at the singularity locations, which appears as critically incompatible with WFS. 
+Third, WFS may imprecisely measure strongly fluctuating gradients around anisotropic vortices, leading to inaccurate vortex characterization, in particular their spiral spectrum~\cite{Torner_OE_05}. Such cases especially appear in random wavefields, wherein pairs of vortices of opposit charges are frequently close to one another~\cite{Freund_PRL_94}. This configuration results in large phase gradients in between vortices and makes the computation of the charges (the circulation of ${\bf g}$) especially delicate. The image segmentation we propose more specifically addresses this latter challenge~\cite{Patent_vortex_2020}.
+
+By way of illustration, a phase pattern exhibiting optical vortices has been designed (Fig.~\ref{fig:fig1}a) and addressed to a phase-only spatial light modulator (SLM) (Hamamatsu, LCOS-X10468-01), illuminated by a spatially filtered, polarized, and collimated laser beam (Fig.~\ref{fig:fig1}b). The SLM allows displaying patterns exhibiting both smooth local WF distortions (such as lenses for the eyes and the face contour for instance) as well as optical vortices of any topological charge (left- and right-handed optical vortices at the tips of the curling mustache). The phase-gradient map is detected with a custom-built high-resolution WFS comprising $\simeq 2\times 10^4$ phase pixels and described in Ref.~\cite{Berto_OL_17}.
+The WFS is conjugated to the SLM with a Galilean telescope in a $4-f$ configuration. 
+The full Helmholtz decomposition (HD) of the gradient vector-field detected by the WFS can be achieved according to:
+\begin{equation}
+{\bf g}=\nabla \varphi_{ir}+\nabla \times {\bf A}
+\label{eq:helmholtz}
+\end{equation}
+so splitting appart the irrotational contribution of the regular phase $\varphi_{ir}$ and the solenoidal contribution of a vector potential ${\bf A}$. The sought-for complete phase profile $\varphi$, whose gradient-field is ${\bf g}$, can then be written as $\varphi=\varphi_{ir}+\varphi_s$. 
+Typical direct numerical integration~\cite{Huang2015} yields the regular WF shown in Fig.~\ref{fig:fig1}c, missing phase singularities because the non-conservative (solenoidal) contribution to the WF-gradient has been ignored. 
+The singular phase contribution $\varphi_s$ (or ``hidden phase''~\cite{Fried_JOSA_98}), is defined over a multiply-connected domain, and satisfies $\nabla\varphi_s=\nabla\times{\bf A}$. Solving this latter equation then allows proper reconstruction of the WF (Fig.~\ref{fig:fig1}d). 
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.8\textwidth]{Figure_208.pdf}
+\caption{ \textbf{Principle of full WF reconstruction.} The divergence and the curl of the phase gradient map ${\bf g}$ (a) are computed to extract the irrotational phase $\varphi_{ir}$ (b) and the solenoidal phase $\varphi_s$ (c). Double space integration of $\nabla\cdot{\bf g}$ yields the irrotational phase (a parabola in (b)). The curl of ${\bf g}$ yields $-\Delta {\bf A}$ where ${\bf A}$ is the potential vector of the Helmholtz decomposition. Image segmentation and weighted centroid computation of the peaks in $-\Delta {\bf A}$ then allows reconstructing a Dirac-like distribution whose convolution by a spiral phase profile yields $\varphi_s$. The complete phase $\varphi$ is finally rebuilt by summing the two components $\varphi_{ir}$ and $\varphi_s$ (d).
+}
+\label{fig:fig2}
+\end{figure*}
+
+We now detail the steps allowing us to achieve rigorous HD (See also Supp. Mat.). 
+%
+First, taking the curl of Eq.~\eqref{eq:helmholtz}, it appears that the potential vector ${\bf A}$ is a solution of the equation: $\nabla\times {\bf g}=\nabla (\nabla\cdot {\bf A})-\Delta {\bf A}$, where "$\Delta =\nabla^2$" denotes the Laplacian operator. Determining the potential vector thus requires fixing a gauge. The Coulomb gauge $\nabla \cdot {\bf A}=0$ is chosen here for obvious convenience~\cite{Fried_JOSA_98,LeBigot_OL_99,Tyler_JOSA_2000}. Since ${\bf g}$ is a two-dimensional vector field (in say $x$, $y$ plane), we may then write ${\bf A}=A_z{\bf e_z}$ without loss of generality. 
+Second, introducing the circular vector $\pmb{\sigma_-}={\bf e_x}-i{\bf e_y}$, simple manipulation of Eq.~\eqref{eq:helmholtz} yields: ${\bf g} \cdot \pmb{\sigma_-} = g_x+ig_y= (\partial_x+i\partial_y)(\varphi_{ir}-iA_z)$. The HD can then be efficiently achieved numerically thanks to a single computation step:
+\begin{equation}
+\varphi_{ir}-iA_z={\cal F}^{-1}\left\{ \frac{{\cal F}\left[{\bf g}\cdot \pmb{\sigma_-}\right]}{i{\bf k}\cdot \pmb{\sigma_-}}\right\}
+\label{eq:integration}
+\end{equation}
+where ${\bf k}$ stands for the two-dimentional coordinate vector in the reciprocal Fourier space.
+The regular phase component $\varphi_{ir}$ is thus recovered the same way as previously proposed~\cite{Huang2015,Bon_AO_12} (Fig.~\ref{fig:fig2}b).
+Third, for complete HD over a bounded domain, the contribution of a so-called additional ``harmonic'' (or translation) term ${\bf h}$ must be considered when the flow through the boundary is not zero~\cite{Bremer_IEEE_13}. This translation term, accounting for a global tip/tilt of the WF, is both curl-free and divergence-free. If computing derivation and integration through discrete Fourier transforms without care, implicit periodic boundary conditions cancels out this term. Here we thus retrieve the term ${\bf h}$ by symmetrizing the gradient field ${\bf g}$ prior to gradient integration (Eq.~\eqref{eq:integration}) as performed in Ref.~\cite{Bon_AO_12}, which conveniently includes ${\bf h}$ in the curl-free component ($\nabla\varphi_{ir}$) of the HD.
+The divergence-free component requires futher processing steps to obtain the singular phase pattern $\varphi_s$ from the potential-vector component $A_z$, as detailed hereafter.
+
+
+
+
+
+\begin{figure*}[ht]
+\centering
+\includegraphics[width=\textwidth]{Figure_306.pdf}%
+\caption{ \textbf{Reconstruction of phase spirals of various topological charges $n$ from $-10$ to $+10$.} The potential vector ${\bf A}$ of a spiral phase of topological charge $1$ is, in theory, the Green function of Laplace equation. In practice, $\Delta A_z$ exhibit peaks at the vortex location (a) whose size depend on the topological charge of the corresponding vortex (in (a), $\Delta A_z$ has been slightly filtered for the sake of readability). After segmentation, the integral computation of this peak yields the expected value $2\pi n$ (with a $3\%$ precision) (b). Phase profiles are then rebuilt~(c).% 
+}
+\label{fig:fig3}
+\end{figure*}
+
+
+A vortex is essentially characterized by the circulation of the vector flow around the singularity, namely its topological charge (or winding number) defined from the circulation of ${\bf g}$ around the vortex. Applying Stokes' theorem to the definition of $n$ yields:
+\begin{equation}
+n = \frac{1}{2\pi}\displaystyle{\oint_{\cal C}} {\bf g}\cdot {\rm d}\pmb{ \ell} =- \frac{1}{2\pi }\displaystyle{\int_{\cal S}} \Delta A_z {\rm d}S
+\label{eq:Stokes}
+\end{equation}
+%
+Reducing the contour length ${\cal C}$ (and so the enclosed surface ${\cal S}$) to zero, it appears that $-A_z/(2\pi n)$ is the Green function of the two-dimensional Laplace equation. In theory, $-\Delta A_z/(2\pi n)$ is thus a Dirac distribution, making it easy to identify optical vortices~\cite{Fried_JOSA_98,LeBigot_OL_99,Fallah_AO_15} (see Fig.~\ref{fig:fig2}c). In principle, the corresponding sought-for singular phase component~$\varphi_s$ could then be simply obtained by convolving $-\Delta A_z/(2\pi n)$ with a single $+1$ optical vortex. However, in practice, rebuilding $\varphi_s$ this way is not possible. The main difficulty is that the experimental $-\Delta A_z/(2\pi n)$ map is not a perfect Dirac distribution (or a single-pixeled non-zero data map) for three main reasons: first, experimental data are affected by noise, second, ${\bf g}$ is filtered by the optical transfer function of the WFS and third, optical vortices are associated with a vanishing intensity that compromises accurate gradient measurement in their vicinity. As detailed in Ref.~\cite{Berto_OL_17}, the optical transfer function of a WFS is especially limited by the non-overlapping condition, which imposes a maximum magnitude for the eigenvalues of the Jacobi matrix of ${\bf g}$ (\emph{i.e.} the Hessian matrix of $\varphi$). As a first consequence, the large curvatures of the phase component $\varphi_r$ (\emph{i.e.} its second derivatives) may be underestimated. As a second consequence, the diverging magnitude of ${\bf g}$ (as $1/r$) prevents its proper estimation at close distances $r$ from the optical vortex location, as well as the estimation of the Hessian coefficients $\partial_x g_y$ and $\partial_y g_x$. Therefore, the measurement of the vector potential $A_z$ is wrong in the vicinity of the vortex center and the obtained peak is not single-pixeled (Fig.~\ref{fig:fig2}c).
+
+In experiments, the precise identification of the location and the charge of optical vortices from the computed $\Delta A_z$-map thus demands an image processing step. Notably, the circulation of ${\bf g}$ in Eq.~\eqref{eq:Stokes} can yield an accurate measure of the vortex charge provided that the contour ${\cal C}$ surrounds the vortex at a large enough distance, so that ${\bf g}$ is small enough to be accurately measured by the WFS. Consequently, although the estimate of $\Delta A_z$ is wrong in the vicinity of the vortex, the peak integral achieved over a large enough surface ${\cal S}$ (enclosed by ${\cal C}$) provides the proper charge, under the Stokes' theorem (Eq.~\eqref{eq:Stokes}). 
+Vortices may be characterized by a simple peak detection algorithm, after regularization of the $\Delta A_z$-map with a low-pass filter~\cite{Tikhomirova_JOSA_02}. However, this solution is not robust since it requires setting manually an integration radius. Such an adjustment of the integration radius is all the more impractical when considering two typical cases: either high densities of optical vortices potentially located at arbitrarily small distances (see Fig.~\ref{fig:fig4}d), or high-order vortices, associated with charge-dependent peak-sizes in the $\Delta A_z$-maps (see Fig.~\ref{fig:fig3}a).
+In contrast, the solution we propose consists in performing an image segmentation that automatically optimizes the integration surface by adjusting it to the size and density of peaks. The main processing steps are summarized in Fig.~\ref{fig:fig2}c (See also Supp. Mat.). 
+The segmentation of the $\Delta A_z$-map is achieved in two substeps. 
+First, $|\Delta A_z|$ is filtered in order to avoid oversegmentation, with a Gaussian filter $G$ whose waist is chosen equal to the WFS resolution~\cite{Berto_OL_17} ($\simeq 8$ camera pixels). 
+Second, a watershed operation (matlab\textsuperscript{\tiny\textregistered}, \emph{Image Processing Toolbox}) is applied to $-G\ast|\Delta A_z|$. Noteworthy, we observed that segmentation of $-G\ast|\Delta A_z|$ rather than $-|G\ast\Delta A_z|$ more efficiently cancels out pairs of vortices too close to be resolved by the WFS. The resulting segments are thus structured according to extrema of $\Delta A_z$, the latters corresponding to positive and negative vortices locations.
+Integration and weighted-centroid computation of the unfiltered $\Delta A_z$ image over each segment yields the charge and the precise location of each vortex. To obtain $\varphi_s$, a Dirac-like vortex map is rebuilt based on the result of the former step, and convolved by a $+1$ spiral phase mask (see Fig.~\ref{fig:fig2}c). Finally, the complete phase reconstruction $\varphi=\varphi_{ir}+\varphi_s$ is computed and wrapped between $0$ and $2\pi$ (Fig.~\ref{fig:fig2}d). 
+Even if the proposed image processing algorithm includes a filtering operation, it is of a very different nature from previously suggested regularization approaches~\cite{Tikhomirova_JOSA_02}, because the filter size is set according to the WFS resolution (to avoid oversegmentation) and not to the vortices to be characterized.
+Oversegmentation was observed to degrade charge-measurement reliability and lengthen the processing time, measured to be $0.54s$ on an Intel\textregistered~Core i5-9400H CPU for a $1.3~{\rm MP}$ map at maximal vortex density. %
+
+\begin{figure}[b!]
+\centering
+\includegraphics[width=\linewidth]{Figure_404.pdf}
+\caption{ \textbf{WF reconstruction of a complex wavefield.} The phase pattern addressed to the SLM (a) is retrieved thanks to the WFS (b) after removal of the first few low-order aberrations (tip/tilt, defocus and astigmatism). The phase difference in (c) clearly demonstrates the efficient wavefront reconstructions, especially the non-conservative part. Remaining smooth distortions in $\varphi_{ir}$ at the boundaries are partly attributed to inaccurate phase modulation by the SLM. The (filtered) $\Delta {\bf A_z}$ map (d) allows identifying the $133$ vortices. The inset shows the optimized segmentation of nearby vortices.}
+\label{fig:fig4}
+\end{figure}
+
+To demonstrate the flexibility of this approach to characterize and rebuild optical vortices of any charge, we addressed phase spirals with charges ranging from $-10$ to $+10$ (Fig.~\ref{fig:fig3}). Because of the diverging phase gradient at the vortex center, the $\Delta A_z$ maps exhibit peaks whose widths increase with the charge $n$ of the vortex (Fig.~\ref{fig:fig3}a). Nevertheless, integration of $-\Delta A_z/(2\pi)$ over segmented regions yields $n$ within a $3\%$ accuracy range (Fig.~\ref{fig:fig3}b). Except for specially designed optical vortex beams carrying fractional charges~\cite{Vasnetsov_JOA_04}, for beams propagating in free space, the topological charge is typically an integer. Rounding the integral to the closest integer value then allows an accurate reconstruction of the optical vortices (Fig.~\ref{fig:fig3}c). 
+Differences between the rebuilt phase profiles and the perfect ones addressed to the SLM are due to the contribution of $\varphi_{ir}$ arising from uniformity imperfections of the SLM.%
+
+Finally, we demonstrate the possibility to retrieve the phase of complex random wavefields with our algorithm. Random wavefields contain a high density of optical vortices of charge $+1$ and $-1$~\cite{Longuet_Higgins_JOSA_60, Berry_PRSLA_74,Freund_1001_correlations}. 
+These vortices exhibit elliptical phase and intensity profiles along the azimuthal coordinate. The non-uniform increase of the phase around the singular point may then alter the ability to detect them if the phase-gradient magnitude is locally too large. Furthermore, the separation distance between vortices may be much smaller than the speckle grain size, especially when close to creation or annihilation events of pairs of vortices~\cite{Freund_PRL_94,Nye_PRSLA_88,Pascucci_PRL_16}. 
+Such a complex wavefield was numerically generated by taking the Fourier transform of a random phase map of finite aperture, and addressed to the SLM (Fig.~\ref{fig:fig4}a). Despite the aforementioned specific difficulties, the WF could be efficiently rebuilt (Fig.~\ref{fig:fig4}b). The accurate reconstruction can be visually appreciated by considering $0$-$2\pi$ equiphase lines, easy to identify with a gray-level colormap as abrupt white-to-black drops. The difference between the rebuilt and the input phase profiles is shown in Fig.~\ref{fig:fig4}c demonstrating the almost perfect reconstruction of the $133$ optical vortices. The six lowest order Zernike aberration modes were removed (piston, tip/tilt, defocus, astigmatisms) for better visualization.
+Again, differences mostly appear on the $\varphi_{ir}$ contribution on the edges of the SLM, where the SLM reliability degrades and where aberrations introduced by the relay telescope are maximum. The dense experimental map of vortices distribution and charges is shown in Fig~\ref{fig:fig4}d.
+
+
+
+Relying on a high-resolution WFS, we could thus propose a systematic and robust approach to rebuild complex wavefields containing a high density of optical vortices. The proposed method first consists in performing a HD of the local wavevector field ${\bf g}$ measured by the WFS. Importantly, the circulation of ${\bf g}/(2\pi)$ over vortices, computed as the integral $\nabla \times {\bf g}$ over large enough surface areas (under the Stokes' theorem), yields the topological charge of vortices. The systematic reconstruction of the optical vortex map relies on an image segmentation that optimizes surface integration and thus, vortex identification. The robustness of phase-spiral-reconstructions further relies on the quantization prior about the detected topological charges. Our method is applicable to any high-resolution WFS or system requiring integrating the local wavevector map.
+Full reconstruction of WFs with a WFS represents an important step to make WFS efficient reference-less spatial-phase detectors and to allow random wavefields characterization, in particular with incoherent light sources. These developments are of interest for applications such as adaptive optics, diffractive tomography, as well as beam shaping behind scattering and complex media. 
+
+%\section*{Supplementary Material}
+%See supplementary material for detailed information about the algorithm and main Matlab\textsuperscript{\tiny\textregistered} code lines for complex wavefront reconstruction
+\section*{Funding Information}
+This work was partially funded by the french Agence Nationale pour la Recherche (SpeckleSTED ANR-18-CE42-0008-01), by the technology transfer office SATT/Erganeo (project 520 and project 600) and by Region île de France (DIM ELICIT, 3-DiPSI).
+\section*{Acknowledgments}
+The authors thank Jacques Boutet de Monvel and Pierre Bon for careful reading of the manuscript, and Benoit Forget for stimulating discussions.
+%\section*{Disclosures}
+%The authors declare no conflicts of interest.
+%The data that support the findings of this study are available from the corresponding author upon reasonable request.
+
+\section*{References}
+
+%Bibliography
+
+%\bibliographystyle{unsrt}
+%\bibliographystyle{ieeetr}
+%\bibliography{bib_WFS_vortexfinal}
+
+\providecommand{\noopsort}[1]{}\providecommand{\singleletter}[1]{#1}%
+\begin{thebibliography}{10}
+
+\bibitem{naji}
+Kai Wang, Wenzhi Sun, Christopher~T. Richie, Brandon~K. Harvey, Eric Betzig,
+  and Na~Ji.
+\newblock {Direct wavefront sensing for high-resolution in vivo imaging in
+  scattering tissue}.
+\newblock {\em Nat. Commun.}, 6(1):1--6, jun 2015.
+
+\bibitem{Betzig_NM_14}
+Kai Wang, Daniel~E. Milkie, Ankur Saxena, Peter Engerer, Thomas Misgeld,
+  Marianne~E. Bronner, Jeff Mumm, and Eric Betzig.
+\newblock Rapid adaptive optical recovery of optimal resolution over large
+  volumes.
+\newblock {\em Nature Methods}, 11(6):625--628, Jun 2014.
+
+\bibitem{Jesacher_BioArxiv_21}
+Molly~A. May, Nicolas Barr{\'e}, Kai~K. Kummer, Michaela Kress, Monika
+  Ritsch-Marte, and Alexander Jesacher.
+\newblock Fast holographic scattering compensation for deep tissue biological
+  imaging.
+\newblock {\em bioRxiv}, 2021.
+
+\bibitem{Choi_PRL_12}
+Youngwoon Choi, Changhyeong Yoon, Moonseok Kim, Taeseok~Daniel Yang,
+  Christopher Fang-Yen, Ramachandra~R. Dasari, Kyoung~Jin Lee, and Wonshik
+  Choi.
+\newblock Scanner-free and wide-field endoscopic imaging by using a single
+  multimode optical fiber.
+\newblock {\em Phys. Rev. Lett.}, 109:203901, Nov 2012.
+
+\bibitem{Moser_OE_15}
+Damien Loterie, Salma Farahi, Ioannis Papadopoulos, Alexandre Goy, Demetri
+  Psaltis, and Christophe Moser.
+\newblock Digital confocal microscopy through a multimode fiber.
+\newblock {\em Opt. Express}, 23(18):23845--23858, Sep 2015.
+
+\bibitem{Lauer_MST_08}
+Matthieu Debailleul, Bertrand Simon, Vincent Georges, Olivier Haeberl{\'{e}},
+  and Vincent Lauer.
+\newblock Holographic microscopy and diffractive microtomography of transparent
+  samples.
+\newblock {\em Measurement Science and Technology}, 19(7):074009, may 2008.
+
+\bibitem{Tyler_JOSA_2000}
+Glenn~A Tyler.
+\newblock {Reconstruction and assessment of the least-squares and slope
+  discrepancy components of the phase}.
+\newblock {\em J. Opt. Soc. Am. A}, 17(10):1828--1839, oct 2000.
+
+\bibitem{Gigan_NC_10}
+S{\'e}bastien Popoff, Geoffroy Lerosey, Mathias Fink, Albert~Claude Boccara,
+  and Sylvain Gigan.
+\newblock Image transmission through an opaque material.
+\newblock {\em Nature Communications}, 1(1):81, Sep 2010.
+
+\bibitem{Yang_NP_15}
+Roarke Horstmeyer, Haowen Ruan, and Changhuei Yang.
+\newblock {Guidestar-assisted wavefront-shaping methods for focusing light into
+  biological tissue}.
+\newblock {\em Nat Photon}, 9(9):563--571, sep 2015.
+
+\bibitem{Cuche1999}
+Etienne Cuche, Fr{\'{e}}d{\'{e}}ric Bevilacqua, and Christian Depeursinge.
+\newblock {Digital holography for quantitative phase-contrast imaging}.
+\newblock {\em Opt. Lett.}, 24(5):291, 1999.
+
+\bibitem{Matoba_DH_review_18}
+Tatsuki Tahara, Xiangyu Quan, Reo Otani, Yasuhiro Takaki, and Osamu Matoba.
+\newblock {Digital holography and its multidimensional imaging applications: a
+  review}.
+\newblock {\em Microscopy}, 67(2):55--67, 02 2018.
+
+\bibitem{Marte_OE_06}
+Stefan Bernet, Alexander Jesacher, Severin F\"{u}rhapter, Christian Maurer, and
+  Monika Ritsch-Marte.
+\newblock Quantitative imaging of complex samples by spiral phase contrast
+  microscopy.
+\newblock {\em Opt. Express}, 14(9):3792--3805, May 2006.
+
+\bibitem{Yang_APL_12}
+Ivo~M. Vellekoop, Meng Cui, and Changhuei Yang.
+\newblock Digital optical phase conjugation of fluorescence in turbid tissue.
+\newblock {\em Applied Physics Letters}, 101(8):081108, 2012.
+
+\bibitem{Marte_OE_14}
+Walter Harm, Clemens Roider, Alexander Jesacher, Stefan Bernet, and Monika
+  Ritsch-Marte.
+\newblock Lensless imaging through thin diffusive media.
+\newblock {\em Opt. Express}, 22(18):22146--22156, Sep 2014.
+
+\bibitem{So_Optica_17}
+Dushan~N. Wadduwage, Vijay~Raj Singh, Heejin Choi, Zahid Yaqoob, Hans
+  Heemskerk, Paul Matsudaira, and Peter T.~C. So.
+\newblock Near-common-path interferometer for imaging fourier-transform
+  spectroscopy in wide-field microscopy.
+\newblock {\em Optica}, 4(5):546--556, May 2017.
+
+\bibitem{Rosen_AOP_19}
+Joseph Rosen, A.~Vijayakumar, Manoj Kumar, Mani~Ratnam Rai, Roy Kelner, Yuval
+  Kashter, Angika Bulbul, and Saswata Mukherjee.
+\newblock Recent advances in self-interference incoherent digital holography.
+\newblock {\em Adv. Opt. Photon.}, 11(1):1--66, Mar 2019.
+
+\bibitem{Paterson_OC_08}
+James Notaras and Carl Paterson.
+\newblock Point-diffraction interferometer for atmospheric adaptive optics in
+  strong scintillation.
+\newblock {\em Optics Communications}, 281(3):360--367, 2008.
+
+\bibitem{Shack2001}
+R~Shack and BC~Platt.
+\newblock {History and principles of Shack-Hartmann wavefront sensing}.
+\newblock {\em Journal of Refractive Surgery}, 17(October 2001):573--577, 2001.
+
+\bibitem{Roddier_AO_88}
+Fran\c{c}ois Roddier.
+\newblock Curvature sensing and compensation: a new concept in adaptive optics.
+\newblock {\em Appl. Opt.}, 27(7):1223--1225, Apr 1988.
+
+\bibitem{Prevedel_NM_14}
+Robert Prevedel, Young-Gyu Yoon, Maximilian Hoffmann, Nikita Pak, Gordon
+  Wetzstein, Saul Kato, Tina Schr{\"o}del, Ramesh Raskar, Manuel Zimmer,
+  Edward~S. Boyden, and Alipasha Vaziri.
+\newblock Simultaneous whole-animal 3d imaging of neuronal activity using
+  light-field microscopy.
+\newblock {\em Nature Methods}, 11(7):727--730, Jul 2014.
+
+\bibitem{Khare_AO_15}
+Manoj~Kumar Sharma, Charu Gaur, Paramasivam Senthilkumaran, and Kedar Khare.
+\newblock Phase imaging using spiral-phase diversity.
+\newblock {\em Appl. Opt.}, 54(13):3979--3985, May 2015.
+
+\bibitem{Fienup_AO_82}
+J.~R. Fienup.
+\newblock Phase retrieval algorithms: a comparison.
+\newblock {\em Appl. Opt.}, 21(15):2758--2769, Aug 1982.
+
+\bibitem{Paganin_PRE_01}
+L.~J. Allen, H.~M.~L. Faulkner, K.~A. Nugent, M.~P. Oxley, and D.~Paganin.
+\newblock Phase retrieval from images in the presence of first-order vortices.
+\newblock {\em Phys. Rev. E}, 63:037602, Feb 2001.
+
+\bibitem{Almoro2006}
+Percival Almoro, Giancarlo Pedrini, and Wolfgang Osten.
+\newblock {Complete wavefront reconstruction using sequential intensity
+  measurements of a volume speckle field}.
+\newblock {\em Appl. Opt.}, 45(34):8596, 2006.
+
+\bibitem{Bon2009}
+Pierre Bon, Guillaume Maucort, Benoit Wattellier, and Serge Monneret.
+\newblock {Quadriwave lateral shearing interferometry for quantitative phase
+  microscopy of living cells}.
+\newblock {\em Opt. Express}, 17(15):13080, 2009.
+
+\bibitem{Berujon_PRL_12}
+S\'ebastien B\'erujon, Eric Ziegler, Roberto Cerbino, and Luca Peverini.
+\newblock Two-dimensional x-ray beam phase sensing.
+\newblock {\em Phys. Rev. Lett.}, 108:158102, Apr 2012.
+
+\bibitem{Berto_OL_17}
+Pascal Berto, Herv\'e Rigneault, and Marc Guillon.
+\newblock {Wavefront sensing with a thin diffuser}.
+\newblock {\em Opt. Lett.}, 42(24), 2017.
+
+\bibitem{Heidrich_OE_17}
+Congli Wang, Xiong Dun, Qiang Fu, and Wolfgang Heidrich.
+\newblock Ultra-high resolution coded wavefront sensor.
+\newblock {\em Opt. Express}, 25(12):13736--13746, Jun 2017.
+
+\bibitem{Heidrich_SR_19}
+Congli Wang, Qiang Fu, Xiong Dun, and Wolfgang Heidrich.
+\newblock Quantitative phase and intensity microscopy using snapshot white
+  light wavefront sensing.
+\newblock {\em Scientific Reports}, 9(1):13795, Sep 2019.
+
+\bibitem{Vellekoop_PRL_17}
+M.~Jang, C.~Yang, and I.~M. Vellekoop.
+\newblock Optical phase conjugation with less than a photon per degree of
+  freedom.
+\newblock {\em Physical review letters}, 118(9):093902--093902, Mar 2017.
+\newblock 28306287[pmid].
+
+\bibitem{Love_AO_97}
+Gordon~D Love.
+\newblock {Wave-front correction and production of Zernike modes with a
+  liquid-crystal spatial light modulator}.
+\newblock {\em Appl. Opt.}, 36(7):1517--1524, mar 1997.
+
+\bibitem{Berry_PRSLA_74}
+J~F Nye and M~V Berry.
+\newblock {Dislocations in Wave Trains}.
+\newblock {\em Proc. Roy. Soc. A: Math., Phys. and Eng. Sci.},
+  336(1605):165--190, 1974.
+
+\bibitem{Freund_PRL_94}
+Natalya Shvartsman and Isaac Freund.
+\newblock Vortices in random wave fields: Nearest neighbor anticorrelations.
+\newblock {\em Phys. Rev. Lett.}, 72:1008--1011, Feb 1994.
+
+\bibitem{Dennis_JPA_08}
+M~V Berry and M~R Dennis.
+\newblock Natural superoscillations in monochromatic waves {inDdimensions}.
+\newblock {\em Journal of Physics A: Mathematical and Theoretical},
+  42(2):022003, dec 2008.
+
+\bibitem{Pascucci_PRL_16}
+Marco Pascucci, Gilles Tessier, Valentina Emiliani, and Marc Guillon.
+\newblock {Superresolution Imaging of Optical Vortices in a Speckle Pattern}.
+\newblock {\em Phys. Rev. Lett.}, 116(9):093904, mar 2016.
+
+\bibitem{Fried_AO_92}
+David~L Fried and Jeffrey~L Vaughn.
+\newblock {Branch cuts in the phase function}.
+\newblock {\em Appl. Opt.}, 31(15):2865--2882, 1992.
+
+\bibitem{LeBigot_OL_99}
+Walter~J Wild and Eric O~Le Bigot.
+\newblock {Rapid and robust detection of branch points from wave-front
+  gradients}.
+\newblock {\em Opt. Lett.}, 24(4):190--192, 1999.
+
+\bibitem{Tikhomirova_JOSA_02}
+Valerii~P. Aksenov and Olga~V. Tikhomirova.
+\newblock Theory of singular-phase reconstruction for an optical speckle field
+  in the turbulent atmosphere.
+\newblock {\em J. Opt. Soc. Am. A}, 19(2):345--355, Feb 2002.
+
+\bibitem{Bremer_IEEE_13}
+Harsh Bhatia, Gregory Norgard, Valerio Pascucci, and Peer-Timo Bremer.
+\newblock {The Helmholtz-Hodge Decomposition-A Survey}.
+\newblock {\em IEEE Trans. Vis Comput Graph}, 19(8):1386--1404, 2013.
+
+\bibitem{Fried_JOSA_98}
+David~L Fried.
+\newblock {Branch point problem in adaptive optics}.
+\newblock {\em J. Opt. Soc. Am. A}, 15(10):2759--2768, oct 1998.
+
+\bibitem{Senthilkumaran_JOSAA_12}
+Monika Bahl and P~Senthilkumaran.
+\newblock {Helmholtz Hodge decomposition of scalar optical fields}.
+\newblock {\em J. Opt. Soc. Am. A}, 29(11):2421--2427, nov 2012.
+
+\bibitem{Huang2015}
+Lei Huang, Mourad Idir, Chao Zuo, Konstantine Kaznatcheev, Lin Zhou, and Anand
+  Asundi.
+\newblock {Comparison of two-dimensional integration methods for shape
+  reconstruction from gradient data}.
+\newblock {\em Optics and Lasers in Engineering}, 64:1--11, 2015.
+
+\bibitem{Dainty_OE_12}
+Kevin Murphy and Chris Dainty.
+\newblock {Comparison of optical vortex detection methods for use with a
+  Shack-Hartmann wavefront sensor}.
+\newblock {\em Opt. Express}, 20(5):4988--5002, 2012.
+
+\bibitem{Fallah_AO_15}
+Abolhasan Mobashery, Morteza Hajimahmoodzadeh, and Hamid~Reza Fallah.
+\newblock Detection and characterization of an optical vortex by the branch
+  point potential method: analytical and simulation results.
+\newblock {\em Appl. Opt.}, 54(15):4732--4739, May 2015.
+
+\bibitem{Soldatenkov_OL_07}
+F~A Starikov, G~G Kochemasov, S~M Kulikov, A~N Manachinsky, N~V Maslov, A~V
+  Ogorodnikov, S~A Sukharev, V~P Aksenov, I~V Izmailov, F~Yu. Kanev, V~V
+  Atuchin, and I~S Soldatenkov.
+\newblock {Wavefront reconstruction of an optical vortex by a Hartmann-Shack
+  sensor}.
+\newblock {\em Opt. Lett.}, 32(16):2291--2293, 2007.
+
+\bibitem{Dainty_OE_10}
+Kevin Murphy, Daniel Burke, Nicholas Devaney, and Chris Dainty.
+\newblock Experimental detection of optical vortices with a shack-hartmann
+  wavefront sensor.
+\newblock {\em Opt. Express}, 18(15):15448--15460, Jul 2010.
+
+\bibitem{Bai_OE_15}
+Jia Luo, Hongxin Huang, Yoshinori Matsui, Haruyoshi Toyoda, Takashi Inoue, and
+  Jian Bai.
+\newblock {High-order optical vortex position detection using a Shack-Hartmann
+  wavefront sensor}.
+\newblock {\em Opt. Express}, 23(7):8706--8719, 2015.
+
+\bibitem{Olivier_JOSA_07}
+Mingzhou Chen, Filippus~S. Roux, and Jan~C. Olivier.
+\newblock Detection of phase singularities with a shack-hartmann wavefront
+  sensor.
+\newblock {\em J. Opt. Soc. Am. A}, 24(7):1994--2002, Jul 2007.
+
+\bibitem{Larkin_JOSA_01}
+Kieran~G Larkin, Donald~J Bone, and Michael~A Oldfield.
+\newblock {Natural demodulation of two-dimensional fringe patterns. I. General
+  background of the spiral phase quadrature transform}.
+\newblock {\em J. Opt. Soc. Am. A}, 18(8):1862--1870, 2001.
+
+\bibitem{Gateau_PRL_17}
+J{\'{e}}r{\^{o}}me Gateau, Herv{\'{e}} Rigneault, and Marc Guillon.
+\newblock {Complementary Speckle Patterns: Deterministic Interchange of
+  Intrinsic Vortices and Maxima through Scattering Media}.
+\newblock {\em Phys. Rev. Lett.}, 118(4):43903, jan 2017.
+
+\bibitem{Gateau_Optica_19}
+J{\'{e}}r{\^{o}}me Gateau, Ferdinand Claude, Gilles Tessier, and Marc Guillon.
+\newblock {Topological transformations of speckles}.
+\newblock {\em Optica}, 6(7):914--920, 2019.
+
+\bibitem{Torner_OE_05}
+Lluis Torner, Juan~P. Torres, and Silvia Carrasco.
+\newblock Digital spiral imaging.
+\newblock {\em Opt. Express}, 13(3):873--881, Feb 2005.
+
+\bibitem{Patent_vortex_2020}
+Marc Guillon and Pascal Berto.
+\newblock Reconstruction of a wavefront of a light beam containing optical
+  vortices, Aug. 2020.
+\newblock Patent application EP20305898.7.
+
+\bibitem{Bon_AO_12}
+Pierre Bon, Serge Monneret, and Benoit Wattellier.
+\newblock {Noniterative boundary-artifact-free wavefront reconstruction from
+  its derivatives}.
+\newblock {\em Appl. Opt.}, 51(23):5698, 2012.
+
+\bibitem{Vasnetsov_JOA_04}
+I~V Basistiy, V~A~Pas ko, V~V Slyusar, M~S Soskin, and M~V Vasnetsov.
+\newblock Synthesis and analysis of optical vortices with fractional
+  topological charges.
+\newblock {\em Journal of Optics A: Pure and Applied Optics}, 6(5):S166--S169,
+  apr 2004.
+
+\bibitem{Longuet_Higgins_JOSA_60}
+M~S Longuet-Higgins.
+\newblock {Reflection and Refraction at a Random Moving Surface. I. Pattern and
+  Paths of Specular Points}.
+\newblock {\em J. Opt. Soc. Am.}, 50(9):838--844, sep 1960.
+
+\bibitem{Freund_1001_correlations}
+Isaac Freund.
+\newblock 1001 correlations in random wave fields.
+\newblock {\em Waves in Random Media}, 8(1):119--158, 1998.
+
+\bibitem{Nye_PRSLA_88}
+J~F Nye, J~V Hajnal, and J~H Hannay.
+\newblock {Phase saddles and dislocations in two-dimensional waves such as the
+  tides}.
+\newblock {\em Proc. Roy. Soc. A: Math., Phys. and Eng. Sci.}, 417(1852):7--20,
+  1988.
+
+\end{thebibliography}
+
+
+
+
+
+
+\end{document}
+

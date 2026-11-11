@@ -1,0 +1,505 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\documentclass[fleqn,10pt,twocolumn]{main}
+
+\usepackage{amsmath, amssymb, amsfonts}
+% \usepackage{amsthm}
+\usepackage{enumitem}
+\setlist[itemize]{left=1.5em}  % 恢复标准缩进
+\usepackage{textcomp} 
+\usepackage{algorithm}
+% \usepackage{algorithmic}
+\usepackage{subfig}
+% \theoremstyle{remark}
+% \newtheorem{remark}{Remark}
+\usepackage{bm}
+\usepackage{algpseudocode}
+
+\newcounter{remark}
+\newenvironment{remark}{%
+  \refstepcounter{remark}\par\noindent\textbf{Remark~\theremark.}\ }{\par}
+
+\makeatletter
+% 修复 \section 等命令未定义的问题
+\renewcommand\section{\@startsection{section}{1}{\z@}
+  {-2.5ex \@plus -1ex \@minus -.2ex}
+  {1.5ex \@plus .2ex}
+  {\centering\normalfont\Large\bfseries}}
+
+\renewcommand\subsection{\@startsection{subsection}{2}{\z@}
+  {-2.25ex \@plus -1ex \@minus -.2ex}
+  {1ex \@plus .2ex}
+  {\normalfont\normalsize\bfseries}}
+
+\renewcommand\subsubsection{\@startsection{subsubsection}{3}{\z@}
+  {-2ex \@plus -1ex \@minus -.2ex}
+  {1ex \@plus .2ex}
+  {\normalfont\normalsize\itshape}}
+\makeatother
+
+\begin{document}
+
+% —— 手工标题区（跨两栏） ——
+\twocolumn[
+  \vspace*{2.0em} % 顶部留白，和类里保持接近
+  \begin{center}
+    {\Large\bfseries Autonomous Detection and Coverage of Unknown Target Areas by Multi-Agent Systems\par}
+    \vspace{0.5em}
+    {\large Jie Song${}^{1\dagger}$, Yang Bai${}^{2}$, Mikhail Svinin${}^{3}$, Naoki Wakamiya${}^{1}$\par}
+    \vspace{0.5em}
+    {\normalsize
+      ${}^{1}$Department of Bioinformatic Engineering, University of Osaka, Osaka, Japan\\
+      (E-mail: j-song@ist.osaka-u.ac.jp; wakamiya@ist.osaka-u.ac.jp)\\
+      ${}^{2}$Graduate School of Advanced Science and Engineering, Hiroshima University, Hiroshima, Japan\\
+      (E-mail: yangbai@hiroshima-u.ac.jp)\\
+      ${}^{3}$Graduate School of Information Science and Engineering, Ritsumeikan University, Osaka, Japan\\
+      (E-mail: svinin@fc.ritsumei.ac.jp)
+    \par}
+  \end{center}
+
+  % 摘要与关键词（仍在全宽块里）
+  \noindent\vspace{1.0em}{\normalsize\textbf{Abstract:} \normalfont
+  This paper presents a novel coverage control algorithm for multi-agent systems, where each agent has no prior knowledge of the specific region to be covered. The proposed method enables agents to autonomously detect the target area and collaboratively achieve full coverage. Once an agent detects a part of the target region within its sensor range, a dynamically constructed density function is generated to attract nearby agents. By integrating this density-driven mechanism with Centroidal Voronoi Tessellation (CVT), the agents are guided to achieve optimal spatial distribution. Additionally, Control Barrier Functions (CBFs) are employed to ensure collision avoidance and maintain non-overlapping sensor coverage, enhancing both safety and efficiency. Simulation results verify that agents can independently locate and effectively cover the target area.\par}
+
+  \noindent\vspace{1.0em}{\normalsize\textbf{Keywords:} \normalfont
+  multi-agent systems; coverage control\par}
+
+  \vspace{1.4em} % 标题区与正文间距，和类里 \vskip 1.4em 对齐
+]
+
+% 可选：第一页页眉样式（类里本来是 titlepagestyle）
+% \thispagestyle{plain}  % 或者如果类里面有 \ps@titlepagestyle 可以用它
+\pagestyle{headings}    % 和你原设置一致，放在标题区之后
+
+
+%-----------------------------------------------------------------------
+
+\section{Introduction}
+In recent years, the problem of multi-agent coverage has attracted increasing attention, particularly in applications such as cooperative transportation and environment monitoring \cite{Bai2022,Shibata2021,Chen2024,Bulla2021,Sacco2021,Dobrokvashina2021,Bai_23,Guo2021,Liu2025,Bai2018,Bai2025,magid2022asia}. Compared to single-agent systems, multi-agent systems offer higher efficiency and greater robustness, making them more suitable for complex and dynamic environments. However, many existing multi-agent coverage algorithms assume that the target area is known beforehand. Each agent is given prior information about the region, including its shape and location. This strong dependency on prior knowledge limits the flexibility and applicability of these algorithms in real-world scenarios. Therefore, this paper aims to develop a new multi-agent coverage algorithm for unknown environments. In such environments, agents need to explore and adapt to the target area without prior information.
+
+Several studies have explored the multi-agent coverage problem in unknown environments, aiming to improve system autonomy and adaptability. For instance, Shi et al. \cite{Shi2018} proposed a cooperative sweep coverage algorithm capable of handling unknown and irregular-shaped areas. Their method utilizes virtual elastic forces to maintain formation and ensure full coverage. Similarly, Rastgoftar \cite{Rastgoftar2025} introduced a decentralized deep learning-based control architecture that enables a multi-agent team to cover an unknown target without relying on prior map information. These approaches demonstrate the potential of deploying multiple agents in unknown and unstructured environments.
+
+However, many existing algorithms are primarily designed for single and continuous target regions. For example, the method proposed in \cite{Xiao2020} transforms the continuous coverage process into a discrete traversal of a single target area, while the dynamic reinforcement learning scheme in \cite{Cao2024} focuses on tracking and covering one dynamic region in a completely unknown environment. Consequently, these algorithms lack the ability to concurrently address multiple disconnected or spatially scattered target areas. This limitation significantly reduces their applicability in complex real-world scenarios where multiple, spatially separated regions need to be monitored or searched simultaneously.
+
+To address the challenge of covering multiple disconnected target areas in unknown environments, researchers have increasingly turned to heuristic-based methods \cite{Pan2022,Shao2024,Shao2025,Zhang2024,Zhang2025}. These methods offer flexible and computationally efficient solutions by employing domain knowledge, empirical strategies, or approximation techniques to guide decision-making in complex and uncertain settings. Unlike model-based approaches that require full environmental knowledge, heuristic-based methods rely on locally available information to generate effective, if not optimal, coverage behaviors.
+
+One of the most prominent heuristic strategies is the artificial potential fields (APF), which models the environment as a synthetic field comprising attractive forces from target areas and repulsive forces from obstacles \cite{Pan2019,Matoui2019,Tallamraju2018,Hamed2022,Lu2025}. Agents move in response to the gradient of the potential field, enabling real-time adaptation to environmental changes. Zheng et al. \cite{Zheng2015} introduced a hybrid approach combining hierarchical reinforcement learning with artificial potential fields to improve convergence speed and coverage performance. Similarly, S. Ivić et al. \cite{Ivic2016} developed an ergodic control strategy embedded in a potential field framework to enable agents to cooperatively explore and cover dynamic and unknown regions.
+
+Other studies have extended this concept further. Qin et al. \cite{Qin2023} employed a region-division strategy combined with Dijkstra-based heuristics to improve path smoothness and subregion coherence in multi-agent coverage path planning. Meanwhile, in the context of pursuit-evasion games, David Wiman and David Lindgren \cite{Wiman2025} used frontier-based exploration. This heuristic method encourages agents to move toward unknown boundaries to track adversarial intruders in unknown terrain. Similarly, F. Gul et al. \cite{Gul2022} explored exploration and coverage through a centralized strategy using geodesic partitioning to efficiently allocate tasks across agents. Despite their effectiveness in large-scale and real-time scenarios, heuristic-based methods such as PFM often suffer from a key limitation: the lack of global optimality guarantees. Agents may become trapped in local minima due to conflicting virtual forces, particularly in cluttered or narrow environments. 
+
+To enable efficient multi-agent coverage of multiple unknown target areas while avoiding local minima, we propose a novel approach that integrates CVT with a density function. By continuously updating the density distribution through a centralized controller based on sensor-detected information and iteratively adjusting agent positions via CVT, our method ensures that each agent converges toward an optimal coverage configuration. This mechanism allows the team to identify and collectively cover all target regions, even when their number, shape, and location are initially unknown. In addition, we incorporate CBFs into the control framework to ensure collision avoidance among agents during the coverage process.
+
+This paper is organized as follows: In Section~\ref{Preliminary}, some preliminaries about CVT are introduced. Section~\ref{Controller design} presents the controller design, including the integration of CVT and the construction of the density function. Simulation results demonstrating the effectiveness of the proposed method are provided in Section~\ref{simulation}, and conclusions are drawn in Section~\ref{conclusion}.
+
+\section{Preliminary} \label{Preliminary}
+To address the problem of covering unknown target areas, we propose a multi-agent control strategy that enables cooperative coverage using multiple agents. Each agent is modeled as a mass point and is capable of perceiving a limited portion of the target areas. A CVT-based method is employed as the core technique to guide the coverage process.
+
+ % Let $\boldsymbol{p}_i \in \mathcal{D},\, i = 1, \ldots, N$ denote the position of the $i$-th agent, and let $\boldsymbol{p} = \{ \boldsymbol{p}_i \}$, where $\{\cdot\}$ denotes a collection of position vectors.
+
+In this study, we define $\mathcal{D} \subset \mathbb{R}^2$ as a two-dimensional domain representing the target areas to be covered by $N$ agents. Let \(\mathcal{N} = \{1, \dots, N\}\) be the index set of all agents. Let $\boldsymbol{p} = \{ \boldsymbol{p}_i \in \mathbb{R}^2 \mid i \in \mathcal{N} \}$ denote the collection of position vectors of all $N$ agents. A point $\boldsymbol{q} \in \mathcal{D}$ represents an arbitrary location within the target areas. The Voronoi tessellation over the domain is given by:
+\begin{equation}\label{voronoi}
+V_{i}\left ( \boldsymbol{p} \right )= \left \{ \boldsymbol{q} \in \mathcal{D} \mid \left \| \boldsymbol{q} - \boldsymbol{p}_i \right \| \leq \left \| \boldsymbol{q} - \boldsymbol{p}_j \right \|,\, \forall j \neq i \right \},
+\end{equation}
+
+ensuring that each agent $i$ is associated with a specific Voronoi subregion $V_i$.
+
+To evaluate the effectiveness of the agent distribution, we define the locational cost function as:
+\begin{equation}\label{H0}
+\mathcal{H}(\boldsymbol{p}, t) = \sum_{i=1}^{N} \int_{V_i} \left \| \boldsymbol{q} - \boldsymbol{p}_i \right \|^2 \, \phi(\boldsymbol{q}, t) \, \mathrm{d} \boldsymbol{q},
+\end{equation}
+where $\phi(\boldsymbol{q}, t)$ is a density function, assumed to be strictly positive and bounded over the domain $\mathcal{D}$. This function represents the relative importance of different spatial locations and guides agents to concentrate in higher-density regions.
+
+To achieve an optimal coverage distribution within the domain $\mathcal{D}$ at any time $t$, the agent positions $\boldsymbol{p}$ should be adjusted to minimize the locational cost function $\mathcal{H}$. According to \cite{Cortes_04}, a necessary condition for optimality is:
+\begin{equation} \label{E6}
+\boldsymbol{p}_i(t) = \boldsymbol{c}_i(\boldsymbol{p}, t), \quad i \in \mathcal{N},
+\end{equation}
+where $\boldsymbol{c}_i$ is the centroid of the Voronoi cell $V_i$ computed with respect to the density function as defined in \cite[Eq.~(3)]{Bai2022}.
+
+\begin{remark}
+\label{optimal}
+When condition~\eqref{E6} is satisfied, the multi-agent system reaches a locally optimal configuration, where each agent is located at the centroid of its corresponding Voronoi cell. This configuration defines a CVT, which minimizes the coverage cost function under the given density distribution.
+\end{remark}
+
+\section{Coverage strategy and controller design} \label{Controller design}
+In this section, we present the overall framework for multi-agent detection and coverage. First, a density-based strategy is introduced to guide agents toward the detected areas of interest. Then, a composite controller integrating CVT and CBF is developed to ensure both efficient coverage and collision avoidance.
+
+\subsection{Target area detection and coverage}
+The problem of detecting and covering unknown regions can be formulated as a coverage control problem, in which multiple agents are deployed over a workspace to achieve effective spatial coverage. Unlike conventional coverage settings, a distinguishing feature of this scenario is that the spatial distribution of high-priority regions is initially unknown to the agents.
+
+To address this challenge, we propose a new a time-varying density function, denoted by $\phi(\boldsymbol{q}, t)$. By employing the newly designed density function, agents can adaptively adjust their estimation of important regions and ultimately achieve optimal coverage of the entire area.
+
+The form of $\phi(\boldsymbol{q}, t)$ is as follows
+\begin{align}
+\label{eq6}
+\phi(\boldsymbol{q}, t) =\ & \phi_0 + \sum_{i=1}^{N} \rho_i(t) \frac{\omega_i}{2\pi \sigma_{x_i} \sigma_{y_i}} \notag \\
+& \exp\left( -\frac{1}{2} \left( 
+\frac{(q_x - \mu_{x_i})^2}{\sigma_{x_i}^2} + 
+\frac{(q_y - \mu_{y_i})^2}{\sigma_{y_i}^2} 
+\right) \right),
+\end{align}
+where $\phi_{0} > 0$ is a small positive constant that ensures the density function remains strictly positive throughout the domain. For each agent $i \in \mathcal{N}$, the parameters $\omega_i > 0$, $\sigma_{x_i} > 0$, and $\sigma_{y_i} > 0$ represent the weight and the standard deviations of the $i$-th Gaussian component along the $q_x$ and $q_y$ axes, respectively. The mean values $\mu_{x_i}$ and $\mu_{y_i}$ specify the center of the $i$-th Gaussian component, typically corresponding to the current position of agent $i$. The vector $\boldsymbol{q} = [q_x, q_y]^{\top}$ denotes a generic point in the domain $\mathcal{D}$. In practice, once an important region is identified through sensor detection, $\boldsymbol{q}$ represents any candidate point within this region when evaluating the density function and computing Voronoi centroids. The coordinates $(q_x, q_y)$ are sampled from the detected region during numerical integration, and the density peaks are centered at $(\mu_{x_i}, \mu_{y_i})$ corresponding to the positions of agents that have detected the target area. This formulation allows the CVT computation to distribute agents according to the actual shape and location of the detected region, rather than forcing them to converge to its geometric center, thereby supporting target regions of arbitrary shapes.
+
+The binary switching variable $\rho_i(t) \in \{0, 1\}$ indicates whether agent $i$ currently detects a significant region. It is defined as
+% \begin{equation}
+% 	\rho_i(t) =
+% 	\begin{cases}
+% 		1, & \text{if agent $i$ detects a significant region at time $t$}, \\
+% 		0, & \text{otherwise},
+% 	\end{cases}
+% \end{equation}
+\begin{equation}
+\label{eq:rho}
+\rho_i(t) =
+\begin{cases}
+1, & \text{if agent $i$ detects a target area at time $t$}, \\
+0, & \text{otherwise}.
+\end{cases}
+\end{equation}
+This detection-dependent activation mechanism dynamically modulates the density function, enabling the coverage control scheme to adapt to the evolving distribution of high-priority regions.
+
+
+With the newly designed event-triggered density function, the overall procedure unfolds as follows, from the initial deployment of agents to the final coverage configuration.
+
+At the beginning, agents are uniformly distributed across the workspace, without any prior knowledge of the location or shape of the target regions. If no agent detects a target within its sensor range, the agents gradually increase their mutual distances. This results in a more dispersed formation, enabling the team to explore a wider area more efficiently.
+
+When an agent detects a target area within its sensor range, the detection status $\rho_i(t)$ in Equation ~\eqref{eq:rho} is set to $1$, which updates $\phi(\boldsymbol{q}, t)$ defined in Equation (4). Each peak of the density corresponds to the current position of an agent that detects a target area.
+
+Using the updated density, a Voronoi tessellation is calculated as in Equation (1). Each agent then computes the centroid of its Voronoi region with respect to the current density, following Equation (4). The goal is to minimize the locational cost function defined in Equation (2), which leads agents to move toward regions with higher density.
+
+As agents move toward their respective centroids, more agents may detect target regions. New peaks are added to the density function at their positions, resulting in a multimodal distribution that reflects the evolving detection landscape. Through this iterative process, the system gradually converges to a configuration that ensures comprehensive coverage of all significant regions.
+
+\subsection{Controller design}
+
+This subsection presents the detailed formulation of the proposed composite motion controller, which combines CVT-based positioning with CBF-based collision avoidance.
+
+To achieve effective and safe coverage of the target areas, we design a composite motion controller that combines CVT-based optimal positioning with a CBF to ensure inter-agent collision avoidance.
+
+Each agent is modeled as a first-order integrator:
+\begin{equation}\label{dynamics}
+    \dot{\boldsymbol{p}}_{i}(t) = \boldsymbol{u}_{i}(t),
+\end{equation}
+where $\boldsymbol{u}_i \in \mathbb{R}^2$ denotes the control input of agent $i$.
+
+Following the CVT principle, the nominal control input is defined as:
+\begin{equation}
+    \boldsymbol{u}_{i}^{\mathrm{nom}}(t) = -k(\boldsymbol{p}_{i}(t) - \boldsymbol{c}_{i}(t)),
+\end{equation}
+where $\boldsymbol{c}_i(t)$ is the centroid of the Voronoi region $V_i$ computed with respect to a density function $\phi(\boldsymbol{q}, t)$~\cite{Cortes_04}, and $k > 0$ is a positive gain.
+
+
+To guarantee safety, we incorporate CBFs into the control design. For each pair of agents $(i,j)\in \mathcal{N} \times \mathcal{N}$, $i\ne j$, we define the following safety set:
+% \begin{equation}
+% \begin{aligned}
+%    &\mathcal{C}_{ij}(t)\\ &= \left\{ i\! \in\! \mathcal{N}\!  \,\middle|\, \|\boldsymbol{p}_i(t)\! -\! \boldsymbol{p}_j(t)\|^2\! -\! d_{\mathrm{min}}^2 \!\geq \! 0 \text{ for some } j\ne i \right\}.
+% \end{aligned}
+% \end{equation}
+\begin{equation}
+\begin{aligned}
+\mathcal{C}_{ij}(t) = \bigg\{\, i \in \mathcal{N} \ \bigg|\ 
+& \|\boldsymbol{p}_i(t) - \boldsymbol{p}_j(t)\|^2 
+  - d_{\mathrm{min}}^2 \geq 0,  
+\\
+& \qquad\qquad\text{for some } j \ne i \,\bigg\}
+\end{aligned}
+\end{equation}
+where $d_{\mathrm{min}}\in \mathbb{R}$ is the minimum safety distance.
+
+A zeroing CBF $h_{ij}(t) = \|\boldsymbol{p}_i(t) - \boldsymbol{p}_j(t)\|^2 - d_{\mathrm{min}}^2$  (see~\cite{Ames2017}) ensures that the constraint $h_{ij}(t) \geq 0$ is forward invariant if the following condition is satisfied:
+\begin{equation}
+    \dot{h}_{ij}(t) + \gamma h_{ij}(t) \geq 0,
+\end{equation}
+ for all $t\geq 0$, where $\gamma > 0$ is a positive constant. This condition is enforced by solving a quadratic program (QP) at each time step:
+% \begin{align}
+%     \min_{\boldsymbol{u}_i} \quad & \|\boldsymbol{u}_i(t) - \boldsymbol{u}_i^{\mathrm{nom}}(t)\|^2 \\
+%     \text{s.t.} \quad & \frac{\partial h_{ij}(t)}{\partial \boldsymbol{p}_i(t)} \boldsymbol{u}_i(t) + \frac{\partial h_{ij}(t)}{\partial \boldsymbol{p}_j(t)} \boldsymbol{u}_j(t) + \gamma h_{ij}(t) \geq 0, \text{ for all } (i,j)\in\mathcal{N}\times \mathcal{N}, i\ne j.
+% \end{align}
+
+\begin{align}
+    \min_{\boldsymbol{u}_i} \quad & \|\boldsymbol{u}_i(t) - \boldsymbol{u}_i^{\mathrm{nom}}(t)\|^2 \notag \\
+    \text{s.t.} \quad & \frac{\partial h_{ij}(t)}{\partial \boldsymbol{p}_i(t)} \boldsymbol{u}_i(t) 
+    + \frac{\partial h_{ij}(t)}{\partial \boldsymbol{p}_j(t)} \boldsymbol{u}_j(t) \notag  + \gamma h_{ij}(t)\\
+    & \geq 0, \quad
+    \text{for all } (i,j) \in \mathcal{N} \times \mathcal{N},\ i \ne j.
+\end{align}
+Through this formulation, each agent moves toward its Voronoi centroid to minimize the locational cost while guaranteeing collision-free motion with respect to its neighbors. As agents dynamically update their positions and sensing information, the Voronoi partitions and density functions evolve, enabling safe coverage of the AOI.
+
+Overall, this composite controller integrates coverage optimization via CVT with formal safety guarantees through CBFs, forming the complete control law used in our multi-agent coverage strategy.
+
+
+\section{Simulation results}\label{simulation}
+\begin{figure}[htbp]
+    \centering
+    \subfloat[]{\includegraphics[width=0.50\textwidth]{2_aoi_FIG_1.png}}
+    \hfill
+    \subfloat[]{\includegraphics[width=0.50\textwidth]{2_aoi_FIG_18.png}}\\
+    \subfloat[]{\includegraphics[width=0.50\textwidth]{2_aoi_FIG_47.png}}
+    \hfill
+    \subfloat[]{\includegraphics[width=0.50\textwidth]{2_aoi_FIG_63.png}}
+    \caption{Snapshots of the simulation process at different time steps: (a) $t = 0\,\mathrm{s}$, (b) $t = 15\,\mathrm{s}$, (c) $t = 26\,\mathrm{s}$, and (d) $t = 64\,\mathrm{s}$.
+}
+    \label{fig:coverage_snapshots_2AOI}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.45\textwidth]{2_aoi_minimum_distance_over_time.png}
+    \caption{Minimum pairwise distance between agents over time.}
+    \label{fig:minimum_distance_2AOI}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.45\textwidth]{2_aoi_agent_trajectories.png}
+    \caption{Complete agent trajectories during the simulation.}
+    \label{fig:agent_paths_2AOI}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \subfloat[]{\includegraphics[width=0.50\textwidth]{3_aoi_FIG_1.png}}
+    \hfill
+    \subfloat[]{\includegraphics[width=0.50\textwidth]{3_aoi_FIG_18.png}}\\
+    \subfloat[]{\includegraphics[width=0.50\textwidth]{3_aoi_FIG_33.png}}
+    \hfill
+    \subfloat[]{\includegraphics[width=0.50\textwidth]{3_aoi_FIG_63.png}}
+    \caption{Snapshots of the simulation process at different time steps: (a) $t = 0\,\mathrm{s}$, (b) $t = 12\,\mathrm{s}$, (c) $t = 32\,\mathrm{s}$, and (d) $t = 64\,\mathrm{s}$.
+}
+    \label{fig:coverage_snapshots_3AOI}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.45\textwidth]{3_aoi_minimum_distance_over_time.png}
+    \caption{Minimum pairwise distance between agents over time.}
+    \label{fig:minimum_distance_3AOI}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.45\textwidth]{3_aoi_agent_trajectories.png}
+    \caption{Complete agent trajectories during the simulation.}
+    \label{fig:agent_paths_3AOI}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \subfloat[]{\includegraphics[width=0.50\textwidth]{3_aoi_dif_size_FIG_1.png}}
+    \hfill
+    \subfloat[]{\includegraphics[width=0.50\textwidth]{3_aoi_dif_size_FIG_12.png}}\\
+    \subfloat[]{\includegraphics[width=0.50\textwidth]{3_aoi_dif_size_FIG_24.png}}
+    \hfill
+    \subfloat[]{\includegraphics[width=0.50\textwidth]{3_aoi_dif_size_FIG_63.png}}
+    \caption{Snapshots of the simulation process at different time steps: (a) $t = 0\,\mathrm{s}$, (b) $t = 14\,\mathrm{s}$, (c) $t = 23\,\mathrm{s}$, and (d) $t = 64\,\mathrm{s}$.
+}
+    \label{fig:coverage_snapshots_3AOI_dif}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.45\textwidth]{3_aoi_dif_size_minimum_distance_over_time.png}
+    \caption{Minimum pairwise distance between agents over time.}
+    \label{fig:minimum_distance_3AOI_dif}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.45\textwidth]{3_aoi_dif_size_agent_trajectories.png}
+    \caption{Complete agent trajectories during the simulation.}
+    \label{fig:agent_paths_3AOI_dif}
+\end{figure}
+
+    To validate the feasibility of the proposed algorithm, we developed a simulation using Python. In the simulation environment, red square regions are designated as target areas to be covered by the multi-agent system. Initially, $N=10$ agents are uniformly arranged in a 2-row by 5-column grid, distributed across a gray workspace area without any prior knowledge of the target areas’ locations. Since our method adopts a centralized control architecture, all control commands are generated by a centralized controller and transmitted to each agent. Therefore, the total number of agents in the system is known in advance. The black dots in the figures represent the agents, and the red circles surrounding them indicate their sensor ranges. The black lines represent the boundaries of the Voronoi cells. The left panel of each figure shows the agents' positions and their sensing ranges, as illustrated in Fig.~\ref{fig:coverage_snapshots_2AOI}(a).
+    
+    Once an agent detects a target area within its sensing range, it generates a density function centered at the detected location to attract nearby agents, as illustrated in Fig.~\ref{fig:coverage_snapshots_2AOI}(b). As more agents are drawn in and detect one of the target areas, they generate additional density functions at their respective detection points. These density functions are superimposed, reinforcing the attraction toward each target, as shown in Fig.~\ref{fig:coverage_snapshots_2AOI}(c). The right panel in each figure visualizes the density function generated based on the agents’ sensor detections.
+    
+    
+    The simulation concludes when all agents are able to sense at least one of the two target areas. At this point, CVT ensures that the agents are evenly distributed across the two square target areas, as shown in Fig.~\ref{fig:coverage_snapshots_2AOI}(d), while CBF maintains safe distances between agents with a minimum safety radius of $d_{\min} = 0.64$~m.
+    
+    The results confirm that the proposed method can successfully guide all agents toward spatially separated unknown regions and achieve uniform coverage. The density-driven CVT mechanism plays a key role in attracting agents even when only partial information is initially available. Meanwhile, Fig.~\ref{fig:minimum_distance_2AOI} verifies that the CBF effectively prevents collisions, as the minimum pairwise distance consistently remains above the safety threshold. The full trajectories shown in Fig.~\ref{fig:agent_paths_2AOI} demonstrate coordinated and smooth convergence without oscillation or redundant clustering, highlighting the robustness and scalability of the method for covering multiple disjoint areas.
+
+To further validate the feasibility of the proposed algorithm, we extended the simulation by increasing the number of target areas to three and the number of agents to $N=15$. In this setup, three red square regions are defined as target areas that need to be covered by the multi-agent system. At the initial stage, all agents are arranged in the shape of a regular equilateral triangle within the workspace, without any prior knowledge of the target areas’ positions. The black dots represent the agents, and the red circles surrounding them indicate their sensor ranges, as shown in Fig.\ref{fig:coverage_snapshots_3AOI}(a).
+
+When an agent detects one of the target areas within its sensor range, it generates a density function centered at the detection point to attract nearby agents, as shown in Fig.\ref{fig:coverage_snapshots_3AOI}(b). As more agents approach and detect the target areas, they generate additional density functions, which are superimposed and enhance the overall attraction to each target area, as illustrated in Fig.\ref{fig:coverage_snapshots_3AOI}(c).
+
+The simulation concludes when all agents are able to sense at least one of the three target areas within their sensor ranges. At this point, CVT ensures that the agents are evenly distributed across the three target areas, as shown in Fig.~\ref{fig:coverage_snapshots_3AOI}(d). The CBF continues to maintain safe distances between agents with a minimum safety radius of $d_{\min} = 0.52$~m, preventing overlaps in their sensor ranges and ensuring collision-free motion.
+
+Fig.\ref{fig:minimum_distance_3AOI} shows the minimum pairwise distance between agents over time (blue line), alongside the safety threshold defined by the CBF (red dashed line). The persistent separation between the two curves confirms the effectiveness of the safety mechanism. Furthermore, Fig.\ref{fig:agent_paths_3AOI} illustrates the complete trajectories of all agents, validating the proposed method’s ability to guide the swarm toward all three target areas in a distributed, efficient, and safe manner.
+
+This scenario demonstrates that the proposed centrally controlled method scales effectively with both the number of agents and the number of unknown target areas. The agents self-organize into three coverage groups through globally coordinated behavior, even without predefined region segmentation. Fig.~\ref{fig:minimum_distance_3AOI} confirms the safety guarantee enforced by the CBF, while Fig.~\ref{fig:agent_paths_3AOI} illustrates smooth and efficient motion patterns. The absence of redundant clustering or idle agents further validates the robustness and effectiveness of our centralized strategy in complex multi-target coverage tasks.
+
+To further examine the adaptability of the algorithm to heterogeneous coverage demands, we conducted an additional simulation involving $N=15$ agents and three target areas of different sizes. As shown in Fig.~\ref{fig:coverage_snapshots_3AOI_dif}(a), all agents begin by dispersing from an equilateral triangle formation without any prior knowledge of the target areas’ locations.
+
+As agents detect target areas of different sizes, the resulting density functions naturally reflect their relative importance. Larger targets generate more overlapping density peaks, thereby attracting more agents (Fig.~\ref{fig:coverage_snapshots_3AOI_dif}(b,c)). Eventually, agents redistribute in proportion to the area size, as shown in Fig.~\ref{fig:coverage_snapshots_3AOI_dif}(d), with the largest region attracting 6 agents, the smallest attracting 4, and the remaining attracting 5.
+
+These results demonstrate the algorithm’s capacity for size-aware distribution without requiring explicit knowledge of target geometry. The density function implicitly encodes task demand, while CVT ensures efficient partitioning, and CBF maintains safety constraints with a minimum safety radius of $d_{\min} = 0.52$~m. The safety performance is further validated by the minimum distance profile in Fig.~\ref{fig:minimum_distance_3AOI_dif}, which remains consistently above the threshold. The agent trajectories in Fig.~\ref{fig:agent_paths_3AOI_dif} highlight decentralized and balanced convergence behavior across multiple scales.
+
+% To validate the feasibility of the proposed algorithm, we developed a simulation using Python. In the simulation environment, two green square regions are designated as target areas to be covered by the multi-agent system. Initially, 10 agents are uniformly arranged in a 2-row by 5-column grid across the workspace, without any prior knowledge of the target areas’ locations. The black dots in the figures represent the agents, and the red circles surrounding them indicate their sensor ranges, as shown in Fig.\ref{fig:coverage_snapshots_2AOI}(a).
+
+% When an agent detects a target area within its sensor range, it generates a density function centered at the detected location to attract nearby agents, as illustrated in Fig.\ref{fig:coverage_snapshots_2AOI}(b). As more agents are drawn in and detect one of the target areas, they generate additional density functions at their respective detection points. These density functions are superimposed, reinforcing the attraction toward each target, as shown in Fig.\ref{fig:coverage_snapshots_2AOI}(c).
+
+% The simulation concludes when all agents are able to sense at least one of the two target areas within their sensor ranges. At this point, CVT ensures that the agents are evenly distributed over the two square target areas, as shown in Fig.\ref{fig:coverage_snapshots_2AOI}(d). Meanwhile, the CBF maintains safe distances between agents, preventing any overlap in their sensor ranges. This enables efficient and non-redundant coverage of both target areas while ensuring collision-free motion.
+
+% Fig.\ref{fig:minimum_distance_2AOI} shows the minimum pairwise distance between agents over time (blue line), along with the safety threshold enforced by the CBF (red dashed line). The consistent separation between the blue and red lines confirms that sensor overlaps and collisions are successfully avoided. Furthermore, Fig.\ref{fig:agent_paths_2AOI} presents the complete trajectories of all agents throughout the simulation, demonstrating the proposed method’s effectiveness in guiding agents to both target areas in a distributed and safe manner.
+
+% To further validate the feasibility of the proposed algorithm, we extended the simulation by increasing the number of target areas to three and the number of agents to fifteen. In this setup, three green square regions are defined as target areas that need to be covered by the multi-agent system. At the initial stage, all agents are arranged in the shape of a regular equilateral triangle within the workspace, without any prior knowledge of the target areas’ positions. The black dots represent the agents, and the red circles surrounding them indicate their sensor ranges, as shown in Fig.\ref{fig:coverage_snapshots_3AOI}(a).
+
+% When an agent detects one of the target areas within its sensor range, it generates a density function centered at the detection point to attract nearby agents, as shown in Fig.\ref{fig:coverage_snapshots_3AOI}(b). As more agents approach and detect the target areas, they generate additional density functions, which are superimposed and enhance the overall attraction to each target area, as illustrated in Fig.\ref{fig:coverage_snapshots_3AOI}(c).
+
+% The simulation concludes when all agents are able to sense at least one of the three target areas within their sensor ranges. At this point, CVT ensures that the agents are evenly distributed across the three target areas, as shown in Fig.\ref{fig:coverage_snapshots_3AOI}(d). The Control Barrier Function (CBF) continues to maintain safe distances between agents, preventing overlaps in their sensor ranges and ensuring collision-free motion.
+
+% Fig.\ref{fig:minimum_distance_3AOI} shows the minimum pairwise distance between agents over time (blue line), alongside the safety threshold defined by the CBF (red dashed line). The persistent separation between the two curves confirms the effectiveness of the safety mechanism. Furthermore, Fig.\ref{fig:agent_paths_3AOI} illustrates the complete trajectories of all agents, validating the proposed method’s ability to guide the swarm toward all three target areas in a distributed, efficient, and safe manner.
+
+% To further examine the adaptability of our algorithm to target areas of varying sizes, we conducted an additional simulation in which three square target areas of different sizes were placed within the workspace. As shown in Fig.\ref{fig:coverage_snapshots_3AOI_dif}(a), at the initial stage—before any agent detects a target area within its sensor range—the entire group of agents begins to disperse outward in a coordinated counterclockwise rotation from their initial equilateral triangular formation.
+
+% Once the agents begin detecting the target areas, density functions are generated at the detection points, attracting nearby agents toward the respective targets, as depicted in Fig.\ref{fig:coverage_snapshots_3AOI_dif}(b). As detection continues and additional agents join, more density functions are superimposed, reinforcing the attraction to each area, as shown in Fig.\ref{fig:coverage_snapshots_3AOI_dif}(c). The simulation proceeds until all agents have settled into positions where they can sense one of the target areas within their respective sensor ranges.
+
+% As a result of the varying sizes of the target areas, the final distribution of agents reflects the relative size and attraction strength of each region. Specifically, the larger target area on the right side attracts 6 agents, while the smaller one in the lower-left corner attracts 4 agents, and the upper-left target area draws in 5 agents, as illustrated in Fig.\ref{fig:coverage_snapshots_3AOI_dif}(d). Throughout the simulation, the CBF effectively maintains safe distances between agents. Fig.\ref{fig:minimum_distance_3AOI_dif} shows that the minimum pairwise distance (blue line) remains consistently above the safety threshold of 0.52,m (red dashed line), confirming the collision avoidance performance. Additionally, Fig.\ref{fig:agent_paths_3AOI_dif} displays the complete agent trajectories, further demonstrating the algorithm’s ability to achieve safe, size-aware, and distributed coverage across multiple target areas of differing scales.
+
+\section{Conclusion} \label{conclusion}
+This paper proposed a novel goal assignment-based coverage control algorithm designed for multi-agent systems operating without prior knowledge of the target area. The agents are capable of autonomously detecting, converging upon, and efficiently covering the region of interest. By integrating CVT with a dynamically constructed density function, agents are guided to optimally distribute themselves across the detected region. In addition, the incorporation of CBF ensures safety by preventing inter-agent collisions and maintaining non-overlapping sensor coverage, thereby improving exploration efficiency.
+
+Simulation results demonstrate the feasibility of the proposed method, showing that agents can actively search for and autonomously cover the target area. However, since the approach falls under goal assignment strategies, it inherently relies on centralized coordination, which may limit its scalability in large-scale multi-agent systems. Furthermore, as a centralized algorithm, the failure or dropout of an agent can negatively affect the system’s performance, leading to reduced coverage in the portion of the target area assigned to that agent. In future work, we aim to develop a decentralized version of the algorithm to enhance the robustness of the system and explore its application to real-world scenarios such as cooperative transportation.
+
+
+
+
+%%%%%%%%%%%%%%%%% BIBLIOGRAPHY IN THE LaTeX file !!!!! %%%%%%%%%%%%%%%%%%%%%%
+\begin{thebibliography}{9}
+
+%%%%%%%%%%%%%%%%%
+%introduction
+\bibitem{Bai2022}
+Y.~Bai, Y.~Wang, M.~Svinin, E.~Magid, and R.~Sun, ``Adaptive multi-agent coverage control with obstacle avoidance,'' \emph{IEEE Control Systems Letters}, vol.~6, pp.~944--949, 2022, doi: 10.1109/LCSYS.2021.3087609.
+
+\bibitem{Shibata2021}
+K.~Shibata, T.~Jimbo, and T.~Matsubara, ``Deep reinforcement learning of event-triggered communication and control for multi-agent cooperative transport,'' in \emph{Proc. IEEE Int. Conf. on Robotics and Automation (ICRA)}, Xi'an, China, 2021, pp.~8671--8677, doi: 10.1109/ICRA48506.2021.9561274.
+
+\bibitem{Chen2024}
+S.~Chen, G.~Liu, Z.~Zhou, K.~Zhang, and J.~Wang, ``Robust multi-agent reinforcement learning method based on adversarial domain randomization for real-world dual-UAV cooperation,'' \emph{IEEE Transactions on Intelligent Vehicles}, vol.~9, no.~1, pp.~1615--1627, Jan. 2024.
+
+\bibitem{Bulla2021}
+C.~Bulla and M.~N.~Birje, ``Multi-agent based monitoring system for fog computing environment,'' in \emph{Proc. 2nd Int. Conf. for Emerging Technology (INCET)}, Belagavi, India, 2021, pp.~1--6, doi: 10.1109/INCET51464.2021.9456165.
+
+\bibitem{Dobrokvashina2021}
+A.~Dobrokvashina, R.~Lavrenov, T.~Tsoy, E.~A.~Martinez-Garcia, and Y.~Bai, 
+``Navigation stack for the crawler robot Servosila Engineer,'' 
+in \emph{Proc. 2021 IEEE 16th Conf. Ind. Electron. Appl. (ICIEA)}, Chengdu, China, 2021, pp.~1907--1912, 
+doi: 10.1109/ICIEA51954.2021.9516393.
+
+\bibitem{Sacco2021}
+A.~Sacco, F.~Esposito, G.~Marchetto, and P.~Montuschi, ``Sustainable task offloading in UAV networks via multi-agent reinforcement learning,'' \emph{IEEE Transactions on Vehicular Technology}, vol.~70, no.~5, pp.~5003--5015, 2021.
+
+\bibitem{Bai_23}
+Y.~Bai; Y.~Wang; X. Xiong; J. Song;  M.~Svinin. Safe Adaptive Multi-Agent Coverage Control. 
+\textit{IEEE Control Systems Letters} \textbf{2023}, \textit{7}, 3217--3222.
+
+\bibitem{Guo2021}
+D.~Guo, Y.~Bai, M.~Svinin, and E.~Magid, ``Robust adaptive multi-agent coverage control for flood monitoring,'' in \emph{Proc. 2021 Int. Siberian Conf. Control Commun. (SIBCON)}, Kazan, Russia, 2021, pp.~1--5.
+
+\bibitem{Bai2018}
+Y.~Bai, M.~Svinin, and M.~Yamamoto, 
+``Function approximation based control for non-square systems,'' 
+\emph{SICE Journal of Control, Measurement, and System Integration}, vol.~11, no.~6, pp.~477--485, 2018, 
+doi: 10.9746/jcmsi.11.477.
+
+
+\bibitem{Liu2025}
+W.~Liu, K.~Borikarnphanichphaisal, J.~Song, O.~Vasilieva, and M.~Svinin, ``Safe 3D coverage control for multi-agent systems,'' \emph{Actuators}, vol.~14, p.~186, 2025.
+
+\bibitem{Bai2025}
+Y.~Bai, P.~T.~Tran~Ngoc, H.~D.~Nguyen, \emph{et al.}, 
+``Swarm navigation of cyborg-insects in unknown obstructed soft terrain,'' 
+\emph{Nature Communications}, vol.~16, p.~221, 2025, 
+doi: 10.1038/s41467-024-55197-8.
+
+\bibitem{magid2022asia}
+E.~Magid, F.~Matsuno, J.~Suthakorn, M.~Svinin, Y.~Bai, T.~Tsoy, R.~Safin, R.~Lavrenov, A.~Zakiev, H.~Nakanishi, et al.,
+``e-ASIA Joint Research Program: development of an international collaborative informational system for emergency situations management of flood and land slide disaster areas,''
+\textit{Artificial Life and Robotics}, vol.~27, no.~4, pp.~613--623, 2022.
+
+
+%literature review signal target area
+\bibitem{Shi2018}
+M.~Shi, K.~Qin, and J.~Liu, ``Cooperative multi-agent sweep coverage control for unknown areas of irregular shape,'' \emph{IET Control Theory \& Applications}, vol.~12, no.~14, pp.~1983--1994, 2018.
+
+
+\bibitem{Rastgoftar2025}
+H.~Rastgoftar, ``Deep and decentralized multi-agent coverage of a target with unknown distribution,'' \emph{IEEE Transactions on Control of Network Systems}, 2025. [Early Access or in press if volume/issue/pages not available]
+
+\bibitem{Xiao2020}
+J.~Xiao, G.~Wang, Y.~Zhang, and L.~Cheng, ``A distributed multi-agent dynamic area coverage algorithm based on reinforcement learning,'' \emph{IEEE Access}, vol.~8, pp.~33511--33521, 2020.
+
+\bibitem{Cao2024}
+X.~Cao, M.~Li, Y.~Tao, and P.~Lu, ``HMA-SAR: Multi-agent search and rescue for unknown located dynamic targets in completely unknown environments,'' \emph{IEEE Robotics and Automation Letters}, 2024. [Early Access or in press if volume/issue/pages not available]
+
+%Introduction_heuristic-based methods
+\bibitem{Pan2022}
+Z.~Pan, C.~Zhang, Y.~Xia, H.~Xiong, and X.~Shao, ``An improved artificial potential field method for path planning and formation control of the multi-UAV systems,'' \emph{IEEE Trans. Circuits Syst. II, Exp. Briefs}, vol.~69, no.~3, pp.~1129--1133, Mar. 2022.
+
+\bibitem{Shao2024}
+S.~Shao, J.~Zhang, T.~Wang, A.~Shankar, and C.~Maple, ``Dynamic obstacle-avoidance algorithm for multi-robot flocking based on improved artificial potential field,'' \emph{IEEE Trans. Consum. Electron.}, vol.~70, no.~1, pp.~4388--4399, Feb. 2024.
+
+\bibitem{Shao2025}
+M.~Shao, X.~Liu, C.~Xiao, T.~Zhang, and H.~Yuan, ``Research on UAV trajectory planning algorithm based on adaptive potential field,'' \emph{Drones}, vol.~9, p.~79, 2025.
+
+\bibitem{Zhang2024}
+H.~Zhang, S.~Wang, Y.~Liu, P.~Ji, R.~Yu, and T.~Chao, ``EFP: Efficient frontier-based autonomous UAV exploration strategy for unknown environments,'' \emph{IEEE Robot. Autom. Lett.}, vol.~9, no.~3, pp.~2941--2948, Mar. 2024.
+
+\bibitem{Zhang2025}
+S.~Zhang, X.~Zhang, Q.~Dong, Z.~Wang, H.~Xi, and J.~Yuan, ``FSMP: A frontier-sampling-mixed planner for fast autonomous exploration of complex and large 3-D environments,'' \emph{IEEE Trans. Instrum. Meas.}, vol.~74, art. no.~7504414, pp.~1--14, 2025.
+%
+
+%APF_obstacle avoidance
+\bibitem{Pan2019}
+Z.~Pan, D.~Li, K.~Yang, and H.~Deng, ``Multi-robot obstacle avoidance based on the improved artificial potential field and PID adaptive tracking control algorithm,'' \emph{Robotica}, vol.~37, no.~11, pp.~1883--1903, 2019.
+
+\bibitem{Matoui2019}
+F.~Matoui, B.~Boussaid, and M.~N.~Abdelkrim, ``Distributed path planning of a multi-robot system based on the neighborhood artificial potential field approach,'' \emph{Simulation}, vol.~95, no.~7, pp.~637--657, 2019.
+
+\bibitem{Tallamraju2018}
+R.~Tallamraju, S.~Rajappa, M.~J.~Black, K.~Karlapalem, and A.~Ahmad, ``Decentralized MPC based obstacle avoidance for multi-robot target tracking scenarios,'' in \emph{Proc. 2018 IEEE Int. Symp. Safety, Security, and Rescue Robotics (SSRR)}, Aug. 2018, pp.~1--8.
+
+\bibitem{Hamed2022}
+O.~Hamed, M.~Hamlich, and M.~Ennaji, ``Hunting strategy for multi-robot based on wolf swarm algorithm and artificial potential field,'' \emph{Indones. J. Electr. Eng. Comput. Sci.}, vol.~25, no.~1, p.~159, 2022.
+
+\bibitem{Lu2025}
+H.~Lu, M.~Zhao, P.~Zhou, and K.~Mao, ``Behavior scheduling for multi-robot path planning in unknown environment with communication constraints,'' \emph{IEEE Trans. Autom. Sci. Eng.}, 2025, early access.
+%
+
+%literature review multi target area
+\bibitem{Zheng2015}
+Y.~Zheng, B.~Li, D.~An, and N.~Li, ``A multi-agent path planning algorithm based on hierarchical reinforcement learning and artificial potential field,'' in \emph{Proc. 11th Int. Conf. on Natural Computation (ICNC)}, Aug. 2015, pp.~363--369, IEEE.
+
+\bibitem{Ivic2016}
+S.~Ivić, B.~Crnković, and I.~Mezić, ``Ergodicity-based cooperative multiagent area coverage via a potential field,'' \emph{IEEE Transactions on Cybernetics}, vol.~47, no.~8, pp.~1983--1993, 2016.
+
+\bibitem{Qin2023}
+Y.~Qin, L.~Fu, D.~He, and Z.~Liu, ``Improved optimization strategy based on region division for collaborative multi-agent coverage path planning,'' \emph{Sensors}, vol.~23, no.~7, p.~3596, 2023.
+
+\bibitem{Wiman2025}
+D.~Wiman and D.~Lindgren, ``Real-time capable informative path planning for autonomous area monitoring using unmanned ground vehicles,'' in \emph{Proc. 11th Int. Conf. on Automation, Robotics, and Applications (ICARA)}, Feb. 2025, pp.~262--267, IEEE.
+
+\bibitem{Gul2022}
+F.~Gul, A.~Mir, I.~Mir, S.~Mir, T.~U.~Islaam, L.~Abualigah, and A.~Forestiero, ``A centralized strategy for multi-agent exploration,'' \emph{IEEE Access}, vol.~10, pp.~126871--126884, 2022.
+
+
+% \bibitem{Bai_23}
+% Bai, Y.; Wang, Y.; Xiong, X.; Song, J.; Svinin, M. Safe Adaptive Multi-Agent Coverage Control. 
+% \textit{IEEE Control Systems Letters} \textbf{2023}, \textit{7}, 3217--3222.
+
+
+%method
+
+\bibitem{Cortes_04}
+Cortes, J.; Martinez, S.; Karatas, T.; Bullo, F. Coverage Control for Mobile Sensing Networks. 
+\textit{IEEE Transactions on Robotics and Automation} \textbf{2004}, \textit{20}, 243--255.
+
+
+%cbf
+\bibitem{Ames2017}
+A.~D.~Ames, X.~Xu, J.~W.~Grizzle, and P.~Tabuada, ``Control barrier function based quadratic programs for safety critical systems,'' \emph{IEEE Trans. Autom. Control}, vol.~62, no.~8, pp.~3861--3876, Aug. 2017.
+
+
+\end{thebibliography}
+
+\end{document}
+

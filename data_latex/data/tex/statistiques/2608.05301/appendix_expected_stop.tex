@@ -1,0 +1,80 @@
+\section{Derivation of Expected Precision Goal Stop Iteration}\label{app:expected_stop}
+
+The precision-based stopping algorithms (PitG \citealt{kruschke2015doing} and DPitG) halt when the HDI width
+(see Appendix~\ref{app:hdi})
+falls below the precision goal $\omega_{\rm goal}$. Because the posterior HDI width
+shrinks as $N^{-1/2}$, one can predict in advance the iteration at which this
+threshold will be crossed. The General CLT Form below uses a normal approximation
+and is intended as an analytical guide; the Binomial Case refines this using the
+exact Beta posterior variance, and the Continuous Case provides two variants
+(CLT and Student-$t$).
+
+\subsection*{General CLT Form}
+
+Assume an estimator $\hat\theta_N$ with asymptotic distribution
+\begin{equation}\label{eq:clt_general}
+\hat\theta_N \approx \mathcal{N}\!\left(\theta,\,\frac{V(\theta)}{N}\right),
+\end{equation}
+where $V(\theta)$ is the per-observation variance contribution. For a symmetric
+central interval with critical value $z_{*}$ (e.g., $z_{*}=1.96$ for 95\%), the
+interval width is approximately
+\begin{equation}\label{eq:hdi_width_approx}
+w \approx 2 z_{*}\sqrt{\frac{V(\theta)}{N}}.
+\end{equation}
+Setting $w = \omega_{\rm goal}$ and solving for $N$ gives the general expected stop
+iteration:
+\begin{equation}\label{eq:expected_stop_iteration_clt}
+N_{\rm goal} \approx \frac{4 z_{*}^{2}}{\omega_{\rm goal}^{2}}\,V(\theta).
+\end{equation}
+
+\subsection*{Binomial Case}
+
+For Bernoulli outcomes the posterior under the Haldane prior $\mathrm{Beta}(0,0)$
+is $\mathrm{Beta}(s,\,f)$, where $s$ is the number of successes and
+$f = N - s$ the number of failures.\footnote{This appendix uses the
+Haldane prior rather than the flat $\mathrm{Beta}(1,1)$ prior of
+Appendix~\ref{app:hdi}: the Haldane convention yields the clean $-1$ correction
+in the planning formula and is consistent with the planning function in the
+accompanying code (\texttt{binomial\_rate\_ci\_width\_to\_sample\_size} in
+\texttt{utils\_stats.py}).}
+Its exact variance is
+\[
+\mathrm{Var}(\theta \mid s, f) = \frac{\hat\theta\,(1-\hat\theta)}{N+1},
+\]
+where $\hat\theta = s/N$. Substituting into Equation~\ref{eq:hdi_width_approx}
+and setting $w = \omega_{\rm goal}$ gives the exact expected stop iteration:
+\begin{equation}\label{eq:expected_stop_iteration_binomial}
+N_{\rm goal} = \frac{4 z_{*}^{2}}{\omega_{\rm goal}^{2}}\,\theta(1-\theta) - 1.
+\end{equation}
+The $-1$ arises from the $N+1$ denominator in the exact Beta posterior variance,
+whereas the CLT approximation (Equation~\ref{eq:expected_stop_iteration_clt})
+treats the denominator as $N$ and omits it.
+As shown in Figure~\ref{fig:min_sample_by_goal} in Section~\ref{sec:expected_stop_iteration},
+$N_{\rm goal}$ is maximised at $\theta=0.5$, confirming that the fair coin case requires the
+largest sample to achieve a given precision goal, and decreases monotonically as
+$\theta$ moves towards $0$ or $1$.
+Equation~\ref{eq:pitg_stop_iteration} in the main text uses the CLT approximation
+(Equation~\ref{eq:expected_stop_iteration_clt}), which replaces $N+1$ with $N$ and
+drops the $-1$ term, negligible for large $N$.
+
+
+\subsection*{Continuous Case}
+
+For continuous outcomes when the estimand is a mean $\mu$ with variance
+$\sigma^{2}$, substituting $V(\mu)=\sigma^{2}$ (estimated by sample variance
+$s^{2}$) into Equation~\ref{eq:expected_stop_iteration_clt} gives the
+CLT-based expected stop iteration:
+\begin{equation}\label{eq:expected_stop_iteration_mean}
+N_{\rm goal} \approx \frac{4 z_{*}^{2}\sigma^{2}}{\omega_{\rm goal}^{2}}.
+\end{equation}
+This approximation is accurate whenever $N \ge 30$, where the Student-$t$
+critical value approaches $z_{*}$.\footnote{
+  For small samples ($N < 30$), the exact posterior for $\mu$ under a
+  non-informative prior is a scaled Student-$t$ with $\nu = N-1$ degrees
+  of freedom, giving HDI width $w = 2\,t_{\alpha/2,\,N-1}\,s/\!\sqrt{N}$,
+  where $\alpha = 1 - \text{CI fraction}$ (e.g.\ $\alpha = 0.05$ for
+  95\%).  Setting $w = \omega_{\rm goal}$ yields an implicit equation in
+  $N$ that must be solved numerically.  Because precision goals are seldom
+  met at such small $N$, this refinement is not recommended for
+  sample-size planning.}
+

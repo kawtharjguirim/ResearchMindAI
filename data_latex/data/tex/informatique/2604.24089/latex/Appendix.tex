@@ -1,0 +1,419 @@
+
+\section{Appendix}\label{sec:App}
+
+\subsection{Related Works}\label{related work}
+Table~\ref{relatedwork_table} positions \texttt{BiMol-Diff} relative to recent state-of-the-art molecule--text generation frameworks. While autoregressive (AR) baselines, such as MolT5 and UniMoT, have successfully demonstrated bidirectional capabilities, they often suffer from the standard limitations of sequential decoding (e.g., exposure bias). Conversely, existing diffusion-based approaches like TGM-DLM and UTGDiff offer non-autoregressive benefits but are predominantly unidirectional, focusing almost exclusively on the Text$\to$Graph modality. \texttt{BiMol-Diff} bridges this gap as a unified diffusion framework capable of both Graph$\to$Text and Text$\to$Graph generation. Furthermore, we distinguish our approach by integrating a \textit{token-aware mechanism}, a feature notably absent in prior diffusion baselines—which adapts the noising schedule to prioritize chemically significant tokens, similar to the strategy employed by the AR-based ChemT5.
+
+\begin{table*}[t!]
+\centering
+\small
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.18}
+
+
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{l l c c c c c}
+\toprule
+\textbf{Method} &
+\textbf{Generation family} &
+\textbf{Text-conditioned} &
+\textbf{Graph$\rightarrow$Text} &
+\textbf{Text$\rightarrow$Graph} &
+\textbf{Bidirectional} &
+\textbf{Token-aware training} \\
+\midrule
+\multicolumn{7}{l}{\textit{\textbf{Autoregressive (AR)}}} \\
+\midrule
+MolT5 \citep{edwards-etal-2022-translation} &
+Seq2Seq PLM (T5) &
+\checkmark & \checkmark & \checkmark & \checkmark & --- \\
+Text+ChemT5 \citep{christofidellis2023textchemt5} &
+Seq2Seq PLM (T5) &
+\checkmark & \checkmark & \checkmark & \checkmark & --- \\
+CAMT5 \citep{kim2025camt5} &
+Seq2Seq PLM (T5) &
+\checkmark & --- & \checkmark & --- & \checkmark \\
+UniMoT \citep{guo2025unimotunifiedmoleculetextlanguage} &
+LLM-based multitask &
+\checkmark & \checkmark & \checkmark & \checkmark & --- \\
+LDMol \citep{chang2025ldmoltexttomoleculediffusionmodel} &
+PLM-based generator &
+\checkmark & --- & \checkmark & --- & --- \\
+MolCA \citep{liu2024molcamoleculargraphlanguagemodeling} &
+Encoder--decoder (graph-aware) &
+--- & \checkmark & --- & --- & --- \\
+Mol2Lang-VLM \citep{tran-etal-2024-mol2lang} &
+Multimodal PLM &
+--- & \checkmark & --- & --- & --- \\
+\midrule
+\multicolumn{7}{l}{\textit{\textbf{Non-autoregressive (Diffusion)}}} \\
+\midrule
+TGM-DLM \citep{gong2024tgmdlm} &
+Diffusion-LM &
+\checkmark & --- & \checkmark & --- & --- \\
+3M-Diffusion \citep{zhu20243mdiffusionlatentmultimodaldiffusion} &
+Latent diffusion (graph/seq) &
+\checkmark & --- & \checkmark & --- & --- \\
+UTGDiff \citep{xiang2025instructionbasedmoleculargraphgeneration} &
+Graph diffusion &
+\checkmark & --- & \checkmark & --- & --- \\
+\rowcolor{yellow!18}
+\texttt{BiMol-Diff} (ours) &
+Conditional diffusion &
+\checkmark & \checkmark & \checkmark & \checkmark & \checkmark \\
+\bottomrule
+\end{tabular}%
+}
+\caption{Feature comparison of \texttt{BiMol-Diff} against representative autoregressive (AR) and diffusion baselines. (\checkmark = supported; --- = not supported/reported). Token-aware mechanism denotes chemistry-aware tokenization/weighting in AR models and token-wise noising schedules in diffusion models. Unlike prior diffusion works which are typically unidirectional, \texttt{BiMol-Diff} enables fully bidirectional generation.}
+\label{relatedwork_table}
+\end{table*}
+
+
+
+
+
+\subsection{Derivation}\label{sec:derivation_appendix}
+
+\texttt{BiMol-Diff} builds on the standard diffusion framework, which trades the flexibility of expressive generative models (e.g., GANs, VAEs, flow models) for the tractability of likelihood-based training in a continuous latent space $\mathbf{z}$. The overall goal is to minimize the negative log-likelihood
+\begin{equation}
+    \mathbb{E}_{\mathbf{z}_0,\mathbf{c}}\!\bigl[-\log p_\theta(\mathbf{z}_0 \mid \mathbf{c})\bigr],
+\end{equation}
+which is upper-bounded by the Variational Lower Bound (VLB).
+
+\subsubsection{Forward and Reverse Processes}
+
+The forward Markov chain is defined as $ q(\mathbf{z}_{1:T} \mid \mathbf{z}_0)
+    = \prod_{t=1}^T q(\mathbf{z}_t \mid \mathbf{z}_{t-1}),$
+where each transition is Gaussian:
+\begin{equation}
+    q(\mathbf{z}_t \mid \mathbf{z}_{t-1})
+    = \mathcal{N}\!\Bigl(
+        \mathbf{z}_t \,\big|\,
+        \sqrt{1-\beta_t}\,\mathbf{z}_{t-1},\,
+        \beta_t\,\mathbf{I}
+    \Bigr).
+\end{equation}
+Let $\alpha_t = 1-\beta_t$ and $\bar{\alpha}_t = \prod_{i=1}^t \alpha_i$.  
+By induction, the marginal at time $t$ satisfies:
+\begin{equation}
+    \mathbf{z}_t
+    = \sqrt{\bar{\alpha}_t}\,\mathbf{z}_0
+    + \sqrt{1-\bar{\alpha}_t}\,\boldsymbol{\epsilon},
+    \qquad
+    \boldsymbol{\epsilon}\sim\mathcal{N}(\mathbf{0},\mathbf{I}),
+\end{equation}
+so that $ q(\mathbf{z}_t \mid \mathbf{z}_0)
+    = \mathcal{N}\!\Bigl(
+        \sqrt{\bar{\alpha}_t}\,\mathbf{z}_0,\,
+        (1-\bar{\alpha}_t)\mathbf{I}
+    \Bigr).$
+We used the \textit{sqrt} schedule as the baseline schedule used in DiffusionLM \cite{li2022diffusionlmimprovescontrollabletext}, namely \(\bar\alpha_t=1-\sqrt{t/T+s}\) with small \(s>0\).
+The reverse denoising process then learns
+% \begin{equation}
+% p_\theta(\mathbf{z}_{0:T})
+% = p(\mathbf{z}_T)\prod_{t=1}^T
+% p_\theta(\mathbf{z}_{t-1}\mid \mathbf{z}_t),
+% \quad
+% p_\theta(\mathbf{z}_{t-1}\mid \mathbf{z}_t)
+% =\mathcal{N}\!\bigl(\boldsymbol{\mu}_\theta(\mathbf{z}_t,t),\,\boldsymbol{\sigma}_\theta^2(\mathbf{z}_t,t)\bigr).
+% \end{equation}
+
+\begin{equation}
+\begin{aligned}
+p_\theta(\mathbf{z}_{0:T})
+&= p(\mathbf{z}_T)\prod_{t=1}^T p_\theta(\mathbf{z}_{t-1}\mid \mathbf{z}_t), \\
+p_\theta(\mathbf{z}_{t-1}\mid \mathbf{z}_t)
+&= \mathcal{N}\!\Bigl(\boldsymbol{\mu}_\theta(\mathbf{z}_t,t),\,\boldsymbol{\sigma}_\theta^2(\mathbf{z}_t,t)\Bigr).
+\end{aligned}
+\end{equation}
+
+Applying Bayes’ rule to the forward transitions yields the exact posterior mean
+\begin{equation}
+\boldsymbol{\mu}_t(\mathbf{z}_t,\mathbf{z}_0)
+= \frac{\sqrt{\alpha_t}(1-\bar\alpha_{t-1})}{1-\bar\alpha_t}\,\mathbf{z}_t
+  + \frac{\sqrt{\bar\alpha_{t-1}}\,\beta_t}{1-\bar\alpha_t}\,\mathbf{z}_0,
+\end{equation}
+whose coefficients we denote by \(\mathcal{U}\) and \(\mathcal{E}\).  \texttt{BiMol-Diff}’s training objective is then to match the network’s predicted \(\boldsymbol{\mu}_\theta,\boldsymbol{\sigma}_\theta\) to these posterior quantities via a simple noise‐prediction loss. 
+We optimize the negative log‐likelihood by upper‐bounding it with the variational lower bound
+\begin{equation}
+\mathbb{E}\bigl[-\log p_\theta(x_0)\bigr]
+\;\le\;
+\mathcal{L}_{\mathrm{vlb}}
+\;=\;
+\sum_{t=0}^T \mathcal{L}_t.
+\end{equation}
+
+\subsubsection{Variational Lower Bound (VLB)}
+
+Following Sohl‐Dickstein et al.\cite{pmlr-v37-sohl-dickstein15}, for conditional generation the VLB decomposes into:
+% \begin{equation}
+%     \mathcal{L}_{\mathrm{vlb}}
+%     =
+%     \mathbb{E}_{q(\mathbf{z}_{1:T}\mid\mathbf{z}_0)}
+%     \Biggl[
+%         \underbrace{\log\frac{q(\mathbf{z}_T\mid \mathbf{z}_0)}{p(\mathbf{z}_T)}}_{\mathcal{L}_T}
+%         + \sum_{t=2}^T
+%         \underbrace{\log \frac{
+%             q(\mathbf{z}_{t-1} \mid \mathbf{z}_t,\mathbf{z}_0)
+%         }{
+%             p_\theta(\mathbf{z}_{t-1}\mid \mathbf{z}_t,\mathbf{c})
+%         }}_{\mathcal{L}_t}
+%         - \underbrace{\log p_\theta(\mathbf{z}_0 \mid \mathbf{z}_1,\mathbf{c})}_{\mathcal{L}_0}
+%     \Biggr],
+% \end{equation}
+\begin{equation}
+\begin{aligned}
+\mathcal{L}_{\mathrm{vlb}}
+&=
+\mathbb{E}_{q(\mathbf{z}_{1:T}\mid\mathbf{z}_0)} \Bigl[
+    \mathcal{L}_T
+    + \sum_{t=2}^T \mathcal{L}_t
+    - \mathcal{L}_0
+\Bigr],\\
+\mathcal{L}_T
+&:= \log\frac{q(\mathbf{z}_T\mid \mathbf{z}_0)}{p(\mathbf{z}_T)},\\
+\mathcal{L}_t
+&:= \log
+\frac{
+    q(\mathbf{z}_{t-1} \mid \mathbf{z}_t,\mathbf{z}_0)
+}{
+    p_\theta(\mathbf{z}_{t-1}\mid \mathbf{z}_t,\mathbf{c})
+},\\
+\mathcal{L}_0
+&:= \log p_\theta(\mathbf{z}_0 \mid \mathbf{z}_1,\mathbf{c}).
+\end{aligned}
+\end{equation}
+
+
+\noindent where each $\mathcal{L}_t$ is a KL divergence between Gaussians.  
+The true posterior mean (via Bayes' rule) is:
+\begin{equation}
+    \boldsymbol{\mu}_t(\mathbf{z}_t,\mathbf{z}_0)
+    =
+    \underbrace{
+        \frac{\sqrt{\alpha_t}(1-\bar{\alpha}_{t-1})}
+             {1-\bar{\alpha}_t}
+    }_{\mathcal{U}}
+    \mathbf{z}_t
+    +
+    \underbrace{
+        \frac{\sqrt{\bar{\alpha}_{t-1}}\beta_t}
+             {1-\bar{\alpha}_t}
+    }_{\mathcal{E}}
+    \mathbf{z}_0,
+\end{equation}
+with covariance $\boldsymbol{\Sigma}_q = \tilde{\beta}_t \mathbf{I}$, $\tilde{\beta}_t =
+    \frac{1-\bar{\alpha}_{t-1}}{1-\bar{\alpha}_t}\beta_t.$
+In the standard simplification, the model's covariance is fixed to match the true posterior covariance $\boldsymbol{\Sigma}_\theta = \boldsymbol{\Sigma}_q$,  
+the KL collapses to a weighted MSE:
+\begin{equation}
+    \mathcal{L}_t
+    = \frac{1}{2}
+        \bigl\|
+            \boldsymbol{\mu}_t
+            - \boldsymbol{\mu}_\theta
+        \bigr\|_{\boldsymbol{\Sigma}_q^{-1}}^2
+    \;\propto\;
+    \mathbb{E}\!
+    \left[
+        \bigl\|
+            \mathbf{z}_0
+            - \mathcal{M}_\theta(\mathbf{z}_t,t,\mathbf{c})
+        \bigr\|^2
+    \right].
+\end{equation}
+Thus, for $2\le t\le T$, $ \mathcal{L}_t
+    \rightarrow
+    \|\mathbf{z}_0
+    - \mathcal{M}_\theta(\mathbf{z}_t,t,\mathbf{c})\|^2.$
+The final KL encourages $\mathbf{z}_T$ to match the unit Gaussian prior:
+\begin{equation}
+    \mathcal{L}_T
+    = \mathrm{KL}\bigl(q(\mathbf{z}_T\mid\mathbf{z}_0)\,\|\,p(\mathbf{z}_T)\bigr)
+    \;\propto\;
+    \bigl\|\boldsymbol{\mu}(\mathbf{z}_T)\bigr\|^2,
+\end{equation}
+a constant w.r.t.\ $\theta$.
+The discrete target $\mathbf{S}$ (sequence) is encoded into a continuous embedding $g_\Phi(\mathbf{S})$.  
+The final term in VLB is $\mathcal{L}_0 = -\log p_\theta(\mathbf{z}_0\mid\mathbf{z}_1, \mathbf{c})$. We need to integrate the discrete data $\mathbf{S}$ into this continuous likelihood term.
+We use the law of total probability to express the continuous likelihood $p_\theta(\mathbf{z}_0\mid\mathbf{z}_1, \mathbf{c})$ by marginalizing over all possible discrete tokens in the target sequence $\mathbf{S} = \{s_1, s_2 \cdots, s_N\}$: 
+\begin{equation}
+    p_\theta(\mathbf{z}_0 \mid \mathbf{z}_1, \mathbf{c}) = \sum_{\mathbf{S}} p_\theta(\mathbf{z}_0, \mathbf{S} \mid \mathbf{z}_1, \mathbf{c})
+\end{equation}
+We then apply the product rule to the joint probability:
+\begin{equation}
+    p_\theta(\mathbf{z}_0, \mathbf{S} \mid \mathbf{z}_1, \mathbf{c}) = p_\theta(\mathbf{z}_0 \mid \mathbf{S}, \mathbf{z}_1, \mathbf{c}) \cdot p_\theta(\mathbf{S} \mid \mathbf{z}_1, \mathbf{c})
+\end{equation}
+For training, we are interested in the specific ground-truth sequence $\mathbf{S}$. When we evaluate $\mathcal{L}_0$ during training, we consider only the term where $\mathbf{S}$ is the ground-truth sequence:
+% \begin{equation}
+%     \mathcal{L}_0 \approx -\log p_\theta(\mathbf{z}_0, \mathbf{S} \mid \mathbf{z}_1, \mathbf{c}) = -\log \left[ p_\theta(\mathbf{z}_0 \mid \mathbf{S}, \mathbf{z}_1, \mathbf{c}) \cdot p_\theta(\mathbf{S} \mid \mathbf{z}_1, \mathbf{c}) \right]
+% \end{equation}
+\begin{equation}
+\begin{aligned}
+\mathcal{L}_0
+&\approx -\log p_\theta(\mathbf{z}_0, \mathbf{S} \mid \mathbf{z}_1, \mathbf{c}) \\
+&= -\log \Bigl[
+    p_\theta(\mathbf{z}_0 \mid \mathbf{S}, \mathbf{z}_1, \mathbf{c})
+    \cdot
+    p_\theta(\mathbf{S} \mid \mathbf{z}_1, \mathbf{c})
+\Bigr].
+\end{aligned}
+\end{equation}
+
+\noindent The core approximation simplifies the dependency graph by asserting that the discrete data $\mathbf{S}$ is generated only from the clean latent $\mathbf{z}_0$, and is independent of $\mathbf{z}_1$ and $\mathbf{c}$ given $\mathbf{z}_0$.
+\begin{equation}
+    \mathbf{S} \perp (\mathbf{z}_1, \mathbf{c}) \mid \mathbf{z}_0
+\end{equation}
+This allows us to replace the discrete conditional likelihood with the separate rounding network $\tilde{p}_\Phi(\mathbf{S} \mid \mathbf{z}_0)$:
+$p_\theta(\mathbf{S} \mid \mathbf{z}_1, \mathbf{c}) \approx \tilde{p}_\Phi(\mathbf{S} \mid \mathbf{z}_0)$.
+Substituting this back into the likelihood decomposition:
+\begin{equation}
+    p_\theta(\mathbf{z}_0, \mathbf{S} \mid \mathbf{z}_1, \mathbf{c}) \approx p_{\mathrm{cont}}(\mathbf{z}_0 \mid \mathbf{S}, \mathbf{z}_1, \mathbf{c}) \cdot \tilde{p}_\Phi(\mathbf{S} \mid \mathbf{z}_0)
+\end{equation}
+Taking the negative logarithm of the approximation gives the two desired terms:
+
+$$\mathcal{L}_0 \approx -\log p_{\mathrm{cont}}(\mathbf{z}_0 \mid \mathbf{S}, \mathbf{z}_1, \mathbf{c}) - \log \tilde{p}_\Phi(\mathbf{S} \mid \mathbf{z}_0)$$
+
+\noindent This split yields the two components used in the final training objective:
+\begin{enumerate}
+    \item Consistency Term ($\mathcal{L}_{\mathrm{Cons}}$): The first term is the negative log-likelihood of the continuous latent, which is minimized via the MSE loss on the means:
+    $-\log p_{\mathrm{cont}}(\mathbf{z}_0 \mid \mathbf{S}, \mathbf{z}_1, \mathbf{c}) \rightarrow \mathcal{L}_{\mathrm{Consistency}} = \bigl\| g_\Phi(\mathbf{S}) - \mathcal{M}_\theta(\mathbf{z}_1,1,\mathbf{c}) \bigr\|^2$.
+    \item Rounding Term ($\mathcal{L}_{\text{Round}}$): This second term is the dedicated loss for the discrete data likelihood:
+    $\mathcal{L}_{\text{Round}} = -\log \tilde{p}_\Phi(\mathbf{S} \mid \mathbf{z}_0)$
+\end{enumerate}
+
+% =============================================================
+\subsubsection{Final End-to-End Objective}
+
+Combining all components:
+% \begin{align}
+%     \mathcal{L}_{\mathrm{vlb}}
+%     \propto
+%     \sum_{t=2}^T
+%     \underbrace{
+%         \bigl\|
+%             \mathbf{z}_0
+%             - \mathcal{M}_\theta(\mathbf{z}_t,t,\mathbf{c})
+%         \bigr\|^2
+%     }_{\text{Denoising}}
+%     +
+%     \underbrace{
+%         \bigl\|
+%             g_\Phi(\mathbf{S})
+%             - \mathcal{M}_\theta(\mathbf{z}_1,1,\mathbf{c})
+%         \bigr\|^2
+%     }_{\text{Consistency}}
+%     -
+%     \underbrace{
+%         \log \tilde{p}_\Phi(\mathbf{S}\mid\mathbf{z}_0)
+%     }_{\text{Rounding}}.
+% \end{align}
+\begin{align}
+\mathcal{L}_{\mathrm{vlb}}
+\propto\;
+&\sum_{t=2}^T
+\underbrace{
+    \bigl\|
+        \mathbf{z}_0
+        - \mathcal{M}_\theta(\mathbf{z}_t,t,\mathbf{c})
+    \bigr\|^2
+}_{\text{Denoising}}
+\\
+&+
+\underbrace{
+    \bigl\|
+        g_\Phi(\mathbf{S})
+        - \mathcal{M}_\theta(\mathbf{z}_1,1,\mathbf{c})
+    \bigr\|^2
+}_{\text{Consistency}}
+\\
+&-
+\underbrace{
+    \log \tilde{p}_\Phi(\mathbf{S}\mid\mathbf{z}_0)
+}_{\text{Rounding}}.
+\end{align}
+
+Dropping constant terms, the simplified end-to-end training loss is:
+% \begin{equation}
+% \resizebox{0.9\linewidth}{!}{
+%     $ \displaystyle
+%     \mathcal{L}_{\text{e2e-simple}}(\mathbf{S}) = \mathbb{E}_{q} 
+%     \Bigl[ \sum_{t=2}^{T} \underbrace{\|\mathcal{M}_\theta(\mathbf{z}_t, t, \tilde{\mathcal{G}}) - \mathbf{z}_0 \|^2}_{\text{Denoising}} + \underbrace{\|\,g_\Phi(\mathbf{S}) - \mathcal{M}_\theta(\mathbf{z}_1, 1, \tilde{\mathcal{G}})\|^2}_{\text{Consistency}} - \underbrace{\log \tilde{p}_\Phi(\mathbf{S} \mid \mathbf{z}_0)}_{\text{Rounding}} \Bigr]
+%     $
+% }
+% \end{equation}
+\begin{equation}
+\begin{aligned}
+\mathcal{L}_{\text{e2e-simple}}(\mathbf{S})
+&=
+\mathbb{E}_{q}
+\Bigl[
+    \sum_{t=2}^{T}
+    \underbrace{
+        \bigl\|
+            \mathcal{M}_\theta(\mathbf{z}_t, t, \tilde{\mathcal{G}})
+            - \mathbf{z}_0
+        \bigr\|^2
+    }_{\text{Denoising}}
+\\
+&\qquad+
+    \underbrace{
+        \bigl\|
+            g_\Phi(\mathbf{S})
+            - \mathcal{M}_\theta(\mathbf{z}_1, 1, \tilde{\mathcal{G}})
+        \bigr\|^2
+    }_{\text{Consistency}}
+\\
+&\qquad-
+    \underbrace{
+        \log \tilde{p}_\Phi(\mathbf{S} \mid \mathbf{z}_0)
+    }_{\text{Rounding}}
+\Bigr].
+\end{aligned}
+\end{equation}
+
+
+
+
+\subsection{Non-increasing Isotonic Projection}\label{projection}
+After constructing the per-token cumulative schedule $\tilde{\alpha}^i_t$, we project it onto the set of non-increasing sequences $\{\bar{\alpha}^i_t\}_{t=1}^T$ such that $\bar{\alpha}^i_1 \ge \bar{\alpha}^i_2 \ge \dots \ge \bar{\alpha}^i_T$. Concretely, this is a 1D isotonic regression problem with squared loss, which we solve using the standard Pool-Adjacent-Violators Algorithm (PAVA). This algorithm finds the closest monotone non-increasing sequence (in the least-squares sense) to the input. Intuitively, it smooths out spurious "bumps" in the loss profile while guaranteeing that the cumulative signal strength strictly decays over time, fulfilling the monotonicity requirement of the diffusion process.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \subsection{Decoding Efficiency}\label{efficiency}
+% \begin{table}[ht!]
+% \centering
+% \small
+% \setlength{\tabcolsep}{4pt}
+% \renewcommand{\arraystretch}{1.2}
+
+% \resizebox{\columnwidth}{!}{%
+% \begin{tabular}{l c c c c c}
+% \toprule
+% \textbf{Method} &
+% \textbf{Params} &
+% \textbf{Steps} &
+% \textbf{Time (s)} &
+% \textbf{Speedup} &
+% \textbf{BLEU $\uparrow$} \\
+% \midrule
+% \multicolumn{6}{l}{\textit{\textbf{Autoregressive Baselines}}} \\
+% MolT5-Base \citep{edwards-etal-2022-translation} & 220M & -- & $<$5s & -- & 0.452 \\
+% Text+Chem T5 \citep{christofidellis2023textchemt5} & 223M  & -- & $<$5s & -- & 0.542 \\
+% \midrule
+% \multicolumn{6}{l}{\textit{\textbf{Diffusion Baselines}}} \\
+% DiffuSeq \citep{gong2023diffuseqsequencesequencetext}     & 91M  & 2000 & 317s & $1.0\times$ (Ref) & 0.532 \\
+% \midrule
+% \multicolumn{6}{l}{\textit{\textbf{Ours}}} \\
+% \textbf{BiMol-Diff} & 63M & 2000 & 89s & $3.6\times$ & \textbf{0.567} \\
+% \textbf{BiMol-Diff} & 63M & 1000 & 45s & $7.0\times$ & 0.551 \\
+% \textbf{BiMol-Diff} & 63M & 500  & 23s & $13.8\times$ & 0.365 \\
+% \textbf{BiMol-Diff} & 63M & 100  & 5s  & $63.4\times$ & 0.312 \\
+% \bottomrule
+% \end{tabular}%
+% }
+% \caption{Inference efficiency comparison on the Graph-to-Sequence (G2S) task. We compare \texttt{BiMol-Diff} against the best Autoregressive (AR) and Diffusion baselines from Table \ref{molecule captioning}. Time is measured as total inference time for a batch size of 50 on a single NVIDIA V100 GPU.}
+% \label{tab:efficiency_g2s_merged}
+% \end{table}
+% \noindent Table \ref{tab:efficiency_g2s_merged} analyzes the trade-off between inference speed and generation quality for Graph-to-Sequence tasks. First, comparing within the diffusion family, \texttt{BiMol-Diff} demonstrates significantly better efficiency than the standard DiffuSeq baseline. At 2000 steps, our model achieves a BLEU score of 0.567 while requiring only 89 seconds to process a batch, representing a 3.6$\times$ speedup over DiffuSeq (317 seconds) with better output generation.
+
+% \noindent When compared to Autoregressive (AR) baselines, our model shows a clear operational boundary. In the high-quality output range (1000--2000 steps), \texttt{BiMol-Diff} outperforms the strongest AR baseline, Text+Chem T5 (0.542 BLEU), confirming that the extra computational time yields better text generation. However, the model struggles when pushed for extreme speed. As we reduce the inference steps below 1000, we observe a sharp drop in performance. At 500 steps, although the inference time improves to 23 seconds (13.8$\times$ speedup), the BLEU score falls to 0.365, which is lower than even the base MolT5 model (0.452). This indicates that \texttt{BiMol-Diff} requires a minimum threshold of denoising steps (approximately 1000) to maintain its advantage. Consequently, while our model is ideal for high-precision generation, simple AR models remain the better choice for real-time, low-latency applications.

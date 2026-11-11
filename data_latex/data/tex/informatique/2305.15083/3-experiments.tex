@@ -1,0 +1,21 @@
+\subsection{Experiment Setup}
+
+\paragraph{Backbone Language Model}
+We consider XGLM-7.5B \citep{lin-etal-2022-shot} as our backbone language models.  XGLM-7.5B is a massive multilingual auto-regressive language model, which is trained on a massive corpus of 500 billion tokens comprising 30 diverse languages. Low-resource languages have been up-sampled during training, making it an ideal backbone model for multilingual translation research.
+
+\paragraph{Languages}
+Following \citet{lin-etal-2022-shot}, our evaluation involves 13 languages that are covered in the pretraining corpus of XGLM, i.e. English~(En), German~(De), French~(Fr), Catalan~(Ca), Finnish~(Fi), Russian~(Ru), Bulgarian~(Bg), Chinese~(Zh), Korean~(Ko), Arabic~(Ar), Swahili~(Sw), Hindi~(Hi) and Tamil~(Ta). Among these languages, En, De, Fr, Ru, and Zh are high-resource languages (with ratios in the XGLM pretraining data greater 4\%); Ko, Fi, Ar, Bg are medium-resource languages (with ratios between 0.5\%-4\%); Ca, Hi, Ta, Sw are low-resource languages (with ratios under 0.5\%)
+
+\paragraph{Evaluation Datasets}
+Following previous works~\citep{lin-etal-2022-shot}, we evaluate translation models on the FLORES-101 dataset~\citep{goyal-etal-2022-flores}, which provides manual translations of 1012 sentences in 101 languages. 
+
+\paragraph{Finetuning Datasets}
+Our finetuning dataset primarily comes from WikiMatrix \citep{wikimatrix}. WikiMatrix provides a parallel corpus for 1620 different language pairs, including many non-English language pairs, which enables a systematic investigation for the translation of languages other than English. We also leverage the MultiCCAligned \citep{elkishky_ccaligned_2020} corpus for language pairs that are not contained in WikiMatrix, including Hi-Sw, Ko-Sw, Ta-Sw, Sw-Hi, Sw-Ko, Sw-Ta. 
+
+
+
+
+
+\paragraph{Optimization Details}
+We finetune all models using the Adam \citep{kingma2017adam} optimizer with the learning rate fixed as $5e-6$. We use a fixed batch size of 80 sentences and finetune models for 1 epoch or 2000 steps (depending on the size of the training corpus) for all experiments. 
+

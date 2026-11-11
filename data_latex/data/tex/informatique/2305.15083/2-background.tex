@@ -1,0 +1,18 @@
+\section{Multilingual Finetuning with Translation Instructions}
+\label{sec:background}
+
+
+\subsection{Overall Framework}
+
+Given a corpus of multilingual parallel sentences and their languages $\mathcal{M} = \{({l_s}^i, {l_t}^i, \mathbf{x}^i, \mathbf{y}^i) \}$, where ${l_s}^i$ and ${l_t}^i$ are names of the source and target language of $i$-th parallel sentence $(\mathbf{x}^i, \mathbf{y}^i)$, respectively, \method leverages an instruction template $\mathcal{T}$ to organize the corpus $\mathcal{M}$ into a language modeling dataset $\mathcal{D}$. Each sentence $d^i$ in $\mathcal{D}$ is an instantiation of the translation instruction with a specific sentence pair: ${d}^i = \mathcal{T}({l_s}^i, {l_t}^i, \mathbf{x}^i, \mathbf{y}^i)$. The parameter of LLMs are then optimized using a standard next-token-prediction objective on $\mathcal{D}$:
+
+\begin{equation}
+    \underset{\theta}{\argmax}  \sum_{i=1}^{|\mathcal{D}|} \sum_{j=1}^{|{d}^i|} \texttt{log}\ p_{\theta}( {d}_j^i | {d}_{<j}^i),
+\end{equation}
+
+\noindent where $\theta$ are parameters of LLMs. The instruction template we adopt is 
+\begin{equation*}
+    \text{Translation: [}{l_s}\text{]: }\mathbf{x}\text{ [}{l_t}\text{]: }\mathbf{y}
+\end{equation*}
+
+\noindent where the prefix ``Translation:'' is used to indicate the translation task; the pattern ``[$\cdot$]:'' is used to identify the name of the specific language. 

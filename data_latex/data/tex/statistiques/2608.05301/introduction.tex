@@ -1,0 +1,95 @@
+
+Empirical hypothesis testing is foundational to scientific progress, enabling researchers
+to assess how well a sample represents an underlying truth.
+A central challenge in this process is determining when enough data have been collected
+to make a reliable decision, especially as the accuracy of statistical assessments
+depends heavily on sample size.  Careful planning for statistical power and precision
+is essential to avoid biased inference and ensure meaningful results \citep{cohen1988}.
+
+Sequential hypothesis testing offers a flexible alternative to fixed-sample designs
+\citep{wald1947} by allowing data to be evaluated as it accumulates.
+This approach is widely used in fields such as clinical trials
+\citep{jennison2000, fda2010bayesian}, quality control, A/B testing \citep{johari2022}, and financial
+monitoring,
+offering potential benefits in efficiency, timeliness, and ethical considerations.
+Central to this approach is the distinction between two critical components.
+The \textit{stopping rule} dictates when data collection ends; the
+\textit{decision rule} then determines the final verdict on the hypothesis,
+one of three outcomes: accept, reject, or inconclusive.
+While these components are conceptually distinct, many operational methods
+conflate them, triggering a stop exactly when a decision criterion is met.
+
+This simultaneous application of stopping and decision rules is common in widely used
+frequentist and Bayesian methods, such as p-value thresholds \citep{fisher1925} or posterior-based heuristics
+(e.g., HDI+ROPE \citealp{kruschke2011, kruschke2013, kruschke2015doing},
+Bayes Factors \citealp{kassraftery1995}).
+However, if not carefully designed, this coupling can lead to confirmation bias:
+premature stopping on extreme or unrepresentative early samples, a phenomenon known
+as early peeking \citep{simmons2011}.
+As a concrete illustration: in the fair coin setting
+($\theta_{\rm true}=\theta_{\rm null}=0.5$, credible interval of 95\% and minimum effect size $\pm 0.05$),
+a sequentially monitored HDI+ROPE algorithm achieves high conclusiveness
+but at a systematic 6.3\% false-positive rate (Section~\ref{sec:fair_coin}).
+
+One principled remedy is to decouple the stopping criterion entirely from the hypothesis
+outcome, halting based on posterior precision rather than the direction of the result.
+
+Following the \textit{Accuracy in Parameter Estimation} paradigm \citep{maxwell2008},
+\cite{kruschke2015doing} advocated for a method that strictly decouples these two steps,
+thereby addressing the risk of premature and biased conclusions from early peeking.
+He proposed using a predetermined target for posterior precision as the
+sole \textit{stopping rule}, independent of the hypothesis outcome. Only once this precision goal
+is met is the \textit{decision rule} applied to accept or reject the null hypothesis
+(via a posterior credible interval criterion).
+\cite{kruschke2015doing} demonstrated that this ``Precision is the Goal'' (PitG) method
+eliminates the early-peeking bias in outcome sampling. However, our analysis reveals an important
+limitation: when the null hypothesis is true, or practically so, PitG often yields a high rate of inconclusive
+results, rather than correctly accepting the null.\footnote{\citealt{kruschke2015doing} noted in passing that PitG ``did remain undecided
+in some cases'' (\S13.3.2, page 391); our analysis shows this is a systematic and
+striking effect, with the sampling budget $N_{\rm max}$ and precision goal $\omega_{\rm goal}$
+as the key governing parameters. See below for quantitative examples.}
+
+In this paper, we propose an improved variant we call
+``Decisive Precision is the Goal'' (DPitG), in which precision is a necessary but no
+longer sufficient stopping condition: data collection continues until \textit{both} the
+precision goal and a decisive hypothesis outcome are satisfied simultaneously.
+The benefit is most pronounced precisely where PitG's inconclusive rate is highest,
+namely when the null is true or practically so, making DPitG particularly valuable for
+confirming the null hypothesis.
+While scientific incentives often favour the discovery of new effects,
+rigorous confirmation of the null is equally critical in many fields: from bioequivalence
+trials for generic drugs \citep{schuirmann1987, karalis2012}
+to do-no-harm regression testing in software
+deployment and futility stopping in programme evaluations.
+Unlike \textit{Null Hypothesis Significance Testing} (NHST, see Appendix~\ref{app:nhst}),
+which can only fail to reject the null, the precision-based framework enables positive
+acceptance as a genuine and actionable verdict, and DPitG ensures this verdict is
+reliably reached.
+This fully pre-specified rule is also compatible with pre-registration standards
+\citep{nosek2018} and directly addresses the design-stage imprecision implicated in
+the replication crisis \citep{osc2015, gelman2014}.
+
+We compare DPitG and PitG against the HDI+ROPE algorithm, a coupled baseline that stops as
+soon as the posterior yields a decisive result, through simulations with
+single-group dichotomous data.\footnote{Two other widely used approaches, NHST
+(p-value-based) and Bayes Factors, are not among the three algorithms studied
+here. Both lack an explicit effect-size criterion (the ROPE); NHST cannot formally
+accept the null, while Bayes Factors lack a direct precision goal.
+Their limitations are illustrated in Appendices~\ref{app:nhst}
+and~\ref{app:bayes_factors}, respectively.}
+Applied to this setting, DPitG substantially outperforms both alternatives: for
+example, at $\omega_{\rm goal}=0.08$, it reduces PitG's $62.1\%$ inconclusive rate
+to $2.2\%$ at a median cost of only $4.7\%$ extra samples, while preserving a zero
+false-positive rate, an advantage the HDI+ROPE algorithm matches only at a $6.2\%$
+false-positive cost (Section~\ref{sec:fair_coin}). These advantages hold broadly
+across precision goals and true parameter values
+(Sections~\ref{sec:fair_coin}--\ref{sec:trends}).
+The framework extends to continuous outcomes
+(Appendix~\ref{app:expected_stop}) and two-group comparisons
+(Appendix~\ref{app:extensions}).
+Alongside the empirical results we provide a closed-form planning formula, an online
+interactive calculator, and open-source code to support adoption in applied settings.
+
+Section~\ref{sec:methods} describes the theoretical framework and the three stopping
+algorithms; Section~\ref{sec:results} presents simulation results; and
+Section~\ref{sec:discussion} places the findings in methodological context.

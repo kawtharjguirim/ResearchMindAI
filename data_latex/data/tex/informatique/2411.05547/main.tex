@@ -1,0 +1,121 @@
+% This must be in the first 5 lines to tell arXiv to use pdfLaTeX, which is strongly recommended.
+\pdfoutput=1
+% In particular, the hyperref package requires pdfLaTeX in order to break URLs across lines.
+
+\documentclass[11pt]{article}
+
+%%% Method to make paper more compact
+
+% 1. tighten line spacing
+%\usepackage{setspace}
+%\setstretch{0.97}  % Adjust between 0.8-1.0 for tighter lines
+
+% 2. decrease section spacing
+\usepackage[compact]{titlesec}
+\titlespacing{\section}{0pt}{*1}{*0.5}
+\titlespacing{\subsection}{0pt}{*0.5}{*0.3}
+
+% 3. shrink itemize
+\usepackage{enumitem}
+\setlist{noitemsep}
+
+% 4. reduce paragraph spacing
+\setlength{\parskip}{0pt}
+
+% 5 Adjust the \textfloatsep, \abovecaptionskip, and \belowcaptionskip Lengths
+\setlength{\textfloatsep}{5pt}    % Space between floats and text
+\setlength{\abovecaptionskip}{2pt} % Space between table and caption
+\setlength{\belowcaptionskip}{2pt} % Space between caption and text
+
+% 6. Minimize Spacing Around the Table Caption:
+\setlength{\abovecaptionskip}{2pt}
+\setlength{\belowcaptionskip}{2pt}
+
+
+\usepackage{longtable} % for longtable in appendix
+
+% Change "review" to "final" to generate the final (sometimes called camera-ready) version.
+% Change to "preprint" to generate a non-anonymous version with page numbers.
+%\usepackage[review]{acl}
+\usepackage[final]{coling}
+
+% Standard package includes
+\usepackage{times}
+\usepackage{latexsym}
+
+% Table
+\usepackage{tabularx} % table environment
+\usepackage{multirow}
+\usepackage{array} % Include this line in the preamble
+
+
+% Optional packages
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{microtype}
+\usepackage{inconsolata}
+\usepackage{graphicx}
+
+% Math
+\usepackage{amsmath}
+\usepackage{amssymb}
+
+% for resolving warning: underfull \hbox
+%\usepackage[english]{babel}
+
+\title{Assessing the Answerability of Queries in Retrieval-Augmented \\ Code Generation}
+
+%\author{{Geonmin Kim, Jaeyeon Kim, Hancheol Park, Wooksu Shin, and Tae-ho Kim} \\
+%  Nota Inc. 
+%  \\
+%  \texttt{\{geonmin.kim, jaeyeon.kim, hancheol.park, wooksu.shin, %thkim\}@nota.ai}
+%  }
+
+\author{
+\begin{tabular}{@{}c c}
+Geonmin Kim\thanks{Equal contribution.}\quad
+Jaeyeon Kim\footnotemark[1]\quad
+Hancheol Park\quad\\
+Wooksu Shin\quad
+Tae-Ho Kim\thanks{Corresponding author.}\vspace{6pt} 
+\end{tabular}\\
+Nota Inc.\\
+\texttt{\{geonmin.kim, jaeyeon.kim, hancheol.park, wooksu.shin, thkim\}@nota.ai}
+}
+
+
+\begin{document}
+\maketitle
+\begin{abstract}
+Thanks to unprecedented language understanding and generation capabilities of large language model (LLM), Retrieval-augmented Code Generation (RaCG) has recently been widely utilized among software developers. While this has increased productivity, there are still frequent instances of incorrect codes being provided. In particular, there are cases where plausible yet incorrect codes are generated for queries from users that cannot be answered with the given queries and API descriptions. This study proposes a task for evaluating answerability, which assesses whether valid answers can be generated based on users' queries and retrieved APIs in RaCG. Additionally, we build a benchmark dataset called Retrieval-augmented Code Generability Evaluation (RaCGEval) to evaluate the performance of models performing this task. Experimental results show that this task remains at a very challenging level, with baseline models exhibiting a low performance of 46.7\%. Furthermore, this study discusses methods that could significantly improve performance.
+
+\end{abstract}
+
+% Chapters
+\input{Sec_1_introduction}
+\input{Sec_2_constructing_benchmark}
+\input{Sec_3_models}
+\input{Sec_4_experimental_results}
+\input{Sec_5_discussion}
+
+\section{Conclusion}
+In this work, we build and release \textbf{Retrieval-augmented Code Generability (RaCG)}, the benchmark that allows us to test the answerability of LLMs given query and retrieved APIs. \textbf{RaCG} consists of a user's query, the retrieved API descriptions related to it, the answerability assessment label (i.e., answerable/unanswerable/partially answerable), and a canonical solution. We evaluate several baselines including zero-shot, in-context learning baselines, and supervised fine-tuned models across various LLM backbones. We found that RaCG is quite challenging (i.e., best accuracy of 46.7\% with zero-shot inference) and domain adaptation is crucial to achieve higher accuracy. Moreover, we analyze the trade-off between coverage and precision of generated code when introducing the answerability assessment stage. We hope that this research will lead to the adoption of answerability assessment in various domains, and eventually improve the precision of the response of large language models.
+
+\section*{Limitations}
+Firstly, there may be more unanswerable/partially answerable types in real-world scenarios that RaCG does not cover. It would be one research direction to further define the different unanswerable types and automatically generate them from answerable samples.
+
+Secondly, we find that domain adaptation is crucial for LLMs to achieve high accuracy on the RaCG benchmark. It would be an interesting research direction for exploring more sophisticated few-shot domain adaptation compared to in-context learning with random examples used in this work.
+
+Third, although verification accuracy and code generation pass@k are generally proportional, the highest verification accuracy does not always achieve the best pass@k. For some queries, the LLM can generate code without the gold API documents, using its prior knowledge. However, our verification model’s annotation method does not consider this prior knowledge, which we aim to address in future research.
+
+\section*{Acknowledgments}
+This work was supported by Artificial intelligence industrial convergence cluster development project funded by the Ministry of Science and ICT(MSIT, Korea) \& Gwangju Metropolitan City.
+
+\newpage
+% Bibliography entries for the entire Anthology, followed by custom entries
+%\bibliography{anthology,custom}
+\bibliography{custom}
+
+\input{appendix}
+
+\end{document}

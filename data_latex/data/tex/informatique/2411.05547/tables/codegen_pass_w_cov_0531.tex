@@ -1,0 +1,24 @@
+% Please add the following required packages to your document preamble:
+% \usepackage{multirow}
+\begin{table*}[ht]
+\centering
+\caption{The performance of coding RAG pipeline in Figure~\ref{fig:RAGdiag_with_AV}. The generated code quality is measured with pass@k (k=1,10)}
+\label{tab:codegen_pass_w_cov_0528}
+\begin{tabular}{|ccl|cc|cc|}
+\hline
+\multicolumn{3}{|c|}{Model} &
+  \multirow{3}{*}{\begin{tabular}[c]{@{}c@{}}accuracy\\ (\%)\end{tabular}} &
+  \multirow{3}{*}{\begin{tabular}[c]{@{}c@{}}coverage(c)\\ (\%)\end{tabular}} &
+  \multirow{3}{*}{\begin{tabular}[c]{@{}c@{}}$\mathbb{E}_{c}[pass@1]$\\ (\%)\end{tabular}} &
+  \multirow{3}{*}{\begin{tabular}[c]{@{}c@{}}$\mathbb{E}_{c}[pass@10]$\\ (\%)\end{tabular}} \\ \cline{1-3}
+\multicolumn{1}{|c|}{\multirow{2}{*}{Backbone}}                                                       & \multicolumn{2}{c|}{Method} &       &               &      &      \\ \cline{2-3}
+\multicolumn{1}{|c|}{}                                                                                & Fine-tune           & Inference &       &               &      &      \\ \hline
+\multicolumn{3}{|c|}{no verifier}                                                                                                   & N/A   & 100           & 16.6 & 34.2 \\ \hline
+\multicolumn{1}{|c|}{gpt-3.5-turbo}                                                                   & X               & ICL-3w2s  & 42.9  & 47.1          & 19.1 & 40.2 \\ \hline
+\multicolumn{1}{|c|}{\multirow{2}{*}{\begin{tabular}[c]{@{}c@{}}llama-3-\\ 8b-instruct\end{tabular}}} & X               & Zero-shot  & 48.9  & (0,100{]} & 17.8 & 34.4 \\
+\multicolumn{1}{|c|}{}                                                                                & QLoRA + NegAug  & ICL-3w2s  & 54.0  & (0,100{]} & \textbf{23.8} & \textbf{43.2} \\ \hline
+\multicolumn{1}{|c|}{\multirow{2}{*}{\begin{tabular}[c]{@{}c@{}}gemma-1.1-\\ 7b-it\end{tabular}}}     & X               & Zero-shot  & 49.7  & (0,100{]} & 20.4 & 38.8 \\
+\multicolumn{1}{|c|}{}                                                                                & QLoRA + NegAug  & ICL-3w2s  & \textbf{59.3}  & (0,100{]} & 23.6 & 42.5 \\ \hline
+\multicolumn{3}{|c|}{human verification}                                                                                            & 100.0 & 36.5          & 24.1 & 45.4 \\ \hline
+\end{tabular}
+\end{table*}

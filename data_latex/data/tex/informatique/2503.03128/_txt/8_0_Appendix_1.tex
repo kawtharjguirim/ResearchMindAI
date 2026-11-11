@@ -1,0 +1,600 @@
+{\color{black}
+\section{Proof of Lemma \ref{lemma:Turing-Transformer-Epsilon-Delta}}
+\label{appendix:proof1}
+
+\subsection{Proof Sketch}
+
+To prove the Lemma \ref{lemma:Turing-Transformer-Epsilon-Delta}, we will:
+\begin{enumerate}
+    \item Define an Encoding Function \( \phi \) that maps TM configurations \( C_t \) to Transformer hidden states \( H_t \).
+    \item Demonstrate that each Transformer layer \( \mathcal{T}^{(i)} \) can simulate one TM step.
+    %\item Model the Transformer \( \mathcal{T} \) as a Boolean circuit \( C_{\mathcal{T}} \) and relate its parameters to circuit depth and size.
+    \item Ensure the accurate encoding function \( \phi \).
+   % \item Establish the scaling relationship \( S_{\text{max}} = \Theta(L \cdot d \cdot k \cdot \log(Q)) \).
+\end{enumerate}
+
+
+\subsection{Encoding Function \( \phi \)}
+\label{appendix:a4}
+For all computational steps \(s \in \{0, 1, 2, \dots, S\}\), the Transformer's hidden state \(H_s\) approximates the TM's configuration \(C_s\) within the error bound \(\epsilon\). Formally,
+
+\[
+\forall s \in \{0, 1, 2, \dots, S\}, \quad d(H_s, \phi(C_s)) \leq \epsilon
+\]
+
+where \(\phi: \{C_s\} \rightarrow \mathbb{R}^d\) is an encoding function that maps the TM's configuration to the Transformer's hidden state space. \citet{perez2021attention}'s conclusion ensures the existence of such a mapping \( \phi \).
+
+\begin{definition}\label{defA1} The encoding function \(\phi\) of TM configurations is defined as:
+\[\phi(C_s) =  \left[ s_t \oplus \mathbf{0}_{d_s} \right] \oplus S_t, \] where \(s_t\) is a one-hot representation of the current state, \( \mathbf{0}_{d_s} \) is a zero vector to match the dimensions, and \(S_t\) is the one-hot representation of tape symbols for up to k contexts with the current head position and their positional representation.
+\end{definition}
+
+%We first define an encoding function \( \phi \), that
+
+
+This function ensures:
+\begin{itemize}
+    \item {Injectivity}: \( \phi(C_t) \neq \phi(C_{t'}) \) for \( C_t \neq C_{t'} \).
+    \item {Surjectivity}: Every \( H_t \) corresponds to some \( C_t \).
+\end{itemize}
+
+To demonstrate Definition~\ref{defA1}, we first clarify the TM configuration. Formally, a TM configuration \( C_t \) at time \( t \) consists of:
+\begin{itemize}
+    \item Current State \( q_t \): We define The state of the TM at time \( t \) as \( q_t \in \mathbb{Q}\), where \(\mathbb{Q}\) is a finite state set.
+    \item Tape Contents \( \Gamma_t \): A mapping from tape positions at time \(t\) to symbols in \( \Gamma \), where \(\Gamma\) is a finite tape alphabet.
+    \item Head Position \( h_t \): The position of the tape head at time \( t \).
+\end{itemize}
+
+In order to construct the encoding function, we need to consider TM's state embedding, tape's content embedding and position embedding.
+
+(1) To get the state embedding, we assign a unique one-hot vector \( e(q) \in \mathbb{R}^{|\mathbb{Q}|} \) to each state \( q_t \in \mathbb{Q} \):
+
+\[
+e(q_t) = [0, \dots, 1, \dots, 0]^T,
+\]
+
+where the \( 1 \) is at the position corresponding to state \( q_t \).
+
+(2) To get the tape content's embedding, we first assign a unique one-hot vector \( e(\gamma) \in \mathbb{R}^{|\Gamma|} \) to each tape symbol \( \gamma \in \Gamma \):
+
+\[
+e(\gamma) = [0, \dots, 1, \dots, 0]^T,
+\]
+
+with the \( 1 \) at the position corresponding to symbol \( \gamma \). Then we consider an acceptance window of size \( k \), (which is the Transformer's max number of context tokens that can be dealt with simultaneously) centered at the head position \( h_t \):
+
+\[
+T_t = \left[ e(\gamma_{h_t - \lfloor k/2 \rfloor}), \dots, e(\gamma_{h_t}), \dots, e(\gamma_{h_t + \lfloor k/2 \rfloor}) \right] \in \mathbb{R}^{k \times |\Gamma|}.
+\]
+
+This window captures the tape symbols around the head position.
+
+(3) Finally we include a global positional encoding \( p(i) \in \mathbb{R}^{d_p} \) for each relative position \( i \) within the window:
+
+\[
+P_t = \left[ p(-\lfloor k/2 \rfloor), \dots, p(0), \dots, p(\lfloor k/2 \rfloor) \right] \in \mathbb{R}^{k \times d_p}.
+\]
+
+The positional encoding helps the model distinguish positions within the acceptance window.
+
+For each position, we concatenate the tape symbol embedding and its positional encoding:
+
+\[
+S_t = \left[ e(\gamma_{h_t - \lfloor k/2 \rfloor}) \oplus p(-\lfloor k/2 \rfloor), \dots, e(\gamma_{h_t}) \oplus p(0), \dots, e(\gamma_{h_t + \lfloor k/2 \rfloor}) \oplus p(\lfloor k/2 \rfloor) \right] \in \mathbb{R}^{k \times (|\Gamma| + d_p)},
+\]
+
+where \( \oplus \) denotes concatenation.
+
+Similarly, we create the encoding for the current state \( q_t \):
+
+\[
+s_t = e(q_t) \in \mathbb{R}^{|Q|}.
+\]
+
+Finally, the full encoding \( \phi(C_t) \) is obtained by forming a sequence of length \( n = k + 1 \) (state plus tape symbols):
+
+\[
+\phi(C_t) = \left[ s_t \oplus \mathbf{0}_{d_s} \right] \oplus S_t,
+\]
+
+where \( \mathbf{0}_{d_s} \) is a zero vector to match the dimensions.
+
+For easier understanding of the following parts, we denote the sequence as:
+
+\[
+\phi(C_t) = \left[ x_0, x_1, \dots, x_k \right],
+\]
+
+where \( x_0 = s_t \oplus \mathbf{0}_{d_s} \in \mathbb{R}^{d} \), and \( x_i = e(\gamma_{h_t - \lfloor k/2 \rfloor + i -1}) \oplus p(-\lfloor k/2 \rfloor + i -1) \in \mathbb{R}^{d} \) for \( i = 1, \dots, k \).
+
+ For simplicity, assume \( d \) is sufficiently large (we will define later in Appendix \ref{Appendix d}) to accommodate all concatenated vectors without loss. The \(d\) is also used to construct the hidden dimension of the Transformer, ensuring that embeddings and positional encoding fit within the hidden state.
+
+\subsubsection{Transformer Layer as TM Step Simulator}
+In this subsection, we explore a correct but not necessarily optimal simulation scheme for the TM step.
+Each Transformer layer \( \mathcal{T}^{(i)} \) performs the following operations to simulate one TM step:
+
+
+A standard Transformer layer consists of:
+
+\begin{itemize}
+    \item Multi-Head Self-Attention (MHSA) which computes attention over the input sequence.
+    \item Feed-Forward Network (FFN) which applies a non-linear transformation to the outputs of the MHSA.
+    \item Add \& Norm which are residual connections and layer normalizations.
+\end{itemize}
+
+Our plan is to design the MHSA and FFN to simulate the TM's transition function. 
+
+
+\subsubsection{Self-Attention and FFN Computation Flow}
+Let's start with a quick introduction to Self-Attention.
+The self-attention mechanism computes attention scores between elements of the input sequence. Given an input sequence of vectors \( X = [x_0, x_1, \dots, x_k] \) whcih is consistent with \(\phi(C_t)\), the self-attention computes: \[
+   Q = X W_Q, \quad K = X W_K, \quad V = X W_V,
+   \]
+
+   where \( W_Q, W_K, W_V \in \mathbb{R}^{d \times d} \) are projection matrices. Then the attention score is given by: \[
+   \alpha_{i,j} = \frac{q_i \cdot k_j}{\sqrt{d}} + M_{i,j},
+   \]
+
+   where \(q_i \in Q\),\(k_j\in K\), and \( M_{i,j} \) is the attention mask, and \( \alpha_{i,j} \) is the unnormalized attention score. Then: 
+   \[
+   a_{i,j} = \frac{\exp(\alpha_{i,j})}{\sum_{l=0}^k \exp(\alpha_{i,l})},
+   \]
+
+   where \( a_{i,j} \) is the normalized attention weight. The final Attention output is given by:
+ \[
+   \text{Attention}(X)_i = \sum_{j=0}^k a_{i,j} v_j.
+   \]
+
+The FFN is typically defined as:
+
+\[
+\text{FFN}(u) = W_2 \cdot \sigma(W_1 u + b_1) + b_2,
+\]
+
+where: \( W_1 \in \mathbb{R}^{h \times d} \) and \( W_2 \in \mathbb{R}^{d \times h} \) are weight matrices, \( b_1 \in \mathbb{R}^{h} \) and \( b_2 \in \mathbb{R}^{d} \) are biases, and \( \sigma \) is an activation function (e.g., ReLU).
+   
+\subsubsection{Construction of Transformer Layer to Simulate TM Step}
+
+For TM simulation, we need to design the attention mechanism so that
+  the state embedding \( x_0 \) attends to the tape symbol at the head position \( x_{i_h} \), where \( i_h = \lfloor k/2 \rfloor + 1 \). And the tape symbol at the head position \( x_{i_h} \) attends to the state embedding \( x_0 \).
+  While the tape symbols not at the head position attend only to themselves. 
+  
+\begin{lemma}
+    A Self-Attention layer is able to exchange numerical value of position \(0\) and \(i_h\), where \(i_h=\lfloor k/2 \rfloor + 1\).
+\end{lemma}
+
+\begin{proof}
+    For this propose, we then make the following construction:
+
+First, we define the attention mask \( M \in \mathbb{R}^{(k+1) \times (k+1)} \) as:
+
+\[
+M_{i,j} = \begin{cases}
+0, & \text{if } (i=0 \text{ and } j=i_h) \text{ or } (i=i_h \text{ and } j=0) \text{ or } (i=j), \\
+-\infty, & \text{otherwise}.
+\end{cases}
+\]
+
+Then we assume \( W_Q = W_K = W_V = I \) (identity matrix), and biases \( b_Q = b_K = b_V = 0 \). Therefore:
+\[
+q_i = x_i, \quad k_j = x_j, \quad v_j = x_j.
+\]
+
+Following the computation flow of Self-Attention, the attention scores are:
+
+\[
+\alpha_{i,j} = \begin{cases}
+\frac{x_i \cdot x_j}{\sqrt{d}}, & \text{if } M_{i,j} = 0, \\
+-\infty, & \text{if } M_{i,j} = -\infty.
+\end{cases}
+\]
+
+Since the embeddings are orthonormal, \( x_i \cdot x_j = 0 \) unless \( x_i = x_j \). Therefore:
+\begin{itemize}
+    \item For \( i = 0 \) and \( j = i_h \), \[ \alpha_{0,i_h} = \frac{x_0 \cdot x_{i_h}}{\sqrt{d}}. \]
+    \item For \( i = i_h \) and \( j = 0 \), \[ \alpha_{i_h,0} = \frac{x_{i_h} \cdot x_0}{\sqrt{d}}. \]
+    \item For \( i = j \), \[ \alpha_{i,i} = \frac{x_i \cdot x_i}{\sqrt{d}} = \frac{\| x_i \|^2}{\sqrt{d}} = \frac{1}{\sqrt{d}}. \]
+    \item All other \[ \alpha_{i,j} = -\infty. \]
+\end{itemize}
+
+Due to the mask and orthogonality, the attention weights after the Softmax become:
+
+\begin{itemize}
+    \item For \( i = 0 \):
+  \[
+  a_{0,j} = \begin{cases}
+  1, & \text{if } j = i_h, \\
+  0, & \text{otherwise}.
+  \end{cases}
+  \]
+  \item For \( i = i_h \):
+  \[
+  a_{i_h,j} = \begin{cases}
+  1, & \text{if } j = 0, \\
+  0, & \text{otherwise}.
+  \end{cases}
+  \]
+  \item For \( i \neq 0, i_h \):
+  \[
+  a_{i,j} = \begin{cases}
+  1, & \text{if } j = i, \\
+  0, & \text{otherwise}.
+  \end{cases}
+  \]
+  
+\end{itemize}
+Therefore, the attention score will be: 
+\begin{itemize}
+    \item At position \( i = 0 \):
+  \[
+  \text{Attention}(X)_0 = a_{0,i_h} v_{i_h} = x_{i_h}.
+  \]
+  \item At position \( i = i_h \):
+  \[
+  \text{Attention}(X)_{i_h} = a_{i_h,0} v_0 = x_0.
+  \]
+  \item At other positions \( i \neq 0, i_h \):
+  \[
+  \text{Attention}(X)_i = a_{i,i} v_i = x_i.
+  \]
+\end{itemize}
+\end{proof}
+ 
+
+We now consider the existence of residual connection, then the final output of self-attention will be:
+
+\begin{itemize}
+    \item At position \( i = 0 \):
+  \[
+  u_0 = x_0 + \text{Attention}(X)_0 = x_0 + x_{i_h}.
+  \]
+  \item At position \( i = i_h \):
+
+  \[
+  u_{i_h} = x_{i_h} + \text{Attention}(X)_{i_h} = x_{i_h} + x_0.
+  \]
+  \item At other positions \( i \neq 0, i_h \):
+  \[
+  u_i = x_i + \text{Attention}(X)_i = x_i + x_i = 2 x_i.
+  \]
+\end{itemize}
+
+We will design the FFN such that, when considering the residual connection, the hidden state \( h_i \) at each position \( i \) correctly represents the updated TM configuration.
+
+The general strategy is that, at Position \( i = 0 \), the FFN output \( \text{FFN}(u_0) \) will be \( e(q_{t+1}) - e(q_t) \), so that:
+  \[
+  h_0 = u_0 + \text{FFN}(u_0) = [e(q_t) + \text{other terms}] + [e(q_{t+1}) - e(q_t)]
+  \]
+  resulting in \( h_0 = e(q_{t+1}) + \text{other terms} \).
+While at Position \( i = i_h \), the FFN output \( \text{FFN}(u_{i_h}) \) will be \( e(\gamma_{h_t}') - e(\gamma_{h_t}) \), so that:
+  \[
+  h_{i_h} = u_{i_h} + \text{FFN}(u_{i_h}) = [e(\gamma_{h_t}) + \text{other terms}] + [e(\gamma_{h_t}') - e(\gamma_{h_t})]
+  \]
+  resulting in \(h_{i_h}= e(\gamma_{h_t}') + \text{other terms} \). At Other Positions \( i \neq 0, i_h \), the FFN output \( \text{FFN}(u_i) \) will be zero, so \( h_i = u_i \), keeping the embeddings unchanged.
+
+\begin{lemma}
+    \(\exists\) a FFN s.t.  \( \text{FFN}(u_0)= e(q_{t+1}) - e(q_t) \), \( \text{FFN}(u_{i_h}) =e(\gamma_{h_t}') - e(\gamma_{h_t}) \), and \( h_i = u_i\) for \( i \neq 0, i_h \).
+\end{lemma}
+
+\begin{proof}
+   \textbf{ We start with constructing the first layer.}
+
+(1) For the neurons that is updating state embedding at \( i = 0 \), in which for each transition \( (q_t, \gamma_{h_t}) \rightarrow q_{t+1} \), we allocate one neuron. We denote the neuron index as \( n(q_t, \gamma_{h_t}) \) for n \( \in1 ,2,\cdots, N_{\text{trans}} \). Let the weights \( w_1^{(n)} \) entries corresponding to  \( e(q_t) \) to be \( +1 \), \( p(0) \) to be \( +1 \) and the bias \( b_1^{(n)} = -1.5 \),
+and therefore we have: \[
+  z_n = w_1^{(n)} \cdot u_0 + b_1^{(n)} = 1 (e(q_t)) + 1 (p(0)) + (-1.5) = 0.5.
+  \]
+
+The neuron activates (since \( z_n > 0 \)) only if the input contains \( e(q_t) \) and \( p(0) \).
+
+(2) For the neurons that is updating state embedding at \( i = i_h \), in which for each transition \( (q_t, \gamma_{h_t}) \rightarrow \gamma_{h_t}' \), we allocate one neuron.
+ We denote the neuron index as \( n'(q_t, \gamma_{h_t}) \) in \( N_{\text{trans}} + 1 \) to \( 2N_{\text{trans}} \)
+Let the weights \( w_1^{(n')} \) entries corresponding to \( e(q_t) \) to be \( +1 \), \( p(i_h) \) to be \( +1 \)
+and the bias \( b_1^{(n')} = -1.5 \), and therefore we have:
+  \[
+  z_{n'} = w_1^{(n')} \cdot u_{i_h} + b_1^{(n')} = 1 (e(q_t)) + 1 (p(i_h)) + (-1.5) = 0.5.
+  \]
+
+The neuron activates only if the input contains \( e(q_t) \) and \( p(i_h) \).
+
+(3) For each dimension \( j \) in \( d \), we allocate one neuron to pass through the input. Their neuron index \( n''(j) \) are from \( 2N_{\text{trans}} + 1 \) to \( 2N_{\text{trans}} + d \)
+The weights: \( w_1^{(n'')} \) entries corresponding to \( {w_{1j}^{(n'')}} = 1 \), and \( {w_{1k}^{n''}} = 0 \) for \(j \neq j\),
+and the bias \( b_1^{(n'')} = 0 \)
+
+
+These neurons always activates since \( u_i \) has a positive component at position \( j \).
+
+\textbf{Then we construct the second layer.}
+
+(1) For those weights mapping state update neurons to outputs, in which for neurons \( n(q_t, \gamma_{h_t}) \):
+
+For those weights in \( W_2 \),
+  if it is in the row corresponding to \( e(q_{t+1}) \), then
+    \[
+    W_2^{(e(q_{t+1})), n} = 1,
+    \]
+if it is in the row corresponding to \( e(q_t) \), then
+    \[
+    W_2^{(e(q_t)), n} = -1.
+    \]
+    
+(2) The same reasoning leads to:
+for those weights mapping tape symbol update neurons to outputs, in which for neurons \( n'(q_t, \gamma_{h_t}) \):
+
+For those weights in \( W_2 \),
+  if it is in the row corresponding to \( e(\gamma_{h_t}') \), then
+    \[
+    W_2^{(e(\gamma_{h_t}')), n'} = 1
+    \]
+if it is in the row corresponding to \( e(\gamma_{h_t}) \), then
+    \[
+    W_2^{(e(\gamma_{h_t})), n'} = -1
+    \]
+%
+
+For neurons \( n''(j) \), we set \( W_2^{(j), n''(j)} = 0 \) (we set the output to zero for the main embeddings). 
+We also set the other entries in \( W_2 \) as zero.
+The bias \(b_2\) is always 0 in the second layer.
+
+Therefore: 
+\begin{itemize}
+    \item At position \( i = 0 \): \[ \text{FFN}(u_0) = e(q_{t+1}) - e(q_t) \]
+    \item At position \( i = i_h \): \[ \text{FFN}(u_{i_h}) = e(\gamma_{h_t}') - e(\gamma_{h_t}) \]
+ \item At other positions \( i \neq 0, i_h \): \[ \text{FFN}(u_i) = \mathbf{0} \]
+\end{itemize}
+
+
+
+\end{proof}
+
+We have eliminated the effects of residual linking here by constructing Self-Attention and FFN.
+
+}
+
+\subsubsection{Iterative Layer Application}
+Apply \( \mathcal{T}^{(i)} \) sequentially for \( S \) layers to simulate \( S \) TM steps:
+\[
+H_{t+1} = \mathcal{T}^{(1)}(H_t)
+\]
+\[
+H_{t+2} = \mathcal{T}^{(2)}(H_{t+1})
+\]
+\[
+\vdots
+\]
+\[
+H_{t+S} = \mathcal{T}^{(S)}(H_{t+S-1})
+\]
+Each application corresponds to one TM step, updating the Transformer's hidden state to reflect the new TM configuration.
+
+
+\subsection{Ensuring Accurate Simulation}\label{appendix:A5}
+
+In this subsection, we address the requirements for ensuring that the transformer accurately simulates the Turing Machine (TM) without errors and overlaps. These requirements involve careful control over the encoding space, error accumulation from quantization, and the implementation of the TM’s transition function. Here, we explore precision constraints on correct simulation in the case of binary representations rather than one-hot representations.
+
+\subsubsection{Uniqueness of Encoding}\label{Appendix d}
+
+To avoid overlap between the representations of different TM configurations, the hidden state dimension \( d \) must be sufficiently large. Specifically, the inequality
+{\color{black} \[
+d \geq |\mathbb{Q}| + k \cdot |\Gamma|,
+\]}
+ensures that the hidden state dimension \( d \) is large enough to encode the current state, the tape symbols within the acceptance window, and the tape head position without collision. This guarantees that each configuration of the TM is uniquely represented in the transformer's hidden state space, minimizing the risk of two distinct TM configurations being encoded into the same hidden state.
+{\color{black} In particular, if represented in binary rather than one-hot, the lower bound of \(d\) can be further compressed to \[
+d \geq \log_2(|\mathbb{Q}|) + k \cdot \log_2(|\Gamma|),
+\]}
+
+\subsubsection{Minimizing Quantization Errors}
+ The transformer’s computations are affected by quantization errors due to finite precision. We need to ensure that these errors do not accumulate beyond an acceptable threshold \( \varepsilon \).
+{\color{black}
+Assume that the maximum quantization error per computational step is given by:
+
+\[
+\delta_q = \frac{C}{Q}
+\]
+
+where \( \delta_q \) is the maximum quantization error per step. \( C \) is a constant dependent on the dynamic range of the variables. And \( Q \) is the number of quantization levels.
+
+Over \( S_{\text{max}} \) computational steps, the total accumulated quantization error \( \epsilon_{\text{total}} \) is:
+
+\[
+\epsilon_{\text{total}} = S_{\text{max}} \cdot \delta_q = S_{\text{max}} \cdot \frac{C}{Q}
+\]
+
+To ensure that the total error does not exceed the acceptable tolerance \( \varepsilon \):
+
+\[
+\epsilon_{\text{total}} \leq \varepsilon \implies S_{\text{max}} \cdot \frac{C}{Q} \leq \varepsilon
+\]
+
+Solving for \( Q \):
+
+\[
+Q \geq \frac{C \cdot S_{\text{max}}}{\varepsilon}
+\]
+
+This inequality precisely relates \( Q \), \( S_{\text{max}} \), and \( \varepsilon \) without using approximate equalities.
+
+From Lemma \ref{lemma:Turing-Transformer}, we have:
+
+\[
+S_{\text{max}} = \Theta( L \cdot d \cdot k \cdot \log_2 Q).
+\]
+
+
+Substituting \( S_{\text{max}} \) into the inequality for \( Q \):
+
+
+\[
+Q \geq \frac{C' \cdot L \cdot d \cdot k \cdot \log_2 Q}{\varepsilon}.
+\]
+
+This inequality involves \( Q \) on both sides. To solve for \( Q \), we can consider the properties of exponential functions. Let’s denote,
+\(
+Q = e^{x}
+\)
+,
+after simplification:
+
+\[
+e^{x} \geq \frac{C'' \cdot L \cdot d \cdot k \cdot x}{\varepsilon},
+\]
+
+where \( C'' = \frac{C'}{\ln 2} \).
+For sufficiently large \( x \), the exponential function \( e^{x} \) dominates the polynomial term in the numerator. Therefore, to satisfy the inequality, \( x \) must be large enough such that:
+
+\[
+e^{x} \geq \text{poly}(x)
+\]
+
+Since \( e^{x} \) grows faster than any polynomial function of \( x \), the inequality will hold for large \( x \).
+
+Therefore, we conclude that:
+
+\[
+e^{x} \geq \frac{C'' \cdot L \cdot d \cdot k \cdot x}{\varepsilon}
+\]
+
+implies that \( x \) (and thus \( Q = e^{x} \)) must scale exponentially with \( \frac{L \cdot d \cdot k}{\varepsilon} \).
+
+Given above, we establish that:
+
+\[
+Q \geq e^{\frac{C''' \cdot L \cdot d \cdot k}{\varepsilon}}
+\]
+
+where \( C''' \) is a constant that absorbs \( C'' \) and other constants.
+
+}
+
+
+
+\begin{comment}
+    The transformer’s computations are affected by quantization errors due to finite precision. To ensure that these errors do not accumulate beyond an acceptable threshold \( \varepsilon \), we require:
+\[
+\epsilon \leq \frac{\varepsilon}{S_{\text{max}}}
+\]
+where \( \epsilon = \log_2(Q) \) represents the precision available per step. This inequality ensures that the quantization errors per step are controlled, allowing the simulation to remain accurate over \( S_{\text{max}} \) steps.
+To further constrain the error growth over multiple steps, we impose the following condition on the number of quantization levels \( Q \):
+\[
+Q \geq 2^{\frac{\varepsilon \cdot \epsilon}{L \cdot d \cdot k}}
+\]
+This guarantees that the total accumulated error remains bounded by \( \varepsilon \):
+\[
+\sum_{t=1}^{S_{\text{max}}} \epsilon_t \leq \varepsilon
+\]
+Thus, by ensuring sufficient precision through \( Q \), we can control the error accumulation over time.
+\end{comment}
+
+
+\subsubsection{Correct Implementation of Transition Function \( \delta \)}
+
+For each transformer layer to simulate one TM step, it must correctly implement the TM’s transition function \( \delta \), which is of the form:
+\[
+\delta(q_t, \gamma_{h_t}) = (q_{t+1}, \gamma_{h_t}', D)
+\]
+where \( \gamma_{h_t}' \) is the new symbol to write, and \( D \in \{L, R\} \) denotes the tape head movement direction.
+
+The transformer must meet two conditions to ensure accurate simulation:
+(1) The Self-Attention mechanism should accurately attend to the tape symbol under the head position \( h_t \) and nearby cells in the acceptance window.
+(2) The Feed-Forward Network (FFN) must correctly map the state and symbol \( (q_t, \gamma_{h_t}) \) to the new state \( q_{t+1} \), updated symbol \( \gamma_{h_t}' \), and head movement \( D \).
+These requirements ensure that each transformer layer faithfully simulates the TM's transition function for every step of the simulation.
+
+\subsection{{\color{black}Combining} the Requirements}
+With the simulation construction in \ref{appendix:a4}, {\color{black}combining} the requirements in \ref{appendix:A5}, we conclude that:
+
+
+\[
+\forall \epsilon > 0, \, \exists \mathcal{T} \text{ with parameters } (L, d, k, Q) \text{ satisfying } 
+\begin{cases}
+{\color{black} d \geq \log_2(|\mathbb{Q}|) + k \cdot \log_2(|\Gamma|), }\\
+\color{black}Q \geq e^{\frac{C''' \cdot L \cdot d \cdot k}{\varepsilon}}
+\end{cases}\]\(
+\text{ such that } \forall s \leq S, \, d(H_s, \phi(C_s)) \leq \epsilon.
+\)
+
+
+\section{Demonstrate Lemma \ref{lemma:Turing-Transformer}}
+\label{appendix:b}
+{
+\color{black} Lemma \ref{lemma:Turing-Transformer} is obvious, and we will only briefly state it here.
+}
+We aim to derive how the maximum number of steps \( S_{\text{max}} \) that a transformer can simulate scales with respect to the model's parameters: the number of layers \( L \), the dimension \( d \), the acceptance window \( k \), and the quantization levels \( Q \).
+
+\subsection{Number of Layers \( L \)}
+
+Since each layer simulates one Turing machine (TM) step, the maximum number of steps \( S_{\text{max}} \) scales linearly with the number of layers \( L \). We assume that in the transformer model simulating a TM, each layer corresponds to one computational step of the TM. At each layer, the transformer updates the TM's configuration from step \( t \) to step \( t+1 \). Therefore, the total number of steps that can be simulated is directly proportional to the number of layers. Therefore, the number of steps \( S_{\text{max}} \) is given by: \(
+S_{\text{max}} = \Theta(L)
+\)
+
+\subsection{Dimension \( d \)}
+
+Higher dimensions allow more detailed representations of the TM's configuration, reducing the risk of overlap between states.
+ In a \( d \)-dimensional space, the maximum number of mutually orthogonal vectors (representing unique configurations) is at most \( d \). As the simulation progresses, more distinct configurations need to be represented without interference. Therefore, the number of unique, orthogonal configurations \( N_{\text{config}} \) is at most \( d \). The maximum number of steps before significant overlap or interference occurs scales linearly with \( d \), leading to the conclusion:
+\(
+S_{\text{max}} = \Theta(d)
+\)
+
+\subsection{Acceptance Window \( k \)}
+
+A larger acceptance window allows the transformer to process more tape symbols simultaneously.
+The acceptance window \( k \) represents the number of positions the transformer can attend to at each step. In simulating a TM, the tape head may need to access multiple symbols around its current position. A larger acceptance window \( k \) enables the transformer to incorporate more context at each step, reducing the number of steps required to propagate information and mitigating error accumulation. The speed at which information propagates is proportional to \( k \).
+Thus, the ability to process more symbols per step enhances the simulation’s depth, giving the result:
+\(
+S_{\text{max}} = \Theta(k)
+\)
+
+\subsection{Quantization Levels \( Q \)}
+
+Higher quantization levels reduce numerical error, allowing more steps to be simulated before accumulated error becomes prohibitive.
+Quantization levels \( Q \) relate to the numerical precision of the transformer's computations. The numerical precision increases logarithmically with \( Q \), specifically \( \text{Precision} = \log_2(Q) \). As a result, higher precision reduces the per-step numerical error \( \varepsilon \), which accumulates over \( S \) steps. The accumulated error after \( S \) steps is approximately \( S \cdot \varepsilon \). To keep the total error below a threshold \( \varepsilon_{\text{max}} \), the number of steps \( S_{\text{max}} \) is bounded by \( Q \). Since the precision scales as \( \log(Q) \), the maximum number of steps scales logarithmically with the quantization levels:
+\(
+S_{\text{max}} = \Theta(\log(Q))
+\)
+
+%\subsubsection{Combined Scaling Relationship}
+%Combining the above scaling relationships:
+%\[
+%S
+%_{\text{max}} = \Theta(L \cdot d \cdot k \cdot \log(Q))
+%\]
+%This indicates that \( S_{\text{max}} \) grows linearly with \( L \), \( d \), and \( k \), and logarithmically with \( Q \).
+
+
+\subsection{Scaling Relationship Derivation}
+
+From the mapping of TM configurations to hidden states and the simulation process across multiple layers, we derive the scaling relationship:
+\[
+S_{\text{max}} = \Theta(L \cdot d \cdot k \cdot \log(Q))
+\]
+This relationship implies that the number of TM steps \( S_{\text{max}} \) scales linearly with the number of layers \( L \), the hidden dimension \( d \), and the acceptance window \( k \), while it scales logarithmically with the quantization levels \( Q \). More layers allow for more steps, higher dimensions enable more complex configurations, larger windows allow the processing more tape symbols, and higher precision reduces numerical errors over time.
+
+
+
+
+\section{Proof of Theorem~\ref{T:approximation}}\label{appendix:theorem43}
+
+
+\begin{proof}
+Lemma \ref{lemma:Turing-Transformer-Epsilon-Delta}
+%\jx{should this be \ref{lemma:Turing-Transformer-Epsilon-Delta} instead?}
+told us that, since state transition function  \( \delta \) is local,%\jx{how is this relevant in this context? could we remove this sentence?}
+there exists a window size \( k \) sufficient to capture all necessary information to perform \( s \) steps of \( M \). 
+ Therefore, the auto-regressive Transformer, constrained by a context window size \( k \), generates the output sequence \( y \) in multiple refinement rounds. Each round \( r \) simulates a fixed number \( s \) of computational steps of \( M \), updating the output from \( y^{(r-1)} \) to \( y^{(r)} \) by processing the relevant segment of the sequence within the window \( k \). The total number of required rounds is \( R = \lceil T / s \rceil \), ensuring that all computational steps are covered.
+
+To maintain the overall approximation error within \( \epsilon \), the error tolerance is distributed across the \( R \) rounds, assigning an error budget \( \epsilon_r = \epsilon / R \) to each round. 
+
+ This ensures that the cumulative error across all rounds does not exceed \( \epsilon \).  
+We build it with the following induction: At round 0, we have \( y^{(0)} = x \) correctly encodes the initial configuration \( C_0 \). Since no computation has been performed, the initial error is zero:
+  \(
+  d(y^{(0)}, C_0) = 0 \leq \epsilon.
+  \)
+Assume that after \( r-1 \) rounds, the output \( y^{(r-1)} \) approximates the configuration \( C_{(r-1)s} \) with error \( \epsilon_{r-1} \leq (r-1)\epsilon / R \). The error introduced in round \( r \) satisfies:
+  \[
+  d(y^{(r)}, C_{rs}) \leq d(y^{(r-1)}, C_{(r-1)s}) + \epsilon_r \leq (r-1)\epsilon / R + \epsilon / R = r\epsilon / R.
+  \]
+  Thus, the error after round \( r \) is bounded by \( r\epsilon / R \leq \epsilon \). The auto-regressive Transformer processes \( y^{(r-1)} \) within the context window \( k \) to generate \( y^{(r)} \), approximating \( C_{rs} \). 
+
+By induction, we establish that after each refinement round \( r \), the output \( y^{(r)} \) accurately represents the configuration \( C_{rs} \) within the allocated error \( r\epsilon / R \).  Consequently, considering the termination condition after \( R = \lceil T / s \rceil \) rounds, the output \( y^{(R)} \) approximates the final configuration \( C_T = f(x) \) with:
+\[
+d(y^{(R)}, f(x)) \leq R \cdot (\epsilon / R) = \epsilon.
+\]
+\end{proof}
+
