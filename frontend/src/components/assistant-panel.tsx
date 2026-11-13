@@ -24,6 +24,7 @@ export function AssistantPanel({
   disabled = false,
   disabledHint,
   busyText = "Searching the sources and checking the answer… (can take up to 20 s)",
+  documentId = "",
   onAsk,
   onJump,
 }: {
@@ -34,6 +35,9 @@ export function AssistantPanel({
   disabled?: boolean;
   disabledHint?: string;
   busyText?: string;
+  // Source the current question/answer belongs to: needed so "Jump to it" on a passage (which
+  // has no document_id of its own) can still navigate back to the right source.
+  documentId?: string;
   onAsk: (question: string) => Promise<AnswerResponse>;
   onJump?: (citation: AnswerCitation) => void;
 }) {
@@ -67,7 +71,7 @@ export function AssistantPanel({
       ) : (
         <div className="flex flex-col gap-6">
           {turns.map((turn, i) => (
-            <AnswerTurn key={i} turn={turn} busyText={busyText} onJump={onJump} />
+            <AnswerTurn key={i} turn={turn} busyText={busyText} documentId={documentId} onJump={onJump} />
           ))}
         </div>
       )}
@@ -90,7 +94,17 @@ export function AssistantPanel({
   );
 }
 
-function AnswerTurn({ turn, busyText, onJump }: { turn: Turn; busyText: string; onJump?: (citation: AnswerCitation) => void }) {
+function AnswerTurn({
+  turn,
+  busyText,
+  documentId,
+  onJump,
+}: {
+  turn: Turn;
+  busyText: string;
+  documentId: string;
+  onJump?: (citation: AnswerCitation) => void;
+}) {
   return (
     <div>
       <div className="flex items-start gap-2">
@@ -108,13 +122,21 @@ function AnswerTurn({ turn, busyText, onJump }: { turn: Turn; busyText: string; 
           </p>
         )}
         {turn.error && <p className="text-sm text-error-500">{turn.error}</p>}
-        {turn.answer && <AnswerBody answer={turn.answer} onJump={onJump} />}
+        {turn.answer && <AnswerBody answer={turn.answer} documentId={documentId} onJump={onJump} />}
       </div>
     </div>
   );
 }
 
-function AnswerBody({ answer, onJump }: { answer: AnswerResponse; onJump?: (citation: AnswerCitation) => void }) {
+function AnswerBody({
+  answer,
+  documentId,
+  onJump,
+}: {
+  answer: AnswerResponse;
+  documentId: string;
+  onJump?: (citation: AnswerCitation) => void;
+}) {
   const [label, tone] = STATUS_LABEL[answer.status];
   return (
     <div>
@@ -156,7 +178,7 @@ function AnswerBody({ answer, onJump }: { answer: AnswerResponse; onJump?: (cita
                     {onJump && (
                       <button
                         type="button"
-                        onClick={() => onJump({ chunk_id: p.chunk_id, document_id: "", source: "", text: p.text, timestamp: p.timestamp, url: null })}
+                        onClick={() => onJump({ chunk_id: p.chunk_id, document_id: documentId, source: "", text: p.text, timestamp: p.timestamp, url: null })}
                         className="font-medium text-primary-600 hover:underline dark:text-primary-300"
                       >
                         Jump to it
@@ -199,12 +221,12 @@ function CitationCard({ citation, onJump }: { citation: AnswerCitation; onJump?:
             {citation.source}
           </>
         )}
-        {clickable && <span className="text-gray-400">· jump to it</span>}
+        {clickable && <span className="text-gray-400">· {citation.timestamp ? "jump to it" : "open the paper"}</span>}
       </p>
     </blockquote>
   );
 
-  if (citation.timestamp && onJump) {
+  if (onJump && (citation.timestamp || citation.url)) {
     return (
       <button type="button" onClick={() => onJump(citation)} className="block w-full text-left transition hover:opacity-80">
         {body}

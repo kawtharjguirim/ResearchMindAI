@@ -155,6 +155,7 @@ export function VideoView({ sourceId }: { sourceId: string }) {
             emptyIcon="chat"
             emptyTitle="Ask a question about this video"
             emptyText="Answers quote the exact sentence of the transcript, with its timestamp. Click a citation to jump to it."
+            documentId={sourceId}
             onAsk={(question) => videoApi.answer(sourceId, question)}
             onJump={jumpToCitation}
           />
