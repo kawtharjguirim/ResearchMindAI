@@ -40,6 +40,16 @@ export class ApiError extends Error {
 }
 
 export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const res = await authFetch(path, init);
+  return (res.status === 204 ? undefined : await res.json()) as T;
+}
+
+// For files (PDF) that an <iframe> cannot load itself, since it cannot send the Authorization header.
+export async function requestBlob(path: string): Promise<Blob> {
+  return (await authFetch(path)).blob();
+}
+
+async function authFetch(path: string, init: RequestInit = {}): Promise<Response> {
   const {
     data: { session },
   } = await getSupabase().auth.getSession();
@@ -67,7 +77,7 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
     } catch {}
     throw new ApiError(res.status, detail);
   }
-  return (res.status === 204 ? undefined : await res.json()) as T;
+  return res;
 }
 
 export const api = {

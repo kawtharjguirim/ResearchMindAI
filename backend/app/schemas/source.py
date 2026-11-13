@@ -59,6 +59,31 @@ class AnswerCitation(BaseModel):
     url: str | None = None        # lien de la source papier (absent pour une vidéo)
 
 
+class PaperPassage(BaseModel):
+    chunk_id: str
+    section: str
+    text: str
+
+
+class PaperSummary(BaseModel):
+    """Article arXiv du corpus, tel qu'affiché dans la bibliothèque."""
+    doc_id: str
+    title: str
+    domain: str
+    categories: str
+    authors: str
+    update_date: str
+    license: str
+    arxiv_url: str
+    abstract: str
+    has_pdf: bool
+
+
+class PaperRead(PaperSummary):
+    """Article arXiv du corpus, avec le passage cité si un chunk_id est demandé."""
+    passage: PaperPassage | None = None
+
+
 class AnswerResponse(BaseModel):
     """Contrat générique {reponse, citations, verifie}, quel que soit le type de source."""
     reponse: str

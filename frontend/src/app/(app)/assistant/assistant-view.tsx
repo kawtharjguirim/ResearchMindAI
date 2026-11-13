@@ -32,6 +32,8 @@ export function AssistantView() {
   function jump(citation: AnswerCitation) {
     if (citation.timestamp) {
       router.push(`/sources/${citation.document_id}#t=${timeToSeconds(citation.timestamp)}`);
+    } else if (citation.url?.startsWith("/")) {
+      router.push(citation.url);
     } else if (citation.url) {
       window.open(citation.url, "_blank", "noopener,noreferrer");
     }
@@ -87,6 +89,7 @@ export function AssistantView() {
           emptyText="Select a source above, then ask a question. The answer cites the exact passage and tells you whether it was verified."
           disabled={!sourceId}
           disabledHint="Select a source first"
+          documentId={sourceId}
           onAsk={(question) => videoApi.answer(sourceId, question)}
           onJump={jump}
         />

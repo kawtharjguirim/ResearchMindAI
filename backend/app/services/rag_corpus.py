@@ -18,6 +18,7 @@ environ 13 minutes sur CPU pour 3867 chunks (139 articles), sans mise en cache d
 import importlib.util
 import sys
 from pathlib import Path
+from urllib.parse import quote
 
 # backend/app/services/rag_corpus.py -> racine du dépôt (ou du worktree)
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -49,6 +50,13 @@ def _rag():
 
 def _label(source: str, document_id: str) -> str:
     return f"arXiv:{document_id}" if source == "article" else document_id
+
+
+def _lien_article(c: dict) -> str | None:
+    """Chemin de la page de l'article dans l'app (frontend /papers/[id]), passage cité inclus."""
+    if c["source"] != "article":
+        return None
+    return f"/papers/{quote(c['document_id'])}?chunk={quote(c['chunk_id'])}"
 
 
 def search(query: str, top_k: int = 5) -> list[dict]:
@@ -83,5 +91,6 @@ def answer(query: str, top_k: int = 5) -> dict:
         p = passages.get(c["chunk_id"], {})
         citations.append({"chunk_id": c["chunk_id"], "document_id": c["document_id"],
                           "source": _label(c["source"], c["document_id"]),
-                          "text": p.get("text", ""), "timestamp": p.get("timestamp"), "url": None})
+                          "text": p.get("text", ""), "timestamp": p.get("timestamp"),
+                          "url": _lien_article(c)})
     return {"reponse": r["reponse"], "citations": citations, "verifie": r["verifie"]}

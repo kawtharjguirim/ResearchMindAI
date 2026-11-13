@@ -78,7 +78,7 @@ def test_answer_on_corpus_delegates_to_rag_module(client, real_corpus, monkeypat
     assert a["citations"] == [{"chunk_id": "2204.13048_0007", "document_id": "2204.13048",
                                "source": "arXiv:2204.13048",
                                "text": "Les horloges satellites doivent corriger la dérive relativiste.",
-                               "timestamp": None, "url": None}]
+                               "timestamp": None, "url": "/papers/2204.13048?chunk=2204.13048_0007"}]
 
 
 def test_search_on_corpus_delegates_to_rag_module(client, real_corpus, monkeypatch):

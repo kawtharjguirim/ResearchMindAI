@@ -13,6 +13,7 @@ const NAV: [string, string, IconName][] = [
   ["/projects", "My projects", "folder"],
   ["/assistant", "Research assistant", "chat"],
   ["/sources", "Sources", "library"],
+  ["/papers", "Library", "book"],
   ["/research-twin", "Research Twin", "layers"],
   ["/knowledge-graph", "Knowledge Graph", "network"],
 ];
