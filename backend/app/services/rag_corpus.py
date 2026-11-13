@@ -11,9 +11,9 @@ sur cette machine, ce qui laisse `app.services.papers` basculer sur les réponse
 ailleurs (dépôt frais, CI) sans rien casser.
 
 ATTENTION : search()/answer() de rag/rag.py n'acceptent aucun filtre par document -- ils
-interrogent tout le corpus. Le premier appel construit l'index (BM25 + embeddings E5) :
-environ 13 minutes sur CPU pour 3867 chunks (139 articles), sans mise en cache disque
-(voir docs/contrat_api.md). answer() appelle Ollama (qwen2.5:3b) en local.
+interrogent tout le corpus. Le premier appel construit l'index BM25 et lit les embeddings des
+passages dans rag/data/cache/ (calcules une seule fois, voir rag/recherche.py). answer()
+appelle Ollama (qwen2.5:3b) en local.
 """
 import importlib.util
 import sys
@@ -22,7 +22,7 @@ from urllib.parse import quote
 
 # backend/app/services/rag_corpus.py -> racine du dépôt (ou du worktree)
 REPO_ROOT = Path(__file__).resolve().parents[3]
-DEPENDANCES = ("rank_bm25", "sentence_transformers", "numpy")
+DEPENDANCES = ("nltk", "sklearn", "scipy", "sentence_transformers", "numpy")
 
 
 class RagIndisponible(Exception):
