@@ -14,6 +14,7 @@ import json
 import re
 import unicodedata
 from collections import defaultdict
+from functools import lru_cache
 from pathlib import Path
 
 import numpy as np
@@ -66,7 +67,9 @@ def tokeniser(texte):
 
 
 class BM25:
-    def __init__(self, textes, k1=CONFIG["bm25"]["k1"], b=CONFIG["bm25"]["b"]):
+    """tokeniser : par defaut celui du notebook 10 (anglais) ; normaliser pour un texte en francais."""
+    def __init__(self, textes, k1=CONFIG["bm25"]["k1"], b=CONFIG["bm25"]["b"], tokeniser=tokeniser):
+        self.tokeniser = tokeniser
         cv = CountVectorizer(tokenizer=tokeniser, lowercase=False, token_pattern=None, dtype=np.float32)
         tf = cv.fit_transform(textes).tocoo()
         dl = np.asarray(tf.tocsr().sum(axis=1)).ravel()
@@ -78,7 +81,7 @@ class BM25:
 
     def scores(self, question):
         """Scores de tous les passages, ou None si aucun mot de la question n'est dans le vocabulaire."""
-        cols = [self.vocab[t] for t in tokeniser(question) if t in self.vocab]
+        cols = [self.vocab[t] for t in self.tokeniser(question) if t in self.vocab]
         return np.asarray(self.W[:, cols].sum(axis=1)).ravel() if cols else None
 
 
@@ -90,14 +93,29 @@ def top_k(scores, k):
 
 # ---------- Encodeur E5 (notebook 10 cellule 6) ----------
 
+@lru_cache(maxsize=2)
+def _modele_e5(nom, max_seq_length, fp16):
+    m = SentenceTransformer(nom, device=DEVICE)
+    m.max_seq_length = max_seq_length
+    return m.half() if fp16 else m
+
+
+@lru_cache(maxsize=1)
+def modele_reranker():
+    """Un seul reranker par processus, partage par tous les index (un index par video)."""
+    return CrossEncoder(CONFIG["reranker"]["modele"], max_length=CONFIG["reranker"]["max_length"])
+
+
 class Encodeur:
     def __init__(self, cfg=CONFIG["embedding"]):
         self.cfg = cfg
-        self.m = SentenceTransformer(cfg["modele"], device=DEVICE)
-        self.m.max_seq_length = cfg["max_seq_length"]
         self.fp16 = DEVICE == "cuda" and cfg["fp16_sur_gpu"]
-        if self.fp16:
-            self.m.half()
+        self.m = _modele_e5(cfg["modele"], cfg["max_seq_length"], self.fp16)
+
+    @property
+    def dimension(self):
+        f = getattr(self.m, "get_embedding_dimension", None) or self.m.get_sentence_embedding_dimension
+        return f()
 
     def _enc(self, textes, batch_size=64):
         return self.m.encode(textes, batch_size=batch_size, normalize_embeddings=True,
@@ -140,7 +158,9 @@ def rrf(*classements, k=CONFIG["fusion"]["k"], top=CONFIG["fusion"]["top_k"]):
 class Index:
     """Index BM25 + E5 d'une liste de chunks (articles et/ou videos), avec reranking."""
 
-    def __init__(self, chunks, log=print):
+    def __init__(self, chunks, log=print, embeddings=None, tokeniser=tokeniser, cache_disque=True):
+        """embeddings : vecteurs deja calcules (ignores s'ils ne viennent pas du modele configure).
+        tokeniser : celui de BM25 ; normaliser pour un texte en francais (voir results/evaluation_video.csv)."""
         if not chunks:
             raise ValueError("Aucun chunk a indexer.")
         self.chunks = chunks
@@ -149,14 +169,21 @@ class Index:
         self.top_k = CONFIG["fusion"]["top_k"]
 
         log(f"Indexation BM25 ({len(chunks)} chunks)...")
-        self.bm25 = BM25(self.textes)
+        self.bm25 = BM25(self.textes, tokeniser=tokeniser)
 
         log(f"Chargement de {CONFIG['embedding']['modele']}...")
         self.e5 = Encodeur()
-        self.emb = self.e5.passages_en_cache([("", t) for t in self.textes], log=log).astype(np.float32)
+        E = np.asarray(embeddings, dtype=np.float32) if embeddings is not None else None
+        self.embeddings_recalcules = E is None or E.shape != (len(self.textes), self.e5.dimension)
+        if not self.embeddings_recalcules:
+            self.emb = E
+        elif cache_disque:
+            self.emb = self.e5.passages_en_cache([("", t) for t in self.textes], log=log).astype(np.float32)
+        else:
+            self.emb = self.e5.passages([("", t) for t in self.textes]).astype(np.float32)
 
         log(f"Chargement du reranker ({CONFIG['reranker']['modele']})...")
-        self.reranker = CrossEncoder(CONFIG["reranker"]["modele"], max_length=CONFIG["reranker"]["max_length"])
+        self.reranker = modele_reranker()
 
     def classements(self, question):
         """Scores bruts et classements BM25, E5 et hybride RRF (top_k de chaque liste fusionnes)."""
@@ -167,6 +194,10 @@ class Index:
         l_rrf, sc_rrf = rrf(l_bm25, l_e5)
         return {"bm25": s_bm25 if s_bm25 is not None else np.zeros(len(self.chunks)), "e5": s_e5,
                 "rrf": sc_rrf, "BM25": l_bm25, "E5": l_e5, "Hybride RRF": l_rrf}
+
+    def scorer(self, question, textes):
+        """Probabilites du reranker pour (question, texte) sur des textes quelconques."""
+        return probas(self.reranker.predict([(question, t) for t in textes], show_progress_bar=False))
 
     def rerank(self, question, candidats):
         """Probabilites du reranker pour (question, passage) sur les indices candidats."""

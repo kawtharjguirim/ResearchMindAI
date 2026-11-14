@@ -35,7 +35,7 @@ VIDEOS_DIR = STORAGE_DIR / "videos"
 EXT_VIDEO = (".mp4", ".webm", ".mkv", ".mov", ".m4v")
 TAILLE_MAX_VIDEO = _env.video_max_bytes
 # Paquets du groupe uv « video » (uv sync --group video), absents de l'image Docker par défaut
-DEPENDANCES = ("faster_whisper", "sentence_transformers", "rank_bm25", "numpy")
+DEPENDANCES = ("faster_whisper", "sentence_transformers", "nltk", "sklearn", "scipy", "numpy")
 
 # ---------- Transcription (faster-whisper) ----------
 WHISPER_MODEL_DIR = _env.whisper_model_dir or str(STORAGE_DIR / "models" / "whisper")
@@ -51,10 +51,7 @@ MAX_MOTS = 200        # nombre maximal de mots d'un chunk
 CHEVAUCHEMENT = 1     # segments repris au début du chunk suivant
 
 # ---------- Recherche ----------
-MODELE_E5 = "intfloat/multilingual-e5-small"
-MODELE_RERANKER = "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1"
-N_CANDIDATS = 10      # candidats envoyés au reranker
-RRF_K = 60
+# Modèles, fusion et reranker : moteur commun, voir rag/config_recherche.json et search.py.
 
 # ---------- LLM (Ollama) ----------
 OLLAMA_URL = _env.ollama_url

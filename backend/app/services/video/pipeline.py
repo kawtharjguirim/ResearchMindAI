@@ -81,11 +81,24 @@ def index_pour(source: Source, chunks: list[Chunk]) -> Index:
     embeddings = [c.embedding for c in chunks]
     index = Index([c.as_search_chunk() for c in chunks],
                   embeddings=embeddings if all(e is not None for e in embeddings) else None)
+    if getattr(index, "embeddings_recalcules", False):
+        _enregistrer_embeddings(source.id, index.emb)
     with _verrou:
         _cache[cle] = index
         while len(_cache) > _CACHE_MAX:
             _cache.popitem(last=False)
     return index
+
+
+def _enregistrer_embeddings(source_id: str, vecteurs) -> None:
+    """Stocke les vecteurs recalculés (changement de modèle) pour ne pas les recalculer au redémarrage."""
+    with SessionLocal() as db:
+        chunks = db.scalars(select(Chunk).where(Chunk.source_id == source_id).order_by(Chunk.position)).all()
+        if len(chunks) != len(vecteurs):
+            return
+        for c, v in zip(chunks, vecteurs):
+            c.embedding = [float(x) for x in v]
+        db.commit()
 
 
 def oublier(source_id: str) -> None:
