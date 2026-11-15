@@ -7,7 +7,8 @@ questions validees par un humain (statut valide ou corrige) sont comptees.
 
 Usage :
   python -I evaluation_corpus.py [--split test|validation|tout] [--toutes]
-Sorties : results/evaluation_corpus.csv (+ _par_domaine.csv)
+                                 [--encodeur <dossier modele> --etiquette <nom>]
+Sorties : results/evaluation_corpus[_<etiquette>].csv (+ _par_domaine.csv)
 """
 import argparse
 import csv
@@ -47,6 +48,8 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("--split", choices=["test", "validation", "tout"], default="test")
     p.add_argument("--toutes", action="store_true", help="inclure les questions pas encore validees")
+    p.add_argument("--encodeur", help="dossier d'un autre modele d'embedding a tester (ex. un modele fine-tune)")
+    p.add_argument("--etiquette", default="", help="suffixe des fichiers de sortie (evite d'ecraser les resultats par defaut)")
     args = p.parse_args()
 
     jeu = json.loads((DOSSIER / "eval/jeu_corpus.json").read_text(encoding="utf-8"))
@@ -61,10 +64,12 @@ def main():
     print(f"{len(questions)} questions (split {args.split}, dont {non_validees} non validees)")
 
     chunks = [json.loads(l) for l in open(DOSSIER / "data/chunks.jsonl", encoding="utf-8")]
-    index = Index(chunks)
+    cfg = dict(CONFIG["embedding"], modele=args.encodeur) if args.encodeur else None
+    index = Index(chunks, cfg_embedding=cfg)
+    modele = args.encodeur or CONFIG["embedding"]["modele"]
     ids = index.ids
 
-    systemes = ["BM25", "E5", "Hybride RRF", f"Hybride + reranker (top {N_CANDIDATS})"]
+    systemes = ["BM25", "E5", "Hybride RRF", f"Hybride + reranker (top {N_CANDIDATS})", f"E5 + reranker (top {N_CANDIDATS})"]
     rangs = defaultdict(list)
     par_domaine = defaultdict(lambda: defaultdict(list))
     latences = []
@@ -73,8 +78,11 @@ def main():
         c = index.classements(q["question"])
         reclasses = [r["chunk"]["chunk_id"] for r in index.rechercher(q["question"])]
         latences.append(time.perf_counter() - t0)
+        cand_e5 = c["E5"][:N_CANDIDATS]
+        sc_e5 = index.rerank(q["question"], cand_e5)
+        e5_reclasse = [ids[cand_e5[i]] for i in sorted(range(len(cand_e5)), key=lambda i: -sc_e5[i])]
         classements = {"BM25": [ids[i] for i in c["BM25"]], "E5": [ids[i] for i in c["E5"]],
-                       "Hybride RRF": [ids[i] for i in c["Hybride RRF"]], systemes[3]: reclasses}
+                       "Hybride RRF": [ids[i] for i in c["Hybride RRF"]], systemes[3]: reclasses, systemes[4]: e5_reclasse}
         for s in systemes:
             r = rang(classements[s], q["chunk_id"])
             rangs[s].append(r)
@@ -88,16 +96,17 @@ def main():
         m = metriques(rangs[s])
         print(f"{s:<32} {m['Recall@1']:>6.3f} {m['Recall@3']:>6.3f} {m['Recall@10']:>6.3f} {m['MRR@10']:>7.3f} {m['nDCG@10']:>8.3f}")
         lignes.append({"date": date, "split": args.split, "questions": portee, "systeme": s,
-                       "modele_embedding": CONFIG["embedding"]["modele"], "reranker": CONFIG["reranker"]["modele"],
+                       "modele_embedding": modele, "reranker": CONFIG["reranker"]["modele"],
                        **{k: (round(v, 4) if isinstance(v, float) else v) for k, v in m.items()}})
     print(f"\nLatence moyenne recherche + reranking : {1000 * sum(latences) / len(latences):.0f} ms / question")
 
-    sortie = DOSSIER / "results/evaluation_corpus.csv"
+    suffixe = f"_{args.etiquette}" if args.etiquette else ""
+    sortie = DOSSIER / f"results/evaluation_corpus{suffixe}.csv"
     with open(sortie, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=list(lignes[0]))
         w.writeheader()
         w.writerows(lignes)
-    with open(DOSSIER / "results/evaluation_corpus_par_domaine.csv", "w", newline="", encoding="utf-8") as f:
+    with open(DOSSIER / f"results/evaluation_corpus{suffixe}_par_domaine.csv", "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(["date", "split", "questions", "domaine", "systeme", "n", "Recall@10", "MRR@10", "nDCG@10"])
         for d in sorted(par_domaine):

@@ -158,9 +158,11 @@ def rrf(*classements, k=CONFIG["fusion"]["k"], top=CONFIG["fusion"]["top_k"]):
 class Index:
     """Index BM25 + E5 d'une liste de chunks (articles et/ou videos), avec reranking."""
 
-    def __init__(self, chunks, log=print, embeddings=None, tokeniser=tokeniser, cache_disque=True):
+    def __init__(self, chunks, log=print, embeddings=None, tokeniser=tokeniser, cache_disque=True, cfg_embedding=None):
         """embeddings : vecteurs deja calcules (ignores s'ils ne viennent pas du modele configure).
-        tokeniser : celui de BM25 ; normaliser pour un texte en francais (voir results/evaluation_video.csv)."""
+        tokeniser : celui de BM25 ; normaliser pour un texte en francais (voir results/evaluation_video.csv).
+        cfg_embedding : autre encodeur a tester (meme format que config_recherche.json > embedding) ;
+        sert aux comparaisons, l'application garde la configuration par defaut."""
         if not chunks:
             raise ValueError("Aucun chunk a indexer.")
         self.chunks = chunks
@@ -171,8 +173,9 @@ class Index:
         log(f"Indexation BM25 ({len(chunks)} chunks)...")
         self.bm25 = BM25(self.textes, tokeniser=tokeniser)
 
-        log(f"Chargement de {CONFIG['embedding']['modele']}...")
-        self.e5 = Encodeur()
+        cfg_embedding = cfg_embedding or CONFIG["embedding"]
+        log(f"Chargement de {cfg_embedding['modele']}...")
+        self.e5 = Encodeur(cfg_embedding)
         E = np.asarray(embeddings, dtype=np.float32) if embeddings is not None else None
         self.embeddings_recalcules = E is None or E.shape != (len(self.textes), self.e5.dimension)
         if not self.embeddings_recalcules:
