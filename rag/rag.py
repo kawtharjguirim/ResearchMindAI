@@ -83,7 +83,7 @@ def _appeler_ollama(prompt, num_predict=200, timeout=900, modele=MODELE_LLM):
 
 # Versions du prompt de generation, comparees par comparer_prompts.py sur le lot de validation.
 # v1 : prompt d'origine. v2 : regles explicites. v3 : v2 + exemple de reponse + titre de l'article.
-PROMPT_PAR_DEFAUT = "v4"   # choisi sur la validation, confirme sur le test (results/comparaison_prompts_test.csv)
+PROMPT_PAR_DEFAUT = "v4"   # choisi sur la validation ; test : cite la source 50/56 (v1 : 10/56), ROUGE-L non significatif
 PHRASE_REFUS = "Les extraits fournis ne permettent pas de répondre à cette question."
 _REGLES = (
     "Tu es l'assistant de recherche de ResearchMind. Tu réponds à une question en t'appuyant UNIQUEMENT "
