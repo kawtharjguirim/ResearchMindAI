@@ -42,10 +42,19 @@ def _rag():
     manquantes = dependances_manquantes()
     if manquantes:
         raise RagIndisponible(f"rag/ module not installed (missing: {', '.join(manquantes)}).")
-    if str(REPO_ROOT) not in sys.path:
-        sys.path.insert(0, str(REPO_ROOT))
-    import rag.rag as module
-    return module
+    # Chargement par chemin, sous un nom propre : le module vidéo met rag/ dans sys.path, si bien
+    # que `import rag` y désigne rag/rag.py (un module), et `import rag.rag` échoue.
+    nom = "researchmind_rag"
+    if nom not in sys.modules:
+        spec = importlib.util.spec_from_file_location(nom, REPO_ROOT / "rag" / "rag.py")
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[nom] = module
+        try:
+            spec.loader.exec_module(module)
+        except BaseException:
+            del sys.modules[nom]
+            raise
+    return sys.modules[nom]
 
 
 def _label(source: str, document_id: str) -> str:
