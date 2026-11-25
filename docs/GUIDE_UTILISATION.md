@@ -1,4 +1,4 @@
-# Guide d'utilisation — ResearchMind AI (état au 14/11/2026)
+# Guide d'utilisation — ResearchMind AI (état au 25/11/2026)
 
 Ce guide explique comment installer, lancer et utiliser le projet **tel qu'il est aujourd'hui**
 sur la branche `Mohamed`. Il décrit aussi ce qui ne fonctionne pas encore.
@@ -247,14 +247,15 @@ npx tsc --noEmit
 - Vidéos : import, transcription, recherche, réponses avec horodatage, lecteur synchronisé.
 - Corpus arXiv : 139 articles, recherche hybride (BM25 + mE5-base + fusion RRF + reranker), réponses citées, bibliothèque et visionneuse PDF.
 - Moteur identique au système évalué au notebook 10 (test de parité réussi).
-- Jeu de test de 118 questions et page de relecture.
+- Jeu de test de 118 questions, relues et validées (48 validation, 70 test), et page de relecture.
+- Le module vidéo utilise le même moteur que le corpus (mE5-base), avec un BM25 adapté au français.
+- Prompt de génération v4 : les réponses citent leur source dans 50 cas sur 56 (contre 10 sur 56 avec le prompt d'origine).
 - 57 tests backend, TypeScript sans erreur.
 
 **Limites connues :**
-- Les 118 questions de test ne sont pas encore relues : les résultats d'évaluation restent provisoires.
-- Sur notre corpus, E5 seul semble meilleur que la fusion avec BM25 (questions en français, corpus en anglais) : à confirmer après relecture.
-- Le reranker n'a pas été sélectionné par une expérience (notebook 11 pas encore exécuté) ; le fine-tuning (notebook 04_05) non plus.
-- Le module vidéo utilise encore l'ancien modèle e5-small.
+- Sur notre corpus, « E5 seul + reranker » obtient un meilleur nDCG@10 que le système de l'application (0,735 contre 0,713 sur le test) : changement non encore appliqué.
+- Le modèle mE5-base fine-tuné (Colab) n'est pas encore évalué sur nos questions en français ; il n'est pas utilisé par l'application.
+- Les rerankers ML du notebook 11 (régression logistique, SVM, Random Forest) ont été testés et non retenus ; les cross-encoders du notebook 11 ne sont pas encore évalués.
 - Pas encore d'import PDF, Web, images ni YouTube dans l'application ; pas de Knowledge Graph, de Research Twin complet ni d'agents.
 - Le PDF s'ouvre au début, pas à la page du passage cité (les passages viennent du `.tex`, sans numéro de page).
 
@@ -267,6 +268,8 @@ Le détail de ce qui reste à faire est dans [`docs/plan_integration_pipeline.md
 | Symptôme | Solution |
 |---|---|
 | « Cannot reach the API » | Le backend n'est pas lancé, ou `NEXT_PUBLIC_API_URL` est faux. |
+| Le port 8000 est déjà utilisé | Lancer le backend sur un autre port (`--port 8010`) et mettre `NEXT_PUBLIC_API_URL=http://localhost:8010` dans `frontend/.env.local`, puis relancer le frontend. |
+| `RAG corpus unavailable: No module named 'rag.rag'` | Ancienne version du code : faire `git pull` (corrigé dans le commit `e368162`). |
 | La connexion échoue | Projet Supabase en pause, ou inscription faite dans un autre navigateur. |
 | Les réponses donnent une erreur 503 | Ollama n'est pas lancé, ou `qwen2.5:3b` n'est pas téléchargé. |
 | Le corpus arXiv donne des réponses « simulées » | `rag/data/chunks.jsonl` manque : refaire l'étape 6. |
