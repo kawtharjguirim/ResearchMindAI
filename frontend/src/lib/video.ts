@@ -52,6 +52,11 @@ export type TranscriptChunk = { chunk_id: string; start: number; end: number; ti
 
 export type VideoUpload = { file: File; title?: string; language?: string; projectId?: string };
 
+export type UrlImport = { url: string; title?: string; language?: string; projectId?: string };
+
+// Identifiant YouTube d'une source importée par lien (le backend stocke l'URL canonique watch?v=...).
+export const youtubeId = (url: string): string | null => /[?&]v=([A-Za-z0-9_-]{11})/.exec(url)?.[1] ?? null;
+
 export const VIDEO_EXTENSIONS = [".mp4", ".webm", ".mkv", ".mov", ".m4v"];
 
 // The <video> element loads the file directly (it cannot send an Authorization header), so the
@@ -76,6 +81,11 @@ export const videoApi = {
       headers: { "Content-Type": file.type || "application/octet-stream" },
     });
   },
+  importUrl: ({ url, title, language, projectId }: UrlImport) =>
+    request<Source>("/sources/url", {
+      method: "POST",
+      body: JSON.stringify({ url, title: title?.trim() || null, language: language || null, project_id: projectId || null }),
+    }),
   answer: (sourceId: string, question: string) =>
     request<AnswerResponse>("/answer", { method: "POST", body: JSON.stringify({ source_id: sourceId, question }) }),
   search: (query: string, sourceId?: string, topK = 5) =>

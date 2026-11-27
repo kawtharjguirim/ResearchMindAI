@@ -19,6 +19,7 @@ from .config import DEPENDANCES, VIDEOS_DIR
 from .qa import VideoQA
 from .search import Index, encoder_passages
 from .transcription import transcrire
+from .youtube import YouTubeError, extraire_id, recuperer_segments
 
 
 def dependances_manquantes() -> list[str]:
@@ -31,6 +32,31 @@ def chemin_video(source: Source):
 
 
 # ---------- Traitement d'une vidéo (tâche de fond) ----------
+
+def _indexer(db, source: Source) -> None:
+    """Découpe les segments de la source en passages, calcule leurs embeddings et marque la source prête."""
+    chunks = construire_chunks(source.segments, source=source.url or source.title,
+                               titre=source.title, langue=source.language, doc_id=source.id)
+    if not chunks:
+        raise ValueError("Aucune parole détectée dans la vidéo.")
+    vecteurs = encoder_passages([c["text"] for c in chunks])
+    source.chunks = [Chunk(position=i, start=c["start"], end=c["end"], timestamp=c["timestamp"],
+                           text=c["text"], embedding=[float(x) for x in v])
+                     for i, (c, v) in enumerate(zip(chunks, vecteurs))]
+    source.status = SourceStatus.ready
+    db.commit()
+
+
+def _echouer(source_id: str, erreur: Exception) -> None:
+    """Enregistre l'erreur de traitement sur la source, pour l'afficher dans l'interface."""
+    with SessionLocal() as db:
+        source = db.get(Source, source_id)
+        if source is not None:
+            # Une erreur attendue (lien sans sous-titres, par exemple) s'affiche sans préfixe technique.
+            texte = str(erreur) if isinstance(erreur, YouTubeError) else f"{type(erreur).__name__}: {erreur}"
+            source.status, source.error = SourceStatus.error, texte[:2000]
+            db.commit()
+
 
 def traiter_source(source_id: str) -> None:
     """Transcrit, découpe et indexe une source. Met à jour son statut ; ne lève jamais."""
@@ -45,23 +71,34 @@ def traiter_source(source_id: str) -> None:
             source.language, source.duration, source.segments = t["language"], t["duration"], t["segments"]
             source.status = SourceStatus.indexing
             db.commit()
-
-            chunks = construire_chunks(t["segments"], source=source.url or source.title,
-                                       titre=source.title, langue=t["language"], doc_id=source.id)
-            if not chunks:
-                raise ValueError("Aucune parole détectée dans la vidéo.")
-            vecteurs = encoder_passages([c["text"] for c in chunks])
-            source.chunks = [Chunk(position=i, start=c["start"], end=c["end"], timestamp=c["timestamp"],
-                                   text=c["text"], embedding=[float(x) for x in v])
-                             for i, (c, v) in enumerate(zip(chunks, vecteurs))]
-            source.status = SourceStatus.ready
-            db.commit()
+            _indexer(db, source)
         except Exception as e:  # noqa: BLE001 : l'erreur est stockée et affichée dans l'interface
             db.rollback()
-            source = db.get(Source, source_id)
-            if source is not None:
-                source.status, source.error = SourceStatus.error, f"{type(e).__name__}: {e}"[:2000]
-                db.commit()
+            _echouer(source_id, e)
+
+
+def traiter_source_youtube(source_id: str) -> None:
+    """Récupère les sous-titres d'un lien YouTube, puis les indexe comme une vidéo. Ne lève jamais."""
+    with SessionLocal() as db:
+        source = db.get(Source, source_id)
+        if source is None:
+            return
+        try:
+            source.status, source.error = SourceStatus.transcribing, ""
+            db.commit()
+            video_id = extraire_id(source.url)
+            if video_id is None:
+                raise YouTubeError("Lien YouTube invalide.")
+            segments, langue = recuperer_segments(video_id, source.language)
+            source.language = langue
+            source.duration = segments[-1]["end"]
+            source.segments = segments
+            source.status = SourceStatus.indexing
+            db.commit()
+            _indexer(db, source)
+        except Exception as e:  # noqa: BLE001 : l'erreur est stockée et affichée dans l'interface
+            db.rollback()
+            _echouer(source_id, e)
 
 
 # ---------- Questions-réponses ----------

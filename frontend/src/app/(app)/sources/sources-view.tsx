@@ -131,6 +131,77 @@ function UploadCard({ projects, onUploaded }: { projects: Project[]; onUploaded:
   );
 }
 
+function UrlCard({ projects, onImported }: { projects: Project[]; onImported: (s: Source) => void }) {
+  const toast = useToast();
+  const [url, setUrl] = useState("");
+  const [projectId, setProjectId] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    if (!url.trim()) return;
+    setBusy(true);
+    setError("");
+    try {
+      const source = await videoApi.importUrl({ url, projectId: projectId || undefined });
+      onImported(source);
+      toast("YouTube link added: subtitles are being read");
+      setUrl("");
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form onSubmit={submit} className={`${card} p-6`}>
+      <div className="flex items-center gap-3">
+        <SourceIcon type="web" />
+        <div>
+          <h2 className="text-base font-semibold text-gray-800 dark:text-white/90">Coller une URL (page web ou vidéo YouTube)</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Les vidéos sont transcrites avec leurs timestamps pour être citées à la seconde près.</p>
+        </div>
+      </div>
+
+      <div className="mt-5">
+        <label htmlFor="source-url" className={label}>
+          Lien
+        </label>
+        <input
+          id="source-url"
+          type="url"
+          className={inputPill}
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder="https://www.youtube.com/watch?v=..."
+        />
+      </div>
+
+      <div className="mt-4">
+        <label htmlFor="url-project" className={label}>
+          Project <span className="font-normal text-gray-400">(optional)</span>
+        </label>
+        <select id="url-project" className={inputPill} value={projectId} onChange={(e) => setProjectId(e.target.value)}>
+          <option value="">No project</option>
+          {projects.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.title}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {error && <p className="mt-4 text-sm text-error-500">{error}</p>}
+      <button type="submit" disabled={!url.trim() || busy} className={`${btnPrimary} mt-5 w-full disabled:opacity-50`}>
+        <Icon name={busy ? "refresh" : "plus"} className={`size-4 ${busy ? "animate-spin" : ""}`} />
+        {busy ? "Ajout…" : "Ajouter"}
+      </button>
+    </form>
+  );
+}
+
 function SourceRow({ s, onDelete }: { s: Source; onDelete: () => void }) {
   const [text, tone] = STATUS[s.status];
   const working = s.status === "pending" || s.status === "transcribing" || s.status === "indexing";
@@ -219,7 +290,10 @@ export function SourcesView() {
       <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Import videos and follow their transcription. Ask questions from the Assistant page.</p>
 
       <div className="mt-8 space-y-6">
-        <UploadCard projects={projects} onUploaded={(s) => setSources((list) => [s, ...(list ?? [])])} />
+        <div className="grid gap-6 lg:grid-cols-2">
+          <UploadCard projects={projects} onUploaded={(s) => setSources((list) => [s, ...(list ?? [])])} />
+          <UrlCard projects={projects} onImported={(s) => setSources((list) => [s, ...(list ?? [])])} />
+        </div>
 
         <div className={`${card} p-6`}>
           <div className="flex items-center justify-between">

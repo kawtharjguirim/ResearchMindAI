@@ -40,6 +40,14 @@ class AnswerRequest(BaseModel):
         return v
 
 
+class UrlSourceCreate(BaseModel):
+    """Import d'un lien (YouTube pour l'instant) : seuls la langue et le titre sont facultatifs."""
+    url: str = Field(min_length=1, max_length=1000)
+    title: str | None = Field(default=None, max_length=300)
+    language: str | None = Field(default="fr", max_length=8)
+    project_id: str | None = None
+
+
 class Passage(BaseModel):
     chunk_id: str
     timestamp: str

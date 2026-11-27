@@ -25,10 +25,11 @@ from app.core.media_token import sign_play_token, verify_play_token
 from app.db.session import get_db
 from app.models.project import Project
 from app.models.source import Chunk, Source, SourceStatus
-from app.schemas.source import PlayLink, SourceRead, TranscriptChunk
+from app.schemas.source import PlayLink, SourceRead, TranscriptChunk, UrlSourceCreate
 from app.services import papers
 from app.services.video import pipeline
 from app.services.video.config import EXT_VIDEO, TAILLE_MAX_VIDEO, VIDEOS_DIR
+from app.services.video.youtube import extraire_id
 
 router = APIRouter(prefix="/sources", tags=["sources"])
 
@@ -111,6 +112,35 @@ async def upload_video(
     db.commit()
     db.refresh(source)
     background.add_task(pipeline.traiter_source, source.id)
+    return to_read(source, 0)
+
+
+@router.post("/url", response_model=SourceRead, status_code=status.HTTP_202_ACCEPTED)
+def import_url(
+    body: UrlSourceCreate,
+    background: BackgroundTasks,
+    db: Session = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
+    """Importe un lien YouTube : ses sous-titres sont lus, puis indexés en tâche de fond."""
+    video_id = extraire_id(body.url)
+    if video_id is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Lien YouTube invalide (ex. https://www.youtube.com/watch?v=...)")
+    if body.project_id and db.scalar(
+        select(Project.id).where(Project.id == body.project_id, Project.user_id == user.id)
+    ) is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+
+    source = Source(
+        id=str(uuid.uuid4()), user_id=user.id, project_id=body.project_id,
+        title=((body.title or "").strip() or f"YouTube {video_id}")[:300],
+        filename="", url=f"https://www.youtube.com/watch?v={video_id}", language=body.language or None,
+    )
+    db.add(source)
+    db.commit()
+    db.refresh(source)
+    background.add_task(pipeline.traiter_source_youtube, source.id)
     return to_read(source, 0)
 
 

@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AssistantPanel } from "@/components/assistant-panel";
 import { Icon } from "@/components/icons";
 import { Badge, btnSecondary, card, type Tone } from "@/components/ui";
-import { playUrl, videoApi, type AnswerCitation, type Source, type SourceStatus, type TranscriptChunk } from "@/lib/video";
+import { playUrl, videoApi, youtubeId, type AnswerCitation, type Source, type SourceStatus, type TranscriptChunk } from "@/lib/video";
 
 const STATUS: Record<SourceStatus, [string, Tone]> = {
   pending: ["Queued", "gray"],
@@ -25,6 +25,9 @@ export function VideoView({ sourceId }: { sourceId: string }) {
   const [source, setSource] = useState<Source | null>(null);
   const [transcript, setTranscript] = useState<TranscriptChunk[] | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  // Source YouTube : pas de fichier local, on lit la vidéo dans un lecteur YouTube intégré.
+  const [youtube, setYoutube] = useState<string | null>(null);
+  const [youtubeStart, setYoutubeStart] = useState(0);
   const [error, setError] = useState("");
   const [activeChunk, setActiveChunk] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -37,9 +40,14 @@ export function VideoView({ sourceId }: { sourceId: string }) {
         if (cancelled) return;
         setSource(s);
         if (s.status !== "ready") return;
-        const [link, chunks] = await Promise.all([videoApi.playLink(sourceId), videoApi.getTranscript(sourceId)]);
+        const ytId = youtubeId(s.url);
+        const [chunks, link] = await Promise.all([
+          videoApi.getTranscript(sourceId),
+          ytId ? Promise.resolve(null) : videoApi.playLink(sourceId),
+        ]);
         if (cancelled) return;
-        setVideoUrl(playUrl(link));
+        setYoutube(ytId);
+        setVideoUrl(link ? playUrl(link) : null);
         setTranscript(chunks);
       } catch (err) {
         if (!cancelled) setError((err as Error).message);
@@ -52,17 +60,21 @@ export function VideoView({ sourceId }: { sourceId: string }) {
 
   const playAt = useCallback((seconds: number) => {
     const el = videoRef.current;
-    if (!el) return;
-    el.currentTime = seconds;
-    el.play().catch(() => {});
+    if (el) {
+      el.currentTime = seconds;
+      el.play().catch(() => {});
+      return;
+    }
+    // Lecteur YouTube : on recharge l'iframe à la seconde demandée (paramètre start).
+    setYoutubeStart(Math.floor(seconds));
   }, []);
 
   // Jumped here from the Assistant page with a timestamp, e.g. /sources/{id}#t=125.
   useEffect(() => {
-    if (!videoUrl) return;
+    if (!transcript) return;
     const match = /^#t=(\d+(?:\.\d+)?)$/.exec(window.location.hash);
     if (match) playAt(Number(match[1]));
-  }, [videoUrl, playAt]);
+  }, [transcript, playAt]);
 
   function onTimeUpdate() {
     const t = videoRef.current?.currentTime;
@@ -118,7 +130,15 @@ export function VideoView({ sourceId }: { sourceId: string }) {
         <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
           <div className="space-y-6">
             <div className={`${card} overflow-hidden`}>
-              {videoUrl ? (
+              {youtube ? (
+                <iframe
+                  title={source.title}
+                  src={`https://www.youtube-nocookie.com/embed/${youtube}?start=${youtubeStart}&autoplay=${youtubeStart ? 1 : 0}`}
+                  className="aspect-video w-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              ) : videoUrl ? (
                 // eslint-disable-next-line jsx-a11y/media-has-caption
                 <video ref={videoRef} src={videoUrl} controls className="aspect-video w-full bg-black" onTimeUpdate={onTimeUpdate} />
               ) : (
