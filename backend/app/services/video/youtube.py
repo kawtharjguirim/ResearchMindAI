@@ -54,11 +54,11 @@ def recuperer_segments(video_id: str, langue: str | None) -> tuple[list[dict], s
     try:
         transcription = YouTubeTranscriptApi().fetch(video_id, languages=preferences)
     except TranscriptsDisabled as e:
-        raise YouTubeError("Cette vidéo n'a pas de sous-titres (ils sont désactivés par son auteur).") from e
+        raise YouTubeError("This video has no subtitles (they are disabled by the author).") from e
     except NoTranscriptFound as e:
-        raise YouTubeError(f"Aucun sous-titre en {', '.join(preferences)} pour cette vidéo.") from e
+        raise YouTubeError(f"No subtitles in {', '.join(preferences)} for this video.") from e
     except Exception as e:  # noqa: BLE001 : erreurs réseau ou YouTube, à présenter simplement
-        raise YouTubeError(f"Impossible de lire les sous-titres ({type(e).__name__}).") from e
+        raise YouTubeError(f"Could not read the subtitles ({type(e).__name__}).") from e
 
     segments = [
         {"start": float(s.start), "end": float(s.start) + float(s.duration), "text": s.text.strip()}
@@ -66,5 +66,5 @@ def recuperer_segments(video_id: str, langue: str | None) -> tuple[list[dict], s
         if s.text.strip()
     ]
     if not segments:
-        raise YouTubeError("Les sous-titres de cette vidéo sont vides.")
+        raise YouTubeError("The subtitles of this video are empty.")
     return segments, transcription.language_code

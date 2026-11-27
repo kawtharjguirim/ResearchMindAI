@@ -26,15 +26,15 @@ def verifier_url(url: str) -> str:
     """Lève WebError si l'adresse n'est pas une adresse web publique."""
     parts = urlparse(url)
     if parts.scheme not in ("http", "https") or not parts.hostname:
-        raise WebError("Lien invalide : seules les adresses http:// et https:// sont acceptées.")
+        raise WebError("Invalid link: only http:// and https:// addresses are accepted.")
     try:
         infos = socket.getaddrinfo(parts.hostname, parts.port or None)
     except socket.gaierror as e:
-        raise WebError("Adresse introuvable (vérifiez le lien).") from e
+        raise WebError("Address not found (check the link).") from e
     for info in infos:
         ip = ipaddress.ip_address(info[4][0])
         if not ip.is_global:
-            raise WebError("Adresse non publique : ce lien ne peut pas être importé.")
+            raise WebError("Non-public address: this link cannot be imported.")
     return url
 
 
@@ -49,16 +49,16 @@ def telecharger_html(url: str) -> tuple[str, str]:
                     courante = verifier_url(urljoin(courante, r.headers.get("location", "")))
                     continue
                 if r.status_code >= 400:
-                    raise WebError(f"La page a répondu avec une erreur ({r.status_code}).")
+                    raise WebError(f"The page returned an error ({r.status_code}).")
                 if "text/html" not in r.headers.get("content-type", ""):
-                    raise WebError("Cette adresse ne pointe pas vers une page HTML.")
+                    raise WebError("This address does not point to an HTML page.")
                 octets = bytearray()
                 for bloc in r.iter_bytes():
                     octets += bloc
                     if len(octets) > TAILLE_MAX:
-                        raise WebError("Page trop volumineuse (plus de 2 Mo).")
+                        raise WebError("Page too large (over 2 MB).")
                 return courante, bytes(octets).decode(r.encoding or "utf-8", errors="replace")
-    raise WebError("Trop de redirections.")
+    raise WebError("Too many redirects.")
 
 
 def extraire_texte(html: str, url: str) -> tuple[str, str]:

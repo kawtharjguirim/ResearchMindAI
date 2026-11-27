@@ -22,6 +22,12 @@ from .search import Index, encoder_passages
 from .transcription import transcrire
 from .youtube import YouTubeError, extraire_id, recuperer_segments
 from app.services.web import WebError, decouper, extraire_texte, telecharger_html
+from app.services.documents import (
+    DOCUMENTS_DIR,
+    DocumentError,
+    decouper_pages,
+    lire_pages,
+)
 
 
 def dependances_manquantes() -> list[str]:
@@ -30,6 +36,9 @@ def dependances_manquantes() -> list[str]:
 
 
 def chemin_video(source: Source):
+    """Fichier stocké de la source : une vidéo, ou un PDF dans son propre dossier."""
+    if source.source_type == SourceType.pdf:
+        return DOCUMENTS_DIR / source.filename
     return VIDEOS_DIR / source.filename
 
 
@@ -40,14 +49,14 @@ def _chunks_video(source: Source) -> list[dict]:
     chunks = construire_chunks(source.segments, source=source.url or source.title,
                                titre=source.title, langue=source.language, doc_id=source.id)
     if not chunks:
-        raise ValueError("Aucune parole détectée dans la vidéo.")
+        raise ValueError("No speech detected in this video.")
     return chunks
 
 
 def _indexer(db, source: Source, chunks: list[dict]) -> None:
     """Calcule les embeddings des passages, les enregistre et marque la source prête."""
     if not chunks:
-        raise ValueError("Aucun passage à indexer.")
+        raise ValueError("No passage to index.")
     vecteurs = encoder_passages([c["text"] for c in chunks])
     source.chunks = [Chunk(position=i, start=c["start"], end=c["end"], timestamp=c["timestamp"],
                            text=c["text"], embedding=[float(x) for x in v])
@@ -62,7 +71,8 @@ def _echouer(source_id: str, erreur: Exception) -> None:
         source = db.get(Source, source_id)
         if source is not None:
             # Une erreur attendue (lien sans sous-titres, par exemple) s'affiche sans préfixe technique.
-            texte = str(erreur) if isinstance(erreur, (YouTubeError, WebError)) else f"{type(erreur).__name__}: {erreur}"
+            attendue = isinstance(erreur, (YouTubeError, WebError, DocumentError))
+            texte = str(erreur) if attendue else f"{type(erreur).__name__}: {erreur}"
             source.status, source.error = SourceStatus.error, texte[:2000]
             db.commit()
 
@@ -97,7 +107,7 @@ def traiter_source_youtube(source_id: str) -> None:
             db.commit()
             video_id = extraire_id(source.url)
             if video_id is None:
-                raise YouTubeError("Lien YouTube invalide.")
+                raise YouTubeError("Invalid YouTube link.")
             segments, langue = recuperer_segments(video_id, source.language)
             source.language = langue
             source.duration = segments[-1]["end"]
@@ -123,11 +133,31 @@ def traiter_source_web(source_id: str) -> None:
             titre, texte = extraire_texte(html, adresse)
             chunks = decouper(texte)
             if not chunks:
-                raise WebError("Aucun texte exploitable sur cette page.")
+                raise WebError("No readable text on this page.")
             source.url = adresse
             # Titre par défaut (nom de domaine) : on le remplace par le titre de la page.
             if titre and source.title == (urlparse(adresse).hostname or ""):
                 source.title = titre[:300]
+            source.status = SourceStatus.indexing
+            db.commit()
+            _indexer(db, source, chunks)
+        except Exception as e:  # noqa: BLE001 : l'erreur est stockée et affichée dans l'interface
+            db.rollback()
+            _echouer(source_id, e)
+
+
+def traiter_source_document(source_id: str) -> None:
+    """Lit un PDF page par page, puis l'indexe. Ne lève jamais."""
+    with SessionLocal() as db:
+        source = db.get(Source, source_id)
+        if source is None:
+            return
+        try:
+            source.status, source.error = SourceStatus.transcribing, ""
+            db.commit()
+            chunks = decouper_pages(lire_pages(chemin_video(source)))
+            if not chunks:
+                raise DocumentError("No readable text found. Scanned pages need OCR, which is not available yet.")
             source.status = SourceStatus.indexing
             db.commit()
             _indexer(db, source, chunks)
@@ -182,7 +212,8 @@ def oublier(source_id: str) -> None:
 
 def repondre(db, source: Source, question: str) -> dict:
     chunks = db.scalars(select(Chunk).where(Chunk.source_id == source.id).order_by(Chunk.position)).all()
-    if source.source_type == SourceType.web:
+    # Pages web et PDF : mêmes seuils, car leurs scores de pertinence sont du même ordre.
+    if source.source_type in (SourceType.web, SourceType.pdf):
         seuils = {"seuil_rerank": SEUIL_RERANK_WEB, "plancher_rerank": PLANCHER_RERANK_WEB}
     else:
         seuils = {}

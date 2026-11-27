@@ -32,6 +32,7 @@ from app.services.video import pipeline
 from app.services.video.config import EXT_VIDEO, TAILLE_MAX_VIDEO, VIDEOS_DIR
 from app.services.video.youtube import extraire_id
 from app.services.web import WebError, verifier_url
+from app.services.documents import DOCUMENTS_DIR, TAILLE_MAX_PDF, est_pdf
 
 router = APIRouter(prefix="/sources", tags=["sources"])
 
@@ -154,6 +155,64 @@ def import_url(
     return to_read(source, 0)
 
 
+@router.post("/file", response_model=SourceRead, status_code=status.HTTP_202_ACCEPTED)
+async def upload_pdf(
+    request: Request,
+    background: BackgroundTasks,
+    filename: str = Query(min_length=1, max_length=300),
+    title: str | None = Query(default=None, max_length=300),
+    language: str | None = Query(default="fr", max_length=8),
+    project_id: str | None = None,
+    db: Session = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
+    """Import d'un PDF : les octets sont envoyés dans le corps, comme pour une vidéo."""
+    if os.path.splitext(filename)[1].lower() != ".pdf":
+        raise HTTPException(status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+                            detail="Only PDF files are accepted for now.")
+    type_source = SourceType.pdf
+    taille_max = TAILLE_MAX_PDF
+    if project_id and db.scalar(
+        select(Project.id).where(Project.id == project_id, Project.user_id == user.id)
+    ) is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+
+    source_id = str(uuid.uuid4())
+    stored = f"{source_id}.pdf"
+    DOCUMENTS_DIR.mkdir(parents=True, exist_ok=True)
+    path = DOCUMENTS_DIR / stored
+    size = 0
+    try:
+        with open(path, "wb") as f:
+            async for block in request.stream():
+                size += len(block)
+                if size > taille_max:
+                    raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                                        detail=f"File larger than {taille_max // 1024**2} MB")
+                f.write(block)
+        if size == 0:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Empty request body")
+        # Le contenu compte, pas l'extension : on vérifie l'en-tête du fichier.
+        with open(path, "rb") as f:
+            entete = f.read(8)
+        valide = est_pdf(entete)
+        if not valide:
+            raise HTTPException(status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+                                detail="The file content does not match its extension.")
+    except BaseException:
+        path.unlink(missing_ok=True)
+        raise
+
+    clean_title = (title or "").strip() or os.path.splitext(os.path.basename(filename))[0]
+    source = Source(id=source_id, user_id=user.id, project_id=project_id, source_type=type_source,
+                    title=clean_title[:300], filename=stored, url="", language=language or None)
+    db.add(source)
+    db.commit()
+    db.refresh(source)
+    background.add_task(pipeline.traiter_source_document, source.id)
+    return to_read(source, 0)
+
+
 @router.get("", response_model=list[SourceRead])
 def list_sources(
     project_id: str | None = None,
@@ -231,4 +290,5 @@ def play_file(
     path = pipeline.chemin_video(source)
     if not path.exists():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Video file missing on disk")
-    return FileResponse(path, media_type="video/mp4")
+    media_type = "application/pdf" if path.suffix.lower() == ".pdf" else "video/mp4"
+    return FileResponse(path, media_type=media_type)
