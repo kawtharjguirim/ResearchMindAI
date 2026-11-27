@@ -80,7 +80,7 @@ def test_extraire_id_refuse_les_autres_liens(url):
 # ---------- Route POST /sources/url ----------
 
 def test_lien_invalide_renvoie_400(client):
-    r = client.post(f"{API}/sources/url", json={"url": "https://example.com/page"}, headers=auth("u1"))
+    r = client.post(f"{API}/sources/url", json={"url": "ftp://example.com/page"}, headers=auth("u1"))
     assert r.status_code == 400
 
 

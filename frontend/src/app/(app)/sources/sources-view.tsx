@@ -175,7 +175,7 @@ function UrlCard({ projects, onImported }: { projects: Project[]; onImported: (s
           className={inputPill}
           value={url}
           onChange={(e) => setUrl(e.target.value)}
-          placeholder="https://www.youtube.com/watch?v=..."
+          placeholder="https://..."
         />
       </div>
 
@@ -206,7 +206,8 @@ function SourceRow({ s, onDelete }: { s: Source; onDelete: () => void }) {
   const [text, tone] = STATUS[s.status];
   const working = s.status === "pending" || s.status === "transcribing" || s.status === "indexing";
   const meta = [duration(s.duration), s.language?.toUpperCase(), s.chunk_count ? `${s.chunk_count} passages` : null].filter(Boolean);
-  const isVideo = s.source_type === "video";
+  // Sources importées (vidéo ou lien) : ouvrables une fois prêtes et supprimables.
+  const isVideo = s.source_type === "video" || s.source_type === "web";
   const canOpen = isVideo && s.status === "ready";
 
   const content = (

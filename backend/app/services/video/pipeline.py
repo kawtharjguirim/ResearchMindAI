@@ -8,18 +8,20 @@ services purs (transcription, chunking, search, qa).
 import importlib.util
 import threading
 from collections import OrderedDict
+from urllib.parse import urlparse
 
 from sqlalchemy import select
 
 from app.db.session import SessionLocal
-from app.models.source import Chunk, Source, SourceStatus
+from app.models.source import Chunk, Source, SourceStatus, SourceType
 
 from .chunking import construire_chunks
-from .config import DEPENDANCES, VIDEOS_DIR
+from .config import DEPENDANCES, PLANCHER_RERANK_WEB, SEUIL_RERANK_WEB, VIDEOS_DIR
 from .qa import VideoQA
 from .search import Index, encoder_passages
 from .transcription import transcrire
 from .youtube import YouTubeError, extraire_id, recuperer_segments
+from app.services.web import WebError, decouper, extraire_texte, telecharger_html
 
 
 def dependances_manquantes() -> list[str]:
@@ -33,12 +35,19 @@ def chemin_video(source: Source):
 
 # ---------- Traitement d'une vidéo (tâche de fond) ----------
 
-def _indexer(db, source: Source) -> None:
-    """Découpe les segments de la source en passages, calcule leurs embeddings et marque la source prête."""
+def _chunks_video(source: Source) -> list[dict]:
+    """Passages d'une vidéo (ou d'un lien YouTube) à partir de ses segments horodatés."""
     chunks = construire_chunks(source.segments, source=source.url or source.title,
                                titre=source.title, langue=source.language, doc_id=source.id)
     if not chunks:
         raise ValueError("Aucune parole détectée dans la vidéo.")
+    return chunks
+
+
+def _indexer(db, source: Source, chunks: list[dict]) -> None:
+    """Calcule les embeddings des passages, les enregistre et marque la source prête."""
+    if not chunks:
+        raise ValueError("Aucun passage à indexer.")
     vecteurs = encoder_passages([c["text"] for c in chunks])
     source.chunks = [Chunk(position=i, start=c["start"], end=c["end"], timestamp=c["timestamp"],
                            text=c["text"], embedding=[float(x) for x in v])
@@ -53,7 +62,7 @@ def _echouer(source_id: str, erreur: Exception) -> None:
         source = db.get(Source, source_id)
         if source is not None:
             # Une erreur attendue (lien sans sous-titres, par exemple) s'affiche sans préfixe technique.
-            texte = str(erreur) if isinstance(erreur, YouTubeError) else f"{type(erreur).__name__}: {erreur}"
+            texte = str(erreur) if isinstance(erreur, (YouTubeError, WebError)) else f"{type(erreur).__name__}: {erreur}"
             source.status, source.error = SourceStatus.error, texte[:2000]
             db.commit()
 
@@ -71,7 +80,7 @@ def traiter_source(source_id: str) -> None:
             source.language, source.duration, source.segments = t["language"], t["duration"], t["segments"]
             source.status = SourceStatus.indexing
             db.commit()
-            _indexer(db, source)
+            _indexer(db, source, _chunks_video(source))
         except Exception as e:  # noqa: BLE001 : l'erreur est stockée et affichée dans l'interface
             db.rollback()
             _echouer(source_id, e)
@@ -95,7 +104,33 @@ def traiter_source_youtube(source_id: str) -> None:
             source.segments = segments
             source.status = SourceStatus.indexing
             db.commit()
-            _indexer(db, source)
+            _indexer(db, source, _chunks_video(source))
+        except Exception as e:  # noqa: BLE001 : l'erreur est stockée et affichée dans l'interface
+            db.rollback()
+            _echouer(source_id, e)
+
+
+def traiter_source_web(source_id: str) -> None:
+    """Télécharge une page web, en extrait le texte principal et l'indexe. Ne lève jamais."""
+    with SessionLocal() as db:
+        source = db.get(Source, source_id)
+        if source is None:
+            return
+        try:
+            source.status, source.error = SourceStatus.transcribing, ""
+            db.commit()
+            adresse, html = telecharger_html(source.url)
+            titre, texte = extraire_texte(html, adresse)
+            chunks = decouper(texte)
+            if not chunks:
+                raise WebError("Aucun texte exploitable sur cette page.")
+            source.url = adresse
+            # Titre par défaut (nom de domaine) : on le remplace par le titre de la page.
+            if titre and source.title == (urlparse(adresse).hostname or ""):
+                source.title = titre[:300]
+            source.status = SourceStatus.indexing
+            db.commit()
+            _indexer(db, source, chunks)
         except Exception as e:  # noqa: BLE001 : l'erreur est stockée et affichée dans l'interface
             db.rollback()
             _echouer(source_id, e)
@@ -147,5 +182,10 @@ def oublier(source_id: str) -> None:
 
 def repondre(db, source: Source, question: str) -> dict:
     chunks = db.scalars(select(Chunk).where(Chunk.source_id == source.id).order_by(Chunk.position)).all()
-    qa = VideoQA(index_pour(source, list(chunks)), segments=source.segments, langue_video=source.language)
+    if source.source_type == SourceType.web:
+        seuils = {"seuil_rerank": SEUIL_RERANK_WEB, "plancher_rerank": PLANCHER_RERANK_WEB}
+    else:
+        seuils = {}
+    qa = VideoQA(index_pour(source, list(chunks)), segments=source.segments, langue_video=source.language,
+                 **seuils)
     return qa.repondre(question)

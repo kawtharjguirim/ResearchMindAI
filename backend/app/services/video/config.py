@@ -53,6 +53,11 @@ CHEVAUCHEMENT = 1     # segments repris au début du chunk suivant
 # ---------- Recherche ----------
 # Modèles, fusion et reranker : moteur commun, voir rag/config_recherche.json et search.py.
 
+# Pages web : le reranker donne des scores bien plus hauts (0,41 à 1,00 pour les passages
+# pertinents d'une page Wikipédia). Seuils calibrés sur cette seule page : à valider sur d'autres.
+SEUIL_RERANK_WEB = 0.5
+PLANCHER_RERANK_WEB = 0.1
+
 # ---------- LLM (Ollama) ----------
 OLLAMA_URL = _env.ollama_url
 MODELE_LLM = "qwen2.5:3b"   # tient entièrement dans les 4 Go de la GTX 1650
