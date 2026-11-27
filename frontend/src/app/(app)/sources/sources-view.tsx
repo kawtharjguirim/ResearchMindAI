@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type DragEvent, type FormEvent } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/icons";
 import { useToast } from "@/components/toast";
@@ -10,7 +10,7 @@ import { VIDEO_EXTENSIONS, videoApi, type Source, type SourceStatus } from "@/li
 
 const STATUS: Record<SourceStatus, [string, Tone]> = {
   pending: ["Queued", "gray"],
-  transcribing: ["Transcribing", "blue"],
+  transcribing: ["Reading", "blue"],
   indexing: ["Indexing", "violet"],
   ready: ["Ready", "green"],
   error: ["Error", "red"],
@@ -23,6 +23,20 @@ const LANGUAGES = [
   ["de", "German"],
 ] as const;
 
+// Formats acceptés par la zone de dépôt (le backend vérifie le contenu du fichier).
+const DOCUMENT_EXTENSIONS = [".pdf"];
+const ACCEPTED = [...VIDEO_EXTENSIONS, ...DOCUMENT_EXTENSIONS];
+
+// Filtres de la liste, dans l'ordre affiché.
+const FILTRES = [
+  { id: "all", label: "All" },
+  { id: "pdf", label: "PDF" },
+  { id: "web", label: "Web" },
+  { id: "video", label: "Videos" },
+  { id: "personal", label: "Personal documents" },
+] as const;
+type Filtre = (typeof FILTRES)[number]["id"];
+
 const POLL_MS = 3000;
 const label = "mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300";
 
@@ -34,15 +48,53 @@ function duration(sec: number | null) {
   return h ? `${h} h ${String(m).padStart(2, "0")}` : `${m} min ${String(s % 60).padStart(2, "0")}`;
 }
 
+// Origin shown in the table: the link's domain, or the kind of file.
+function origine(s: Source): string {
+  if (s.url) {
+    try {
+      return new URL(s.url).hostname.replace(/^www\./, "");
+    } catch {
+      // Not a valid address: fall back to the file kind.
+    }
+  }
+  const types: Record<string, string> = {
+    video: "Video file",
+    pdf: "PDF file",
+    web: "Web page",
+    personal: "Personal document",
+  };
+  return types[s.source_type] ?? "—";
+}
+
+function dateCourte(iso: string) {
+  return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
+
 function UploadCard({ projects, onUploaded }: { projects: Project[]; onUploaded: (s: Source) => void }) {
   const toast = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
+  const [dragging, setDragging] = useState(false);
   const [title, setTitle] = useState("");
   const [language, setLanguage] = useState("fr");
   const [projectId, setProjectId] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+
+  // The file type comes from its extension; the backend then checks the content.
+  const estDocument = (f: File) => DOCUMENT_EXTENSIONS.some((ext) => f.name.toLowerCase().endsWith(ext));
+
+  function choisir(f: File | null | undefined) {
+    if (!f) return;
+    setFile(f);
+    setError("");
+  }
+
+  function depose(e: DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    setDragging(false);
+    choisir(e.dataTransfer.files?.[0]);
+  }
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -50,9 +102,11 @@ function UploadCard({ projects, onUploaded }: { projects: Project[]; onUploaded:
     setBusy(true);
     setError("");
     try {
-      const source = await videoApi.uploadVideo({ file, title, language, projectId: projectId || undefined });
+      const source = estDocument(file)
+        ? await videoApi.uploadDocument({ file, title, projectId: projectId || undefined })
+        : await videoApi.uploadVideo({ file, title, language, projectId: projectId || undefined });
       onUploaded(source);
-      toast("Video imported: transcription started");
+      toast(estDocument(file) ? "File imported: text is being read" : "Video imported: transcription started");
       setFile(null);
       setTitle("");
       if (fileRef.current) fileRef.current.value = "";
@@ -64,68 +118,94 @@ function UploadCard({ projects, onUploaded }: { projects: Project[]; onUploaded:
   }
 
   return (
-    <form onSubmit={submit} className={`${card} p-6`}>
-      <div className="flex items-center gap-3">
-        <SourceIcon type="video" />
-        <div>
-          <h2 className="text-base font-semibold text-gray-800 dark:text-white/90">Import a video</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Transcribed locally, then indexed for questions</p>
-        </div>
-      </div>
-
-      <label className="mt-5 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-gray-200 px-4 py-6 text-center text-sm text-gray-500 transition hover:border-primary-300 dark:border-gray-700 dark:text-gray-400">
-        <Icon name="video" className="size-6 text-primary-500" />
-        <span className="font-medium text-gray-700 dark:text-gray-300">{file ? file.name : "Choose a video file"}</span>
-        <span className="text-xs">
-          {file ? `${(file.size / 1024 ** 2).toFixed(0)} MB` : VIDEO_EXTENSIONS.join(", ")}
+    <form onSubmit={submit} className={`${card} flex flex-col p-6`}>
+      <div
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragging(true);
+        }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={depose}
+        onClick={() => fileRef.current?.click()}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") fileRef.current?.click();
+        }}
+        className={`flex min-h-[220px] cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed px-6 py-8 text-center transition ${
+          dragging
+            ? "border-primary-400 bg-primary-50 dark:bg-primary-500/10"
+            : "border-primary-200 bg-primary-50/60 hover:border-primary-300 dark:border-primary-500/30 dark:bg-white/5"
+        }`}
+      >
+        <span className="flex size-14 items-center justify-center rounded-full bg-white shadow-sm dark:bg-white/10">
+          <Icon name="upload" className="size-6 text-primary-500" />
         </span>
+        {file ? (
+          <>
+            <p className="max-w-full truncate text-sm font-medium text-gray-800 dark:text-white/90">{file.name}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">{(file.size / 1024 ** 2).toFixed(1)} MB</p>
+          </>
+        ) : (
+          <>
+            <p className="text-sm text-gray-800 dark:text-white/90">
+              Drag your files here or <span className="font-medium text-primary-600 dark:text-primary-300">browse</span>
+            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Accepted formats: PDF, PNG, JPG, {VIDEO_EXTENSIONS.map((x) => x.slice(1).toUpperCase()).join(", ")}</p>
+          </>
+        )}
         <input
           ref={fileRef}
           type="file"
-          accept={VIDEO_EXTENSIONS.join(",")}
+          accept={ACCEPTED.join(",")}
           className="sr-only"
-          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          onClick={(e) => e.stopPropagation()}
+          onChange={(e) => choisir(e.target.files?.[0])}
         />
-      </label>
-
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        <div className="sm:col-span-2">
-          <label htmlFor="video-title" className={label}>
-            Title <span className="font-normal text-gray-400">(optional)</span>
-          </label>
-          <input id="video-title" className={inputPill} value={title} maxLength={300} onChange={(e) => setTitle(e.target.value)} placeholder={file?.name.replace(/\.[^.]+$/, "") ?? "Lecture title"} />
-        </div>
-        <div>
-          <label htmlFor="video-language" className={label}>
-            Spoken language
-          </label>
-          <select id="video-language" className={inputPill} value={language} onChange={(e) => setLanguage(e.target.value)}>
-            {LANGUAGES.map(([code, name]) => (
-              <option key={code} value={code}>
-                {name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label htmlFor="video-project" className={label}>
-            Project <span className="font-normal text-gray-400">(optional)</span>
-          </label>
-          <select id="video-project" className={inputPill} value={projectId} onChange={(e) => setProjectId(e.target.value)}>
-            <option value="">No project</option>
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.title}
-              </option>
-            ))}
-          </select>
-        </div>
       </div>
+
+      {file && (
+        <div className="mt-5 grid gap-4 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <label htmlFor="file-title" className={label}>
+              Title <span className="font-normal text-gray-400">(optional)</span>
+            </label>
+            <input id="file-title" className={inputPill} value={title} maxLength={300} onChange={(e) => setTitle(e.target.value)} placeholder={file.name.replace(/\.[^.]+$/, "")} />
+          </div>
+          {!estDocument(file) && (
+            <div>
+              <label htmlFor="file-language" className={label}>
+                Spoken language
+              </label>
+              <select id="file-language" className={inputPill} value={language} onChange={(e) => setLanguage(e.target.value)}>
+                {LANGUAGES.map(([code, name]) => (
+                  <option key={code} value={code}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          <div className={estDocument(file) ? "sm:col-span-2" : ""}>
+            <label htmlFor="file-project" className={label}>
+              Project <span className="font-normal text-gray-400">(optional)</span>
+            </label>
+            <select id="file-project" className={inputPill} value={projectId} onChange={(e) => setProjectId(e.target.value)}>
+              <option value="">No project</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.title}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
 
       {error && <p className="mt-4 text-sm text-error-500">{error}</p>}
       <button type="submit" disabled={!file || busy} className={`${btnPrimary} mt-5 w-full disabled:opacity-50`}>
         <Icon name={busy ? "refresh" : "plus"} className={`size-4 ${busy ? "animate-spin" : ""}`} />
-        {busy ? "Uploading…" : "Import the video"}
+        {busy ? "Importing…" : "Import"}
       </button>
     </form>
   );
@@ -146,7 +226,7 @@ function UrlCard({ projects, onImported }: { projects: Project[]; onImported: (s
     try {
       const source = await videoApi.importUrl({ url, projectId: projectId || undefined });
       onImported(source);
-      toast("YouTube link added: subtitles are being read");
+      toast("Link added: its content is being read");
       setUrl("");
     } catch (err) {
       setError((err as Error).message);
@@ -156,27 +236,20 @@ function UrlCard({ projects, onImported }: { projects: Project[]; onImported: (s
   }
 
   return (
-    <form onSubmit={submit} className={`${card} p-6`}>
+    <form onSubmit={submit} className={`${card} flex flex-col p-6`}>
       <div className="flex items-center gap-3">
         <SourceIcon type="web" />
         <div>
-          <h2 className="text-base font-semibold text-gray-800 dark:text-white/90">Coller une URL (page web ou vidéo YouTube)</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Les vidéos sont transcrites avec leurs timestamps pour être citées à la seconde près.</p>
+          <h2 className="text-base font-semibold text-gray-800 dark:text-white/90">Paste a URL (web page or YouTube video)</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Videos are transcribed with timestamps, so citations point to the exact second.</p>
         </div>
       </div>
 
       <div className="mt-5">
         <label htmlFor="source-url" className={label}>
-          Lien
+          Link
         </label>
-        <input
-          id="source-url"
-          type="url"
-          className={inputPill}
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          placeholder="https://..."
-        />
+        <input id="source-url" type="url" className={inputPill} value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://..." />
       </div>
 
       <div className="mt-4">
@@ -194,55 +267,55 @@ function UrlCard({ projects, onImported }: { projects: Project[]; onImported: (s
       </div>
 
       {error && <p className="mt-4 text-sm text-error-500">{error}</p>}
-      <button type="submit" disabled={!url.trim() || busy} className={`${btnPrimary} mt-5 w-full disabled:opacity-50`}>
+      <button type="submit" disabled={!url.trim() || busy} className={`${btnPrimary} mt-auto w-full disabled:opacity-50`}>
         <Icon name={busy ? "refresh" : "plus"} className={`size-4 ${busy ? "animate-spin" : ""}`} />
-        {busy ? "Ajout…" : "Ajouter"}
+        {busy ? "Adding…" : "Add"}
       </button>
     </form>
   );
 }
 
-function SourceRow({ s, onDelete }: { s: Source; onDelete: () => void }) {
+function SourceTableRow({ s, onDelete }: { s: Source; onDelete: () => void }) {
   const [text, tone] = STATUS[s.status];
   const working = s.status === "pending" || s.status === "transcribing" || s.status === "indexing";
-  const meta = [duration(s.duration), s.language?.toUpperCase(), s.chunk_count ? `${s.chunk_count} passages` : null].filter(Boolean);
-  // Sources importées (vidéo ou lien) : ouvrables une fois prêtes et supprimables.
-  const isVideo = s.source_type === "video" || s.source_type === "web";
-  const canOpen = isVideo && s.status === "ready";
-
-  const content = (
-    <>
-      <SourceIcon type={s.source_type} small />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-gray-800 dark:text-white/90">{s.title}</p>
-        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-          <Badge tone={tone}>
-            {working && <Icon name="refresh" className="size-3 animate-spin" />}
-            {text}
-          </Badge>
-          {meta.join(" · ")}
-        </div>
-        {s.status === "error" && <p className="mt-2 break-words text-xs text-error-500">{s.error}</p>}
-        {s.excerpt && <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">{s.excerpt}</p>}
-      </div>
-    </>
-  );
+  // Imported sources (video, web page, PDF, image): openable once ready, and deletable.
+  const stockee = s.source_type === "video" || s.source_type === "web" || s.source_type === "pdf";
+  const canOpen = stockee && s.status === "ready";
+  const detail = [duration(s.duration), s.chunk_count ? `${s.chunk_count} passages` : null].filter(Boolean).join(" · ");
 
   return (
-    <li className="flex items-start gap-3 rounded-2xl border border-gray-100 p-4 transition dark:border-white/5">
-      {canOpen ? (
-        <Link href={`/sources/${s.id}`} className="flex min-w-0 flex-1 items-start gap-3 text-left">
-          {content}
-        </Link>
-      ) : (
-        <div className="flex min-w-0 flex-1 items-start gap-3">{content}</div>
-      )}
-      {isVideo && (
-        <button type="button" onClick={onDelete} className="rounded-full p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-error-500 dark:hover:bg-white/10" aria-label={`Delete ${s.title}`}>
-          <Icon name="x" className="size-4" />
-        </button>
-      )}
-    </li>
+    <tr className="border-t border-gray-100 align-top dark:border-white/5">
+      <td className="py-3 pr-4">
+        <div className="flex items-center gap-3">
+          <SourceIcon type={s.source_type} small />
+          {canOpen ? (
+            <Link href={`/sources/${s.id}`} className="truncate text-sm font-medium text-gray-800 hover:text-primary-600 dark:text-white/90">
+              {s.title}
+            </Link>
+          ) : (
+            <span className="truncate text-sm font-medium text-gray-800 dark:text-white/90">{s.title}</span>
+          )}
+        </div>
+        {s.status === "error" && <p className="mt-1.5 break-words text-xs text-error-500">{s.error}</p>}
+        {s.excerpt && <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">{s.excerpt}</p>}
+      </td>
+      <td className="py-3 pr-4 text-sm text-gray-500 dark:text-gray-400">{origine(s)}</td>
+      <td className="whitespace-nowrap py-3 pr-4 text-sm text-gray-500 dark:text-gray-400">{dateCourte(s.created_at)}</td>
+      <td className="whitespace-nowrap py-3 pr-4 text-sm text-gray-500 dark:text-gray-400">{detail || "—"}</td>
+      <td className="py-3 pr-4">
+        <Badge tone={tone}>
+          {working && <Icon name="refresh" className="size-3 animate-spin" />}
+          {text}
+        </Badge>
+      </td>
+      <td className="py-3 text-right">
+        {stockee && (
+          <button type="button" onClick={onDelete} className="rounded-full p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-error-500 dark:hover:bg-white/10" aria-label={`Delete ${s.title}`}>
+            <Icon name="x" className="size-4" />
+          </button>
+        )}
+      </td>
+    </tr>
   );
 }
 
@@ -251,6 +324,8 @@ export function SourcesView() {
   const [sources, setSources] = useState<Source[] | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [error, setError] = useState("");
+  const [filtre, setFiltre] = useState<Filtre>("all");
+  const [recherche, setRecherche] = useState("");
 
   const load = useCallback(async () => {
     setError("");
@@ -266,7 +341,7 @@ export function SourcesView() {
     api.listProjects().then(setProjects).catch(() => setProjects([]));
   }, [load]);
 
-  // Follow processing: poll while a video is still being transcribed or indexed.
+  // Follow processing: poll while a source is still being read, transcribed or indexed.
   const working = sources?.some((s) => s.status !== "ready" && s.status !== "error");
   useEffect(() => {
     if (!working) return;
@@ -275,51 +350,98 @@ export function SourcesView() {
   }, [working]);
 
   async function remove(s: Source) {
-    if (!window.confirm(`Delete "${s.title}" and its transcript?`)) return;
+    if (!window.confirm(`Delete "${s.title}" and its content?`)) return;
     try {
       await videoApi.deleteSource(s.id);
       setSources((list) => list?.filter((x) => x.id !== s.id) ?? null);
-      toast("Video deleted");
+      toast("Source deleted");
     } catch (err) {
       toast((err as Error).message, false);
     }
   }
 
+  const compte = (id: Filtre) => (id === "all" ? sources?.length ?? 0 : sources?.filter((s) => s.source_type === id).length ?? 0);
+  const affichees = (sources ?? []).filter(
+    (s) => (filtre === "all" || s.source_type === filtre) && s.title.toLowerCase().includes(recherche.trim().toLowerCase()),
+  );
+
   return (
-    <div className="mx-auto max-w-[800px] px-5 py-8 sm:px-8">
+    <div className="mx-auto max-w-[1100px] px-5 py-8 sm:px-8">
       <h1 className="text-2xl font-semibold text-gray-800 dark:text-white/90">Project sources</h1>
-      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Import videos and follow their transcription. Ask questions from the Assistant page.</p>
+      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Import videos or PDFs, then follow their processing. Ask questions from the Assistant page.</p>
 
       <div className="mt-8 space-y-6">
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid items-stretch gap-6 lg:grid-cols-2">
           <UploadCard projects={projects} onUploaded={(s) => setSources((list) => [s, ...(list ?? [])])} />
           <UrlCard projects={projects} onImported={(s) => setSources((list) => [s, ...(list ?? [])])} />
         </div>
 
         <div className={`${card} p-6`}>
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-gray-800 dark:text-white/90">My sources</h2>
-            <button type="button" onClick={load} className="rounded-full p-1.5 text-gray-400 transition hover:bg-gray-100 dark:hover:bg-white/10" aria-label="Refresh">
-              <Icon name="refresh" className="size-4" />
-            </button>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap gap-2">
+              {FILTRES.map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => setFiltre(f.id)}
+                  className={`rounded-full px-4 py-1.5 text-sm transition ${
+                    filtre === f.id
+                      ? "bg-gray-900 text-white dark:bg-white dark:text-gray-900"
+                      : "border border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-white/10 dark:text-gray-300 dark:hover:bg-white/5"
+                  }`}
+                >
+                  {f.label}
+                  {sources && ` (${compte(f.id)})`}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="search"
+                value={recherche}
+                onChange={(e) => setRecherche(e.target.value)}
+                placeholder="Search sources"
+                className={`${inputPill} w-56`}
+              />
+              <button type="button" onClick={load} className="rounded-full p-1.5 text-gray-400 transition hover:bg-gray-100 dark:hover:bg-white/10" aria-label="Refresh">
+                <Icon name="refresh" className="size-4" />
+              </button>
+            </div>
           </div>
+
           {error ? (
-            <div className="mt-4 text-sm">
+            <div className="mt-6 text-sm">
               <p className="text-error-500">{error}</p>
               <button type="button" onClick={load} className={`${btnSecondary} mt-3`}>
                 Try again
               </button>
             </div>
           ) : sources === null ? (
-            <div className="mt-4 h-16 animate-pulse rounded-2xl bg-gray-100 dark:bg-white/10" />
+            <div className="mt-6 h-16 animate-pulse rounded-2xl bg-gray-100 dark:bg-white/10" />
           ) : sources.length === 0 ? (
-            <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">No source yet: import a video above.</p>
+            <p className="mt-6 text-sm text-gray-500 dark:text-gray-400">No source yet: import a video or a PDF above.</p>
+          ) : affichees.length === 0 ? (
+            <p className="mt-6 text-sm text-gray-500 dark:text-gray-400">No source matches this filter or search.</p>
           ) : (
-            <ul className="mt-4 space-y-3">
-              {sources.map((s) => (
-                <SourceRow key={s.id} s={s} onDelete={() => remove(s)} />
-              ))}
-            </ul>
+            <div className="mt-6 overflow-x-auto">
+              <table className="w-full min-w-[640px] text-left">
+                <thead>
+                  <tr className="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
+                    <th className="pb-2 pr-4 font-medium">Source</th>
+                    <th className="pb-2 pr-4 font-medium">Origin</th>
+                    <th className="pb-2 pr-4 font-medium">Added</th>
+                    <th className="pb-2 pr-4 font-medium">Details</th>
+                    <th className="pb-2 pr-4 font-medium">Status</th>
+                    <th className="pb-2" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {affichees.map((s) => (
+                    <SourceTableRow key={s.id} s={s} onDelete={() => remove(s)} />
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </div>

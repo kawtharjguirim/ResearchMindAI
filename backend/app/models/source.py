@@ -27,6 +27,7 @@ def _uuid() -> str:
 class SourceType(str, enum.Enum):
     video = "video"
     web = "web"
+    pdf = "pdf"
 
 
 class SourceStatus(str, enum.Enum):

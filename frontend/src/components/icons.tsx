@@ -10,6 +10,7 @@ const PATHS = {
   web: '<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>',
   figure: '<rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/>',
   video: '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="m10 8 5 4-5 4Z"/>',
+  upload: '<path d="M4 14.9A7 7 0 1 1 15.7 8h1.8a4.5 4.5 0 0 1 2.5 8.2"/><path d="M12 12v9"/><path d="m16 16-4-4-4 4"/>',
   personal: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><circle cx="12" cy="13" r="2"/><path d="M8.5 19a3.5 3.5 0 0 1 7 0"/>',
   plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
   check: '<path d="M20 6 9 17l-5-5"/>',

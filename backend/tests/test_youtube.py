@@ -100,14 +100,14 @@ def test_import_youtube_est_indexe(client, fake_youtube):
 
 def test_sous_titres_absents_donnent_une_erreur_lisible(client, monkeypatch):
     def pas_de_sous_titres(video_id, langue):
-        raise YouTubeError("Cette vidéo n'a pas de sous-titres (ils sont désactivés par son auteur).")
+        raise YouTubeError("This video has no subtitles (they are disabled by the author).")
 
     monkeypatch.setattr(pipeline, "recuperer_segments", pas_de_sous_titres)
     r = client.post(f"{API}/sources/url", json={"url": f"https://youtu.be/{ID}"}, headers=auth("u1"))
     detail = client.get(f"{API}/sources/{r.json()['id']}", headers=auth("u1")).json()
     assert detail["status"] == "error"
     # Pas de préfixe technique devant le message destiné à l'utilisateur.
-    assert detail["error"] == "Cette vidéo n'a pas de sous-titres (ils sont désactivés par son auteur)."
+    assert detail["error"] == "This video has no subtitles (they are disabled by the author)."
 
 
 def test_import_youtube_reste_prive(client, fake_youtube):

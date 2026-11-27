@@ -86,6 +86,17 @@ export const videoApi = {
       method: "POST",
       body: JSON.stringify({ url, title: title?.trim() || null, language: language || null, project_id: projectId || null }),
     }),
+  // Même principe que la vidéo : les octets du fichier (PDF ou image) sont le corps de la requête.
+  uploadDocument: ({ file, title, projectId }: Omit<VideoUpload, "language">) => {
+    const params = new URLSearchParams({ filename: file.name });
+    if (title?.trim()) params.set("title", title.trim());
+    if (projectId) params.set("project_id", projectId);
+    return request<Source>(`/sources/file?${params}`, {
+      method: "POST",
+      body: file,
+      headers: { "Content-Type": file.type || "application/octet-stream" },
+    });
+  },
   answer: (sourceId: string, question: string) =>
     request<AnswerResponse>("/answer", { method: "POST", body: JSON.stringify({ source_id: sourceId, question }) }),
   search: (query: string, sourceId?: string, topK = 5) =>

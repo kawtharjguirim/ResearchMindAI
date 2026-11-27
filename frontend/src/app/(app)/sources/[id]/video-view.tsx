@@ -6,6 +6,7 @@ import { AssistantPanel } from "@/components/assistant-panel";
 import { Icon } from "@/components/icons";
 import { Badge, btnSecondary, card, type Tone } from "@/components/ui";
 import { WebView } from "./web-view";
+import { PdfView } from "./pdf-view";
 import { playUrl, videoApi, youtubeId, type AnswerCitation, type Source, type SourceStatus, type TranscriptChunk } from "@/lib/video";
 
 const STATUS: Record<SourceStatus, [string, Tone]> = {
@@ -44,6 +45,7 @@ export function VideoView({ sourceId }: { sourceId: string }) {
         const ytId = youtubeId(s.url);
         // Pas de fichier local pour un lien YouTube ni pour une page web.
         const sansFichier = ytId !== null || s.source_type === "web";
+        // Pour un PDF, playLink donne l'adresse signée du fichier (voir PdfView).
         const [chunks, link] = await Promise.all([
           videoApi.getTranscript(sourceId),
           sansFichier ? Promise.resolve(null) : videoApi.playLink(sourceId),
@@ -110,6 +112,7 @@ export function VideoView({ sourceId }: { sourceId: string }) {
   }
 
   if (source.source_type === "web") return <WebView source={source} passages={transcript} />;
+  if (source.source_type === "pdf") return <PdfView source={source} passages={transcript} fileUrl={videoUrl} />;
 
   const [statusText, statusTone] = STATUS[source.status];
 

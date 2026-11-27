@@ -79,8 +79,8 @@ LANGUES = {"fr": "français", "en": "anglais", "es": "espagnol", "de": "allemand
 MOTS_LIBRES = set("""video selon explique indique dit affirme precise raconte auteur narrateur
 citation passage extrait partiellement seulement aussi donc ainsi""".split())
 
-MSG_HORS_SUJET = ("La vidéo ne contient pas la réponse à cette question. "
-                  "Les passages les plus proches abordent un thème voisin, sans y répondre.")
-MSG_CONFIANCE_FAIBLE = "Confiance faible, à vérifier"
-MSG_SANS_CITATION = ("Aucune phrase des passages ne donne clairement la réponse : "
-                     "vérifie les passages ci-dessous.")
+MSG_HORS_SUJET = ("The source does not contain the answer to this question. "
+                  "The closest passages cover a related topic without answering it.")
+MSG_CONFIANCE_FAIBLE = "Low confidence, please verify"
+MSG_SANS_CITATION = ("No passage sentence clearly gives the answer: "
+                     "check the passages below.")

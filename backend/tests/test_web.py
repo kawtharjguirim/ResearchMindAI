@@ -63,7 +63,7 @@ def fake_web(monkeypatch):
     "http://169.254.169.254/latest/meta-data",
 ])
 def test_adresses_internes_refusees(url):
-    with pytest.raises(WebError, match="non publique"):
+    with pytest.raises(WebError, match="Non-public"):
         verifier_url(url)
 
 
@@ -109,10 +109,10 @@ def test_page_sans_texte_donne_une_erreur(client, monkeypatch):
     r = client.post(f"{API}/sources/url", json={"url": "https://exemple.org/vide"}, headers=auth("u1"))
     detail = client.get(f"{API}/sources/{r.json()['id']}", headers=auth("u1")).json()
     assert detail["status"] == "error"
-    assert detail["error"] == "Aucun texte exploitable sur cette page."
+    assert detail["error"] == "No readable text on this page."
 
 
 def test_adresse_interne_refusee_a_l_import(client):
     r = client.post(f"{API}/sources/url", json={"url": "http://127.0.0.1:8000/api/v1/health"}, headers=auth("u1"))
     assert r.status_code == 400
-    assert "non publique" in r.json()["detail"]
+    assert "Non-public" in r.json()["detail"]
