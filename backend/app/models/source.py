@@ -28,6 +28,7 @@ class SourceType(str, enum.Enum):
     video = "video"
     web = "web"
     pdf = "pdf"
+    personal = "personal"   # document personnel : Word, Markdown ou texte
     figure = "figure"   # image importée (texte reconnu par OCR)
 
 
