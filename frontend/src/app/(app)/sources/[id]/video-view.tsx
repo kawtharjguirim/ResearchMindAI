@@ -8,6 +8,7 @@ import { Badge, btnSecondary, card, type Tone } from "@/components/ui";
 import { WebView } from "./web-view";
 import { PdfView } from "./pdf-view";
 import { FigureView } from "./figure-view";
+import { PersonalView } from "./personal-view";
 import { playUrl, videoApi, youtubeId, type AnswerCitation, type Source, type SourceStatus, type TranscriptChunk } from "@/lib/video";
 
 const STATUS: Record<SourceStatus, [string, Tone]> = {
@@ -115,6 +116,7 @@ export function VideoView({ sourceId }: { sourceId: string }) {
   if (source.source_type === "web") return <WebView source={source} passages={transcript} />;
   if (source.source_type === "pdf") return <PdfView source={source} passages={transcript} fileUrl={videoUrl} />;
   if (source.source_type === "figure") return <FigureView source={source} passages={transcript} fileUrl={videoUrl} />;
+  if (source.source_type === "personal") return <PersonalView source={source} passages={transcript} fileUrl={videoUrl} />;
 
   const [statusText, statusTone] = STATUS[source.status];
 

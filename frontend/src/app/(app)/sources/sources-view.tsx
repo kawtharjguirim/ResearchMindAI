@@ -24,7 +24,7 @@ const LANGUAGES = [
 ] as const;
 
 // Formats acceptés par la zone de dépôt (le backend vérifie le contenu du fichier).
-const DOCUMENT_EXTENSIONS = [".pdf", ".png", ".jpg", ".jpeg"];
+const DOCUMENT_EXTENSIONS = [".pdf", ".png", ".jpg", ".jpeg", ".docx", ".md", ".txt"];
 const ACCEPTED = [...VIDEO_EXTENSIONS, ...DOCUMENT_EXTENSIONS];
 
 // Filtres de la liste, dans l'ordre affiché.
@@ -281,7 +281,7 @@ function SourceTableRow({ s, onDelete }: { s: Source; onDelete: () => void }) {
   const [text, tone] = STATUS[s.status];
   const working = s.status === "pending" || s.status === "transcribing" || s.status === "indexing";
   // Imported sources (video, web page, PDF, image): openable once ready, and deletable.
-  const stockee = s.source_type === "video" || s.source_type === "web" || s.source_type === "pdf" || s.source_type === "figure";
+  const stockee = ["video", "web", "pdf", "figure", "personal"].includes(s.source_type);
   const canOpen = stockee && s.status === "ready";
   const detail = [duration(s.duration), s.chunk_count ? `${s.chunk_count} passages` : null].filter(Boolean).join(" · ");
 
@@ -370,7 +370,7 @@ export function SourcesView() {
   return (
     <div className="mx-auto max-w-[1100px] px-5 py-8 sm:px-8">
       <h1 className="text-2xl font-semibold text-gray-800 dark:text-white/90">Project sources</h1>
-      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Import videos, PDFs or images, then follow their processing. Ask questions from the Assistant page.</p>
+      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Import videos, PDFs, images, Word, Markdown or text files, then follow their processing. Ask questions from the Assistant page.</p>
 
       <div className="mt-8 space-y-6">
         <div className="grid items-stretch gap-6 lg:grid-cols-2">
@@ -421,7 +421,7 @@ export function SourcesView() {
           ) : sources === null ? (
             <div className="mt-6 h-16 animate-pulse rounded-2xl bg-gray-100 dark:bg-white/10" />
           ) : sources.length === 0 ? (
-            <p className="mt-6 text-sm text-gray-500 dark:text-gray-400">No source yet: import a video, a PDF or an image above.</p>
+            <p className="mt-6 text-sm text-gray-500 dark:text-gray-400">No source yet: import a video, a document or an image above.</p>
           ) : affichees.length === 0 ? (
             <p className="mt-6 text-sm text-gray-500 dark:text-gray-400">No source matches this filter or search.</p>
           ) : (

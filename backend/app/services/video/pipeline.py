@@ -23,6 +23,7 @@ from .search import Index, encoder_passages
 from .transcription import transcrire
 from .youtube import YouTubeError, extraire_id, recuperer_segments
 from app.services.web import WebError, decouper, extraire_texte, telecharger_html
+from app.services.personnels import DocumentPersonnelError, decouper_personnel, lire_texte_personnel
 from app.services.documents import (
     DOCUMENTS_DIR,
     DocumentError,
@@ -41,7 +42,7 @@ def dependances_manquantes() -> list[str]:
 
 def chemin_video(source: Source):
     """Fichier stocké de la source : une vidéo, ou un PDF dans son propre dossier."""
-    if source.source_type in (SourceType.pdf, SourceType.figure):
+    if source.source_type in (SourceType.pdf, SourceType.figure, SourceType.personal):
         return DOCUMENTS_DIR / source.filename
     return VIDEOS_DIR / source.filename
 
@@ -75,7 +76,7 @@ def _echouer(source_id: str, erreur: Exception) -> None:
         source = db.get(Source, source_id)
         if source is not None:
             # Une erreur attendue (lien sans sous-titres, par exemple) s'affiche sans préfixe technique.
-            attendue = isinstance(erreur, (YouTubeError, WebError, DocumentError))
+            attendue = isinstance(erreur, (YouTubeError, WebError, DocumentError, DocumentPersonnelError))
             texte = str(erreur) if attendue else f"{type(erreur).__name__}: {erreur}"
             source.status, source.error = SourceStatus.error, texte[:2000]
             db.commit()
@@ -161,6 +162,8 @@ def traiter_source_document(source_id: str) -> None:
             db.commit()
             if source.source_type == SourceType.figure:
                 chunks = decouper_image(lire_texte_image(chemin_video(source)))
+            elif source.source_type == SourceType.personal:
+                chunks = decouper_personnel(lire_texte_personnel(chemin_video(source)))
             else:
                 chunks = decouper_pages(lire_pages(chemin_video(source)))
             if not chunks:
@@ -225,6 +228,10 @@ def repondre(db, source: Source, question: str) -> dict:
         seuils = {"seuil_rerank": SEUIL_RERANK_PDF, "plancher_rerank": PLANCHER_RERANK_PDF,
                   "ecarter": est_bibliographie,   # pas de réponse tirée de la bibliographie
                   "toujours": resume}             # le résumé de l'article reste disponible
+    elif source.source_type == SourceType.personal:
+        # Le premier passage (titre et introduction) reste disponible pour répondre aux demandes de résumé.
+        premier = [chunks[0].as_search_chunk()] if chunks else []
+        seuils = {"seuil_rerank": SEUIL_RERANK_PDF, "plancher_rerank": PLANCHER_RERANK_PDF, "toujours": premier}
     elif source.source_type in (SourceType.web, SourceType.figure):
         seuils = {"seuil_rerank": SEUIL_RERANK_WEB, "plancher_rerank": PLANCHER_RERANK_WEB}
     else:

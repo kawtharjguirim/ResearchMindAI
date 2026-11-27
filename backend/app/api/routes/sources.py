@@ -33,6 +33,7 @@ from app.services.video.config import EXT_VIDEO, TAILLE_MAX_VIDEO, VIDEOS_DIR
 from app.services.video.youtube import extraire_id
 from app.services.web import WebError, verifier_url
 from app.services.documents import DOCUMENTS_DIR, TAILLE_MAX_IMAGE, TAILLE_MAX_PDF, est_image, est_pdf
+from app.services.personnels import est_docx, est_texte
 
 router = APIRouter(prefix="/sources", tags=["sources"])
 
@@ -168,11 +169,13 @@ async def upload_pdf(
 ):
     """Import d'un PDF ou d'une image : les octets sont envoyés dans le corps, comme pour une vidéo."""
     ext = os.path.splitext(filename)[1].lower()
-    if ext not in (".pdf", ".png", ".jpg", ".jpeg"):
+    if ext not in (".pdf", ".png", ".jpg", ".jpeg", ".docx", ".md", ".txt"):
         raise HTTPException(status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-                            detail="Unsupported format. Accepted: PDF, PNG, JPG.")
-    est_une_image = ext != ".pdf"
-    type_source = SourceType.figure if est_une_image else SourceType.pdf
+                            detail="Unsupported format. Accepted: PDF, PNG, JPG, DOCX, MD, TXT.")
+    est_une_image = ext in (".png", ".jpg", ".jpeg")
+    est_personnel = ext in (".docx", ".md", ".txt")
+    type_source = (SourceType.figure if est_une_image
+                   else SourceType.personal if est_personnel else SourceType.pdf)
     taille_max = TAILLE_MAX_IMAGE if est_une_image else TAILLE_MAX_PDF
     if project_id and db.scalar(
         select(Project.id).where(Project.id == project_id, Project.user_id == user.id)
@@ -197,7 +200,12 @@ async def upload_pdf(
         # Le contenu compte, pas l'extension : on vérifie l'en-tête du fichier.
         with open(path, "rb") as f:
             entete = f.read(8)
-        valide = est_image(entete) if est_une_image else est_pdf(entete)
+        if est_une_image:
+            valide = est_image(entete)
+        elif est_personnel:
+            valide = est_docx(path) if ext == ".docx" else est_texte(path)
+        else:
+            valide = est_pdf(entete)
         if not valide:
             raise HTTPException(status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
                                 detail="The file content does not match its extension.")
@@ -292,6 +300,8 @@ def play_file(
     path = pipeline.chemin_video(source)
     if not path.exists():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Video file missing on disk")
-    types = {".pdf": "application/pdf", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg"}
+    types = {".pdf": "application/pdf", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+             ".md": "text/markdown; charset=utf-8", ".txt": "text/plain; charset=utf-8",
+             ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"}
     media_type = types.get(path.suffix.lower(), "video/mp4")
     return FileResponse(path, media_type=media_type)
