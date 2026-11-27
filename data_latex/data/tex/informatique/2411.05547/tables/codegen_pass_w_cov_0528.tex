@@ -1,0 +1,23 @@
+% Please add the following required packages to your document preamble:
+% \usepackage{multirow}
+\begin{table*}[ht]
+\centering
+\caption{Code generation performance with various answerability verifier and code generator. The quality of the answerability verification model is measured with pass@k (k=1,10)}
+\label{tab:codegen_pass_w_cov_0528}
+\begin{tabular}{|cc|cc|cc|}
+\hline
+\multicolumn{2}{|c|}{Model} &
+  \multirow{2}{*}{\begin{tabular}[c]{@{}c@{}}accuracy\\ (\%)\end{tabular}} &
+  \multirow{2}{*}{\begin{tabular}[c]{@{}c@{}}coverage(c)\\ (\%)\end{tabular}} &
+  \multirow{2}{*}{\begin{tabular}[c]{@{}c@{}}$\mathbb{E}_{c}[pass@1]$\\ (\%)\end{tabular}} &
+  \multirow{2}{*}{\begin{tabular}[c]{@{}c@{}}$\mathbb{E}_{c}[pass@10]$\\ (\%)\end{tabular}} \\ \cline{1-2}
+Backbone                                                                        & Method         &       &           &      &      \\ \hline
+\multicolumn{2}{|c|}{no verifier}                                                                & N/A   & 100       & 16.6 & 34.2 \\ \hline
+gpt-3.5-turbo                                                                   & CoT + ICL-3w2s & 34.4  & 47.1      & 19.1 & 40.2 \\ \hline
+\multirow{2}{*}{\begin{tabular}[c]{@{}c@{}}llama-3-\\ 8b-instruct\end{tabular}} & CoT + ICL-3w2s & 51.8  & (0,100{]} & 22.6 & 42.7 \\
+                                                                                & QLoRA + NegAug & 54.6  & (0,100{]} & 23.9 & 43.3 \\ \hline
+\multirow{2}{*}{\begin{tabular}[c]{@{}c@{}}gemma-1.1-\\ 7b-it\end{tabular}}     & CoT + ICL-3w2s & 47.2  & (0,100{]} & 20.0 & 36.6 \\
+                                                                                & QLoRA + NegAug & 56.3  & (0,100{]} & 22.0 & 40.9 \\ \hline
+\multicolumn{2}{|c|}{human verification}                                                         & 100.0 & 36.5      & 24.1 & 45.4 \\ \hline
+\end{tabular}
+\end{table*}

@@ -1,0 +1,43 @@
+\algnewcommand{\IfThenElse}[3]{% \IfThenElse{<if>}{<then>}{<else>}
+  \State \algorithmicif\ #1\ \algorithmicthen\ #2\ \algorithmicelse\ #3}
+  
+\begin{algorithm}
+\caption{forward(g: Graph, plan: str[])}\label{code}
+\begin{algorithmic}[1]
+\State $\textit{edges} \gets \mathbf{E}(\mathbf{x_{n_i}};\mathbf{r_\ell};\mathbf{x_{n_j}})$
+\State $\textit{nodes} \gets \mathbf{V}[\mathbf{x_{n_i}};\sum_{e_j\in \pi(i)}\mathbf{e_j};\sum_{e_j\in\pi^{-1}(i)}\mathbf{e_j}]$
+
+\State $\textit{decoder} \gets LSTM().init(\overline{edges})$
+\State $\textit{loss} \gets \emptyset$
+\State $\textit{stack} \gets Stack()$
+
+\While {$\textit{g.size} > 0$}
+    \State $top \gets stack.top()$
+    \If {$stack.empty$} 
+        \State $\textit{options} \gets nodes$% \Comment{Options to traverse to a node}
+    \Else
+        \State $\textit{options} \gets \pi(t) \cup \pi^{-1}(t) \cup \{\vec{pop}\}$% \Comment{Options to traverse on an edge, or pop}
+    \EndIf
+    
+    \State $y \gets plan[0]$
+    \State $pred \gets options^{t} * decoder.out()$
+    
+    \State $loss.add(\mathcal{L}(pred, y))$
+    \If {$\textit{node was selected}$}
+        \State $decoder.add(node)$
+        \State $stack.push(node)$
+    \EndIf
+    \If {$\textit{e=(s,r,o) was selected}$}
+        \IfThenElse {$\textit{s} == \textit{top}$}{$\textit{d} \gets > $}{$\textit{d} \gets <$}
+        \State $stack.push(o)$
+        \State $decoder.add(d).add(r).add(``[").add(o)$
+        \State $g.remove(e)$
+    \EndIf
+    \If {$\textit{pop was selected}$}
+        \State $decoder.add(``]")$
+        \State $stack.pop()$
+    \EndIf
+\EndWhile
+\Return $\textit{loss}$
+\end{algorithmic}
+\end{algorithm}

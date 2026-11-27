@@ -1,0 +1,646 @@
+
+\documentclass{IOS-Book-Article}
+
+\usepackage{mathptmx}
+\usepackage{graphicx}
+\usepackage{soul}\setuldepth{article}
+\usepackage{subcaption}
+\usepackage{soul}
+
+%\usepackage{times}
+%\normalfont
+%\usepackage[T1]{fontenc}
+%\usepackage[mtplusscr,mtbold]{mathtime}
+%
+\def\hb{\hbox to 11.5 cm{}}
+
+\begin{document}
+
+\pagestyle{headings}
+\def\thepage{}
+
+\begin{frontmatter}              % The preamble begins here.
+
+
+%\pretitle{Pretitle}
+\title{Towards an AI Assistant for Power Grid Operators}%gagne 2 lignes
+%\title{Towards an AI Assistant for power grid}
+
+\markboth{}{June 2021\hb}
+%\subtitle{Subtitle}
+
+\author[A]{\fnms{Antoine} \snm{Marot}}, %
+%\thanks{Corresponding Author: Book Production Manager, IOS Press, Nieuwe Hemweg 6B,
+%1013 BG Amsterdam, The Netherlands; E-mail:
+%bookproduction@iospress.nl.}},
+\author[A]{\fnms{Alexandre} \snm{Rozier}},
+\author[A]{\fnms{Matthieu} \snm{Dussartre}},
+\author[A]{\fnms{Laure} \snm{Crochepierre}}
+and \author[A]{\fnms{Benjamin} \snm{Donnot}}
+
+%\runningauthor{B.P. Manager et al.}
+\address[A]{RTE, R\&D and AI Lab, France}
+%\address[B]{Short Affiliation of Second Author and Third Author}
+
+\begin{abstract}
+Power grids are becoming more complex to operate in the digital age given the current energy transition to cope with climate change. As a result, real-time decision-making is getting more challenging as the human operator has to deal with more information, more uncertainty, more applications, and more coordination. While supervision has been primarily used to help them make decisions over the last decades, it cannot reasonably scale up anymore. There is a great need for rethinking the human-machine interface under more unified and interactive frameworks. Taking advantage of the latest developments in Human-Machine Interface and Artificial Intelligence, we expose our vision of a new assistant framework relying on an hypervision interface and greater bidirectional interaction. We review the known principles of decision-making driving our assistant design alongside with its supporting assistance functions. We finally share some guidelines to make progress towards the development of such an assistant.
+%This document is a model and instructions for \LaTeX.
+%This and the IEEEtran.cls file define the components of your paper [title, text, heads, etc.]. *CRITICAL: Do Not Use Symbols, Special Characters, Footnotes, or Math in Paper Title or Abstract.
+\end{abstract}
+
+\begin{keyword}
+Artificial Intelligence\sep Assistant \sep
+Power Grid\sep Operation \sep Decision-making \sep Human-Machine Interface \sep Hypervision
+\end{keyword}
+\end{frontmatter}
+\markboth{June 2022\hb}{June 2022\hb}
+%\thispagestyle{empty}
+%\pagestyle{empty}
+
+
+\section{Introduction}
+% PROPOSITION INTRO ALEXANDRE - WIP
+% L'idée est de synthétiser l'introduction précédente pour la raccourcir, tout en ajoutant les modifications citées en commentaires plus bas. Pour l'instant j'ai juste tenté d'articuler les différentes parties plus fluidement, en regroupant les paragraphes à thématiques similaires. Il faut encore rajouter les contenus mentionnés en commentaires, et retravailler les contributions pour les mettre en valeur.
+%\textbf{PROPOSITION INTRO ALEXANDRE} 
+
+% 1 - power systems are getting more complex to operate
+From the beginning, power grids have been complex artificial systems. As of today, complexity keeps rising at a time of energy transition given the advent of intermittent renewable energies on the production side and of prosumers on the demand side, coupled with the globalization of energy markets over a more and more interconnected European grid. Operators are facing aging grids, with slower grid asset developments due to decreasing social acceptability. Operators hence need to operate a system closer to its limits while dealing with greater uncertainty and increasing grid automation \cite{marot2022perspectives} inducing complex cyber-physical dynamics \cite{allgoewer2019position}. 
+% 2 -  fully autonomous automation is not realistic, operators are key players
+While there could eventually be a temptation to develop a fully autonomous grid to cope with that complexity, it falls short for such large critical system operations. Indeed, coordination, responsibility, accountability, and explainability are a must when operating such a system and can only be reasonably achieved by humans today: human operators remain key players \cite{prostejovsky2019future}.
+
+% 3 -  CC have added more software & apps, this damages decision making
+
+Historically, control rooms have tackled grid evolution dynamics by gradually adding more applications and screens in control rooms. While incrementally growing a monitoring alarm-driven management system has been relatively effective until now, we are today struggling to maintain effective decision-making at a new scale of complexity, essentially in terms of manageable cognitive load for human operators, who should remain at the center of decisions \cite{marot2022perspectives}. In that regard, Human-Machine Interfaces (HMI) have been identified as a risk factor for human error \cite{flaspoler2009human}, and should now be considered more closely. In addition, several decades of research in psychology \cite{kahneman2011thinking} and neuroscience \cite{naccache2005effortless} have shed light on the human decision-making process and its limits, which could in turn lead to improving it.
+
+% 4 -  Levers to improve decision-making : co-adaptation, ergonomy, concept of Assistant
+
+Lately, several works have proposed situation awareness frameworks \cite{naderpour2014intelligent,panteli2015situation,liu2016situational} to help augment the operator's comprehension of safety-critical situations. In addition to better information processing, it is also urgent to rethink the operator's human-machine interface \cite{naderpour2014intelligent} and interaction to assist the operator's regular real-time decision-making. Rather than having operators adapt to the machine through a technology-centered system engineering design, machines and operators could co-adapt \cite{mackay2000responding} following a more human centered-design \cite{boy2017human,shneiderman2022human} approach, possibly rooted in the older concept of man-computer symbiosis \cite{licklider1960man}.
+In terms of interfaces,  we have seen tremendous innovations in other domains, especially in consumer products such as smartphones, connected homes, social networks, search engines, and recommendation systems. They have been well-adopted for ergonomically providing the most relevant information to the user, mostly on single screens, while dealing in the background with vast amounts of information. In the future, the webstrates \cite{klokmose2015webstrates} concept might enable very adaptive, evolving, personal and consistent interfaces by sharing media ubiquitously through devices and applications.
+
+The development of today's interfaces has also been made possible thanks to the latest developments of Artificial Intelligence (AI), and particularly in the field of Machine Learning (ML). These advances enabled deeper and more practical large-scale real-time information processing, such as in computer vision \cite{russakovsky2015imagenet}, image understanding \cite{hossain2019comprehensive}, natural language processing \cite{brown2020language}, and recommendations \cite{zhang2019deep}.
+This shows a shift towards even more advanced HMI, %bridging the gap between human and AI \cite{mcilroyyoung2020maia}, 
+through the concept of assistants. Assistants were found useful to both improve single-user performance and group collaboration on a common task \cite{winkler2019alexa}, help chess players develop their playing skills \cite{mcilroyyoung2020maia}, or help programmers write code \cite{chen2021evaluating}. In power grids, the notion of an AI assistant was used lately  in \cite{donnot2017introducing,marot2018expert} and listed as an opportunity to tackle climate change \cite{clutton2021climate}. Nevertheless, eventual assistant pitfalls should be closely investigated, analogous to the very influential ``ironies of automation``, which notably used power grids as an introductory example \cite{bainbridge1983ironies}. 
+
+% 5 -  Contributions
+
+%In this paper, we present guidelines for designing AI-infused assistants for the control room operator based on the latest developments in human-computer interaction design (HCID), AI, and decision-making. We first review the effectiveness and limits of humans and AI in decision-making, highlighting their complementarities. We further define an assistant. We then discuss the specificities of an assistant for grid operators. Finally, we devise guidelines for how researchers can develop and test such an assistant. 
+
+%\textbf{FIN PROPOSITION INTRO ALEXANDRE}
+% FIN PROPOSITION INTRO ALEXANDRE
+
+% Introduction originale
+%From the beginning, power systems have been complex artificial systems to operate. Over time, complexity has been rising and control room operators have been using more and more applications setting side by side on multiple screens to manage the system. While this simple approach to incrementally grow a monitoring alarm-driven management system has been relatively effective until now, we are now reaching a glass ceiling to add in any new application while keeping effective decision-making. This is true given limited physical space, but most importantly, in terms of manageable cognitive load for any human operator, who should remain the center of decisions. In that regard, human-machine interfaces (HMI) have indeed been identified as a risk factor to human error \cite{flaspoler2009human}. Mostly disregarded in the past, Human-Machine Interfaces and interaction (HMIs) should now be considered more closely. In addition, latest research in psychology \cite{kahneman2011thinking}  and neuroscience \cite{naccache2005effortless} have shed light on human decision-making process and its limits, which could be a lead to improve in turn decision-making.
+
+%As of today, the system complexity keeps rising given the advent of intermittent renewable energies on the production side and of prosumers on the demand side, coupled with the globalization of energy markets over a more and more interconnected European grid. Grids are also aging, and grid developments become more limited nowadays. Operators will hence need to operate a system closer to its limits more as operational planners while dealing with additional automaton on the grid inducing cyber-physical dynamics \cite{allgoewer2019position}. 
+%While there could eventually be a temptation to develop a fully autonomous grid to cope with that complexity, it fails short for such large critical system operations. Indeed coordination, responsibility, accountability, and explainability are a must when operating such a system and can only be reasonably achieved by humans today: human operators remain key players \cite{prostejovsky2019future}. Lately, several works have proposed situation awareness frameworks \cite{naderpour2014intelligent,panteli2015situation,liu2016situational} to help augment the operator's comprehension of safety-critical situations especially. In addition to better information processing, it is also urgent to rethink the operator human-machine interface \cite{naderpour2014intelligent} and interaction to assist the operator's regular real-time decision-making. Rather than having operators adapt to the machine through a technology-centered system engineering design, machine and operator's could co-adapt following human centered-design \cite{boy2017human}.
+
+
+%In terms of interfaces,  we have seen tremendous innovations in other domains, especially in consumer products such as smartphones, connected homes, social media and social networks, search engines, recommendation systems. They have been well-adopted for displaying the most relevant information to the user on single screens through homogeneous format, while dealing in the background with vast diverse amounts of information and user interaction. The development of such interfaces has also been made possible thanks to the latest developments of Artificial intelligence (AI) in the last decade. These developments enabled more advanced and practical large scale real-time information processing, such as in computer vision \cite{russakovsky2015imagenet}, image understanding \cite{hossain2019comprehensive}, natural language processing \cite{brown2020language}, recommendations \cite{zhang2019deep}.
+%This now translates into an even more advanced form of interface: an assistant. Assistants were found useful to both improve user's performance on tasks and enhance group collaboration on a common task \cite{winkler2019alexa}. In power systems, the notion of an AI assistant was used lately in \cite{donnot2017introducing} \cite{marot2018expert}. 
+
+%In this paper, we present the design of an AI-infused assistant for the control room operator based on the latest developments in human-computer interaction design (HCID), AI, and decision-making science. We first review the effectiveness and limits of humans and AI in decision-making, highlighting their complementarities. We further define an assistant. We then discuss the specificities of an assistant for grid operators. Finally, we devise guidelines for how researchers can develop and test such an assistant. 
+%\textbf{Début - Proposition dernier paragraphe d'intro - Laure }
+In this paper, we present the future design of operator AI-infused assistant given the latest developments in HMI, AI, and decision-making science. Our contributions lie in:
+\begin{itemize}
+    \item establishing links between these different domains and our application scenarios to push towards appropriate solution design while being aware of pitfalls;% the possible obstacles to achieve it.
+    \item broadening the perspective to other research fields related to human behavior and cognition beyond the usual situation awareness focus in power systems \cite{prostejovsky2019future, panteli2015situation};
+    \item adapting existing AI assistant framework and guidelines to power grid specificity; % the specificity of our power grid application 
+    \item proposing hypervision interface as an effective hybrid decision-making enabler.
+\end{itemize}
+ %While recent prospective studies on power systems focus on situational awareness \cite{prostejovsky2019future, panteli2015situation}, we try to broaden the perspective to other research fields related to human behavior. In this paper, we especially highlight the specificities of the power grid control problem by taking advantage of works and studies in other more well-known or well-studied fields. Based on all the abovementioned findings, we introduce a new "hypervision" framework specified for the control room. 
+We first describe in Section \ref{sec:use_case_description} the industrial use case we focus on. Then in Section \ref{sec:humanai_dynamics_in_decision_making}, we review the effectiveness and limits of humans and AI in decision-making, highlighting their complementarity. We further define an assistant in Section \ref{'defining-an-assistant'}. We then discuss in Section \ref{sec:expected_functions} the specificity of an assistant for grid operators. Finally, in Section \ref{sec:guidelines}, we devise guidelines for how researchers can develop and test such an assistant. 
+%\textbf{Fin - Proposition dernier paragraphe d'intro - Laure }
+
+\section{Use case description}
+\label{sec:use_case_description}
+We are here considering the field of evolving power grid operations for the Energy Transition. Operations have to adapt as the ongoing decarbonization to cope with Climate Change modifies the generation, electrifies the demand, and digitizes system devices. %Today's grid operations will have to adapt.
+%Most of these changes directly impact the control centre of power systems such as the integration of weather-based energy resources, the greater interconnection between neighboring transmission grids, more markets, active distribution networks, microgrids, and the wider availability of data. Supervision systems in control rooms have grown unreasonably to remain cognitively manageable and redesign of human machine interactions becomes necessary for future operations.  
+%Grids are also aging, and infrastructure developments are more limited but integrate more automata. Thus, the system will be pushed closer to its limits while displaying more complex dynamics. This leads to increased risk of blackouts after cascading failures of overloaded lines. See https://www.youtube.com/watch?v=A30DdnsICuw for an example of a near blackout after successive events.
+
+\subsection{Today's operations}
+
+Today grid operators operate in real-time from control rooms to optimize the power flows on electrical lines, handle maintenance with planned outages or new equipment integration on the grid, and most importantly, avoid blackouts because of congestion. More details about their role and tasks can be found in \cite{prostejovsky2019future}. They are highly trained engineers as their job requires studies, planning, and adaptable decision-making rather than simply reproducing pre-established  event management scenarios. They operate based on simulation tools, real-time and forecasted data, but yet with little decision-making support tools such as assistants.  When they feel they need to solve a problem, they mostly manually explore solutions and validate their decision in their simulation tool. They can modify the line connectivity on the grid to reroute power flows, but also modify some production, limit consumption by a few percent, or even use battery storage today to change the power flows on the grid. This is a large set of possible flexibilities among which they have to identify the effective ones in a given context. Day-ahead planning services give insights on the upcoming trends and possible actions to start considering if some problem occurs, in addition to outage planning. There then exists an intra-day established workflow with 5-minute times step forecast resolution over a few hours' horizons.  But this requires a lot of supervision, a lot of manual entries and manual simulations. They operate mainly with experience to determine relevant remedial actions. 
+
+As the variability on the grid is increasing a lot with shifting dynamics and behaviors even within a year now given the energy transition, usual solutions might not work anymore in all or new contexts. Operators will have to adapt more quickly, leveraging human flexibility if given a proper work environment \cite{abram2021flexibility}. As it can take months today for an operator to gain the necessary knowledge on a different system through extensive training through manual studies, new assistance will be needed, as much as improved performance evaluation \cite{teive2022intelligent}. Also, while some flexibilities and actions can be leveraged curatively once a problem occurs, sometimes actions have to be taken preventively before it is too late to implement them given operational constraints, in particular when considering using batteries or redispatching.
+Several operators also act on the same interconnected grid at the same time, and this requires some coordination that is not always easily achieved despite common grid representations.
+
+\subsection{Current limitations today and assistant need}
+The current ``supervise everything'' approach on dozens of screens cannot scale anymore to take critical decisions as the complexity rises: operators become overwhelmed by information without many indications on what to do and any recommendations for it. The volume of data to consider only gets increasing by 2 to 3 orders of magnitude to keep the ability to predict and anticipate in a more stochastic and constrained system. There is hence a need to help operators identify and prioritize tasks while displaying relevant information and recommendations only for those tasks, with ideally a single interface assistant. In particular, usual approaches from operational research \cite{bhaskar2011security,heidarifar2021optimal} don’t leverage very well available historical data, whereas current data-driven approaches could provide a welcome speed-up. They don’t integrate operator experience and preferred thought process, hence limiting their acceptability. New research is however emerging to better integrate human decision-making \cite{mohrlen2022humans}.
+Finally, current workflow only considers snapshot-based solutions and not sequential decisions over a time horizon, thus putting the burden of the anticipation and evaluation of the long-term consequences of the actions on the human operator alone. 
+
+As the grid gets pushed towards its limits, decisions become more numerous and a lot more interdependent. Solutions should not only be effective at one given time but over a larger time horizon. Solutions should also be implemented with the right anticipation given their effective activation time: switching line connectivity is quick but starting production can sometimes take a few hours. So decisions will need to indeed consider the full underlying planning problem of power grid operations (as illustrated in section \ref{sec:use_case_example}). Better near real-time operation planning assistance could also help anticipate the workload and level it up across operators in a given control room.
+
+An assistant could hence help augment the operator's decision-making capability  to address \cite{marot2022perspectives}: (a) More rapidly evolving and changing system environment; (b) More numerous, complex, and coordinated decisions to make; (c) More uncertainty to consider and more anticipation needed; (d) Overcrowded and fragmented work environment with multi-screen applications and data patchwork; (e) Human operator cognitive load saturation. It would eventually help limit the grid operational cost to a few percent increase rather than a 2-fold one. The ambition is to use at least twice as much flexibility as of today, i.e.\ to use them more frequently and with more diversity \cite{energy2021pathways}. It would also facilitate workload \cite{ghalenoei2022impact} management across teams for improved coordination \cite{harbers2017value} while avoiding cognitive load saturation, and deal with information overload. The interactions should not be only limited to isolated Operator-Assistant pairs, but involve teams of interrelated activities through a shared information and task management system. It should however not come at the cost of decreasing responsibility and accountability, making clear who is in charge and providing necessary interpretability for operators to make explanations.
+
+%Another  important aspect to take into account is the fact that we are not  dealing only with an Operator-Assistant couple. In fact, if each  Operator is provided with an Assistant who supports him in his own  tasks, the Assistant has the global knowledge of the system and of all  the Operators. These Operators interact with the system but also with  each other in the course of these complex processes. Thus, the Assistant  can support the different Operators (who may have different types of  jobs) in a coordination and human capacity management role, but also  provide, if necessary, the widest possible overview to each  interlocutor.
+
+\section{Human-AI dynamics in decision-making}
+\label{sec:humanai_dynamics_in_decision_making}
+\subsection{Human decision-making} 
+Human decision-making  is a matter of  attention and executive control \cite{naccache2005effortless}. Taking proper decisions first involves paying attention to the right information in the environment and making sense of it. It further implies selecting relevant actions while inhibiting inappropriate ones and eventually executing one in a timely manner. 
+Following dual-process theory in the psychology of human reasoning \cite{kahneman2011thinking}, already successfully applied to domains such as medical decision-making \cite{djulbegovic2012dual}, we can describe two underlying imaginary operating and cooperative agents, called System 1 (S$_{1}$) and System 2 (S$_{2}$). S$_{1}$ is the fast intuitive and heuristic agent while S$_{2}$ is the slow and reasoning agent. S$_{2}$ is the one responsible for decisions assisted by S$_{1}$ which continuously and automatically provides him predictions for action. Most of the time, S$_{2}$ just lazily accepts S$_{1}$ proposal in usual situations without much more thinking, resulting in successful, quick and cognitively effortless decisions. When confronted with unusual situations, however, S$_{2}$ can develop more explicit conscious thinking, beyond S$_{1}$ predictions, to deliberate and come up with novel and acceptable decisions while cognitively costly. 
+
+Young operators will rely more heavily on S$_{2}$ and can hence struggle to take any good decision on time for several situations that still appear complex and unusual to them. As they are very focused on trying to make sense of it, they have narrow attention and might miss important new information. As they learn overtime through appropriate training and feedback become expert, climbing through the expertise ladder \cite{stevens2016defining}, their intuitive S$_{1}$ grows for that field of expertise. This enables them to make good and quick decisions even more often with ease. For an expert operator, it has become a lot easier to operate a system intuitively, being able to make more decisions as well as decisions in more difficult situations \cite{EPRI2021}. However, the downside can be overconfidence, overlooking unusual information that would require more deliberation from S$_{2}$.
+
+%\iffalse
+\subsection{Human biases and desirable assistance}
+\label{sec:human_biaises}
+
+Because it relies on fast heuristics and mostly jumps to conclusions, System 1 indeed introduces several potential biases which can lead to human errors, hence limiting the effectiveness of human decision-making. Cognitive biases are summarized in the cognitive bias codex \cite{codex}
+and classified through 4 problems they are trying to circumvent: a limited memory, the need to act fast, the information overload and a lack of meaning. Among possibly damaging biases, we can more specifically list:
+\begin{itemize}
+\item anchoring bias: be over-reliant on the first piece of information we see.
+\item confirmation bias: paying more attention to information confirming our beliefs.
+\item overconfidence bias: too confident about one's abilities leads to greater risk-taking.
+\item information bias: tendency to seek information when it does not affect action (more information is not always better). 
+\item availability heuristic: overestimate the importance of information that is available.  
+\item ostrich effect: ignore dangerous or negative information. 
+\item outcome bias: judge a decision based on the outcome rather than how it was made.
+\end{itemize}
+
+An assistant should hence help the operator avoid biases through assistance in:
+%(i) augment his memory, knowledge retrieval and keep track of latest events; (ii) better filter or highlight information, enhancing attention focus; (iii) contextualize a situation and give feedback; (iv) make recommendations, possibly handle some tasks or alert on undesirable expected consequences.
+\begin{itemize}
+\item augmenting his memory, knowledge retrieval and keeping track of latest events.
+\item better information filtering or highlighting, enhancing attention focus.
+\item contextualizing a situation and giving feedback.
+\item making recommendations, possibly handling some tasks or alerting on undesirable expected consequences.
+%Information+meaning+time (decision)
+%limited attention, limited capacity to understand, limited time
+\end{itemize}
+
+Let's now consider what AI in its latest developments could bring in that regard.
+%\fi
+
+\subsection{AI potential for assistance}
+
+
+The recent deep learning revolution demonstrated some impressive practical abilities of AI by being able to digest a lot of information, memorize large historical datasets, and learn by imitation to infer quickly effective actions in context. Turing-award Yoshua Bengio recently described current deep-learning AI as a S$_{1}$ kind of intelligence \cite{bengio2019system}, while missing S$_{2}$ reasoning. This type of AI is  presented as advanced pattern matching and recognition machines like S$_{1}$ \cite{kahneman2011thinking}, being coined as artificial intuition \cite{perez2018artificial}. It however lacks the ability to reason about causality \cite{pearl2018theoretical}, hence lacking understanding and common sense. Yet Human and AI can be seen as complementary heterogeneous intelligence that could achieve a superior outcome when co-adapting \cite{mackay2000responding} and developing hybrid intelligence \cite{dellermann2019hybrid} or human-centered AI \cite{shneiderman2022human}. This is best exemplified by Kasparov's ``Centaur chess`` concept \cite{case2018become}, where humans play alongside machines to reach superior performances. When powering assistance systems, AI seems capable of overcoming some previously mentioned human limitations by enhancing S$_{1}$ operator's ability, whose S$_{2}$ remains in charge of final decisions. Some initial assistance for S$_{2}$ can nonetheless be considered through explanations or counterfactual reasoning if a simulator exists.   
+
+\subsection{Pitfalls of Human-Machine hybridization}\label{sec:pitfalls}
+
+As we have seen in the previous section, human-AI partnerships shows many promises. But such systems must be carefully designed, as numerous shortcomings might arise. We can make the analogy to "ironies or myth of automation" \cite{bainbridge1983ironies,bradshaw2013seven} which warns that operators should ultimately be more skilled than less skilled, and less loaded than more loaded to deal with the most difficult new and complex situations. Amongst many shortcomings mentioned in  \cite{machines-as-teammates}, over-reliance and deskilling are one of the most damaging for control rooms. As of today, operators have a deep knowledge of their grid area, both in terms of infrastructure and electrical phenomena. Adding an automatic system with persuasive recommendations could lead the operating staff to rely too heavily on the system, progressively losing their expertise, with potentially catastrophic consequences when it fails. Overconfidence should not be a trade-off with over-reliance, and operators should have the opportunity to keep developing their skills and cognitive strategies through regular training and manual problem-solving \cite{bainbridge1983ironies}. 
+
+Additionally, an assistant could misunderstand user intent, and hinder his actions in an example of perverse instantiation \cite{goertzel2015superintelligence}.
+These limitations arise from the fact that, while human Systems 1 and 2 are fully integrated into a single cognitive ensemble, AI and humans are separated entities, where communication is key. System 1 works on learned representations of reality, not directly on reality itself, meaning that situations can be interpreted differently. Hence, reference representations should at least be shared in some form between agents to properly communicate, as with language. Not an easy task knowing that, for instance, in language, common words can sometimes have different meanings between people, highlighting not always properly shared representations \cite{marti2019same}. 
+
+Finally, we should resist the temptation of developing an anthropomorphic assistant \cite{mumford2010technics}, i.e.\ not mechanically mimicking humans and human-human interactions. We aim at augmenting the operator, not replacing him, by recognizing the complementary differences between humans and computers \cite{licklider1960man}, and leveraging them for humans.
+These motivate the need for design guidelines, which we will define in sections \ref{sec:expected_functions} and \ref{sec:guidelines}, including carefully-crafted human-machine interactions \cite{blanchet:hal-03113458}, or interpretable \cite{doshi2017towards}, explainable \cite{adadi2018peeking} and trustworthy \cite{european2020white} AI. We aim at offering operators high control level despite increasing grid automation without compromising reliability and safety \cite{shneiderman2020human}.
+%communication and shared representations \cite{heer2019agency}.   %pursuing preferably not a fixed pre-determined objective but adapting to the operator's fuzzy objectives, by continuously learning its preferences under uncertainty \cite{russel2020artificial}.    
+%+life-long learning \& beneficial AI (learning about preferences)
+
+Moving away from these maturing fields that should prove useful to create an assistant, let's define this concept more precisely for our power grid application domain. 
+
+%To be used effectively by any human, the AI assistant will need to work along with a proper interface. 
+
+
+\section{Defining an artificial assistant for power grid operators} \label{'defining-an-assistant'}
+We formalize an assistant as an artificial agent providing help on a subset of user tasks within its daily activity, with the final goal of increasing task efficiency while still developing operator skills.
+
+%"HCD of complex systems developed over %the last decades using automatic %control,
+%artificial intelligence, human–computer %interaction and systems engineering,
+%as well as human factors and %ergonomics, human–computer interaction %and
+%HSI" \cite{boy2017human}
+
+\subsection{Assistant: balancing assistance, user control and automation}
+To make things clearer, we should explain how the concept of assistant articulates with assistance functions and is distinct from a completely autonomous system. Assistance functions help users with domain-specific tasks, for example, by alerting when relevant information arrives, or monitoring user context and warning him about unforeseen risks. Situation awareness \cite{panteli2015situation, prostejovsky2019future, naderpour2014intelligent} offers, in that sense, advanced assistance functions. 
+
+%\iffalse
+Other similar industrial sectors evoke those functions through different autonomy levels \cite{barabas2017current, Brandenburger2019On, frohm2008levels}, that we can reflect on.
+We here focus on the Grades of Automation (GoA) definition from the International Association of Public Transport \cite{cohen2015impacts, Brandenburger2019On}:
+\begin{itemize}
+	\item GoA0: Manual operation with no automatic protection
+	\item GoA1: Manual operation with automatic protection
+	\item GoA2: Semi-automatic operation
+	\item GoA3: Driverless operation
+	\item GoA4: Unattended operation
+\end{itemize}
+
+GoA1 and GoA2 offer assistance functions as discussed previously, but without much consideration for HMI. GoA3 and GoA4 are targeting autonomy through automation. It highlights that many fields such as autonomous driving \cite{barabas2017current} aim at fully autonomous systems. They diverge from our goal of augmenting operators through an assistant. While being conceptually closer to GoA2, we move away from the usual automation typical of system engineering, to be rather operator centric. 
+
+%\fi
+An assistant, as we illustrate in Fig.\ref{fig:assistant} 
+%\ref{pictures/Assistant_Schematic.png} 
+and later discuss, is yet another level whose goal is to offer the right balance between user control and autonomy \cite{heer2019agency} for enhanced decision-making. It certainly has assistance functions at its core, but most importantly also engages actively with the user. It offers a unified interface and allows for dynamic bidirectional interaction with the user to cooperate efficiently on task completion and with others. It is essential to keep in mind that, in this paradigm, the responsibility of system management still ultimately falls on the operators of critical systems. While some tasks could eventually be automated away, it is paramount to avoid pitfalls such as operator deskilling (see section \ref{sec:pitfalls}), often due to the ``out-of-the-loop" effect \cite{prostejovsky2019future}. Assistants should rather let operators remain in control, which will require more than automation supervision \cite{baileytraining}, and help reinforce their expertise, as emphasized in section \ref{bidirectional-interaction}. Finally, unlike GoA framework, getting a teamwork perspective is important, by taking into consideration the interactions between control room operators, to foster proper coordination and to allow for observability, predictability and directability \cite{johnson2018tomorrow}. 
+
+We now focus on core building blocks in creating such assistant, namely hypervision and bidirectional interaction. Applied AI bricks examples would be found in section \ref{sec:AIModules}.
+
+\begin{figure}[htbp]
+\begin{subfigure}{0.8\textwidth}
+\centering
+\includegraphics[width=\textwidth]{pictures/Assistant_Schematic_revised.png}
+\caption{The grid operator AI assistant} 
+\label{fig:assistant}
+\end{subfigure}
+\begin{subfigure}{0.18\textwidth}
+\vspace{0.8cm}
+\includegraphics[width=\textwidth]{pictures/Hypervision_Vertical.png}
+\vspace{0.1cm}
+\caption{Supervision to Hypervision}
+\label{fig:Hypervision}
+\end{subfigure}
+\caption{(a) The grid operator AI assistant relies on Hypervision interface represented as a blue bus, as well as underlying bidirectional interaction and AI components (see section \ref{sec:AIModules}) running altogether in a coordinated and modular fashion. Multiple Operator/Assistant pairs can also coordinate and collaborate through the Hypervision bus. Zooming in, Assistant System 1 type block helps in usual tasks or situations, exploiting core knowledge and intuition learnt. Right block is more dynamic and interactive, hence more bidirectional, to assist in situations that require more reasoning, focus, deliberation or exploration by operators in a more System 2 type fashion. Continuous revision is important to update shared representations. (b) Supervision to Hypervision in \ref{fig:Hypervision} allows moving away from alarm monitoring over many applications on screens (colored squares), to refocus the operator on task completion on a unified but contextualized single interface (mixed colors of merged information from background apps). %contextual information is synthesised from available applications running in the background but not displayed.
+}
+
+\label{fig:full_assistant}
+%\vspace{-0.8cm}
+\end{figure}
+
+
+\subsection{Hypervision: smart interface \& information management}\label{hypervision}
+
+Today's supervision leaves to the user the cognitive load to prioritize, organize, and link every displayed information and alarms consistently before considering any decision. It can be regarded as a fragmented ecosystem from an operator's viewpoint. While it has been manageable for up to ten applications, it becomes impractical with always more information and uncoordinated applications to control under heterogeneous formats. Supervision gives access to the user to every information available without much more processing. However, it does not help deal with the information overload and ``lack of meaning'' problems (see \ref{sec:human_biaises})  that need to be tackled for improved decision-making: it dilutes the operator's attention. Let's recall that humans can mainly focus on one task at a time, with a limited working memory space of few information chunks to manipulate \cite{cowan2001magical}. 
+
+To be effective at continuous decision-making, it is often important to focus on the highest priority task at a time, and present only the most relevant information to it. Yet, pausing on one task, dealing with another, and eventually completing the previous one should remain be possible. In that regard, we propose to rely on an ``hypervision" framework to bring the right information at the right time to the right person \cite{marot2022perspectives} while keeping track of user progress for each task. It helps overcome multiple biases, such as both information bias and anchoring bias, by taking advantage of them rather than being influenced by them. 
+Hypervision as presented in \cite{marot2022perspectives} relies on the definition of tasks created by processing and synthesizing the necessary information. Those tasks do not have to be only-real time. Indeed, they are still preferably the ones anticipated to be completed or configured ahead of time thanks to forecast, hence defining an expected trajectory that might be adapted along the way. Reaching this higher level of information enables the assistant to establish a simplified but relevant dialogue with the operator, eventually providing him with diagnostics or even recommendations on solutions. Hence, hypervision's goal is to help refocus the operator on task completion rather than alarm monitoring, as illustrated in figure \ref{fig:Hypervision}. While the assistant could instantiate tasks for anticipated risks by the system and help in prioritizing them, the operator should remain free to create and modify some himself, or manually change the order of priority. This manual editing is also important to correct overtime any selection bias that could have been introduced by automatic prioritization, among others. Finally, such tasks can be easily shared and completed between operators, allowing for easier team workload management \cite{harbers2017value}. These create the basis for more advanced and effective bidirectional interaction under shared representations of tasks \cite{heer2019agency} thanks to which users and assistants could work in tandem or in teams to achieve a common objective.
+
+%\begin{figure}[htbp]
+%    \centering
+%    \includegraphics[width=0.8\textwidth]{pictures/Hypervision_Vertical.pn%g}
+%    \caption{Alarm monitoring with Supervision - Task completion with %Hypervision}
+%    \label{fig:hypervision}
+%    \vspace{-0.8cm}
+%\end{figure}
+
+\subsection{Bidirectional interaction}\label{bidirectional-interaction}
+While the choice of the interaction modalities (visual, audio, haptic, etc.) matters for enhanced human-assistant partnership, we will leave it open here and focus on the importance of bidirectional interaction between an operator and its assistant.
+
+Put in the spotlight in the 80’s, expert systems developed with AI under predefined rules raised concerns about its practicality for human users in terms of Human-Machine interaction.  Lucy Suchman \cite{suchman1987plans} shed light on their ineffectiveness, mostly attributed to the lack of well-designed interaction and learning loops beyond knowledge retrieval. She noted that plans, similarly to predefined rules, are not  prescriptive  and  not  something  to  follow  exactly, because everything eventually depends on circumstances and contingencies. Plans should rather be seen as heuristic and available resources for actions that help focus one's attention while abstracting the details. But they should get updated through interaction to take proper decisions. In the end, interfaces should not draw a dry delimitation with their user but re-configure themselves and conform with him.
+
+
+Research \cite{horvitz1999principles}  has shown an increased efficiency in Human-AI coupling when both agents were able to initiate and respond to interaction. These were historically mostly unidirectional, the assistant either asking a predefined set of questions to build its context representation or the user asking to perform some predefined tasks. Such badly designed assistant such as Clippy \cite{baym2019intelligent} could in the end disrupt the user, making it inefficient and frustrating.
+In a bidirectional relationship, the interaction is collaborative, with neither the system nor the user in control of the whole interaction \cite{heer2019agency}. The assistant is capable of interacting with the latter to refine its context representation (e.g. ask for a clarification when ambiguities arise), thus improving its efficiency when asked to perform a specific task. A good example of such bidirectional interaction is found in \cite{blanchet:hal-03113458}, where interaction between load-carrying robots and their human partners is learnt over time, resulting in better task completion through operator improvement and per-user adaptation of the robot's behavior.
+Further approaches let an assistant learn how and when to defer to an expert \cite{mozannar2020consistent} when in doubt, or conversely let a user interactively learn about the weaknesses and strengths of the assistant under sources of uncertainties \cite{sanchez2022deep}. An assistant can also gently challenge or guide a user to reach novel solutions and build knowledge altogether \cite{liu2017bignav,malloch2017fieldward}. Ultimately a user would like to grasp the underlying assistant model \cite{conversy2018vizir}, to know what the model captured, what he can do with it and how to direct or correct it. Interpretability is at play more than post-hoc explanations \cite{rudin2018please}. In that regard, prospective design \cite{shneiderman2022human,hull2003everything} through interaction and exploration should prove effective, removing the need for the assistant to always explain himself to the operator. An after-operations review process could prove useful for strengthening the relationship \cite{dodge2021after}.
+
+These advances show that creating true human-computer partnerships \cite{beaudouin2021generative} based on the concepts of Discoverability, Appropriability and Expressivity become a reality as well-demonstrated in \cite{koch2020imagesense}. This calls for more academic and industrial collaboration like the ``Cockpit and Bidirectional Assistant" project \cite{cab_project} for critical systems.
+In the next section, we review some design guidelines to initiate such partnerships in our use case. 
+
+\vspace{-0.5cm}
+%\section{Design guidelines for effective assistant support}\label{'expected-functions'}
+\section{Featured function for effective assistant support}
+\label{sec:expected_functions}
+After defining \emph{what} an assistant should look like in the case of power systems,  we now propose to specify \emph{how} it should proceed when interacting with a user. To do so, we build upon the human-ai guidelines defined by Amershi et Al. \cite{human-ai-interactions} to feature import functions for such assistant. As these guidelines were initially defined from studying consumer products, we highlight some additional specificity when considering industrial systems. 
+
+%\begin{itemize}
+\textbf{Show contextually relevant information at the right time} - Grid operators evolve in a time-constrained environment where having the right information at the right time is paramount. For instance, power lines reconnected after a routine outage operation for maintenance should be notified as soon as possible to increase grid robustness. An assistant should engage in interaction when the context allows it, taking into account when possible the operator's mental availability and current task, and the expected impact of the interaction. Task prioritization is also a cornerstone of good grid management, and users should be provided with high granularity, curated task details for fast criticality assessment. All of the above-mentioned concerns call for efficient knowledge management and representation, as instantiated by our hypervision system defined in \ref{hypervision}.
+
+%\cite{horvitz1999principles} proposes a simple visualization of such concept, where engaging dialog weights its expected utility given some assumed user goal.
+%\antoine{sans doute pas la place pour ce %schéma}
+%\begin{figure}[htbp]
+%    \centering
+%    \includegraphics[width=0.53\textwidth]%{pictures/dialog_vs_action.png}
+%    \caption{\cite{horvitz1999principles} %proposes a framework defining an area %where initiating dialog when the user %depends on assumed user context. %There, $p(G|E)$ represents the %probability that the user wishes to %perform goal G given context E, and %$u(A,G)$  (resp. $u(D,G)$ ) are the %expected utility of performing action %$A$ (resp engaging dialog D). The area %between the two \delta boundaries %indicates that, when uncertain about %the user's goals, the assistant will %engage a conversation to retrieve %contextual information.}
+%\label{fig:dialog_action}
+%%\vspace{-0.8cm}
+%\end{figure}
+
+
+%It is often a daunting task to ensure that a local operation won't deteriorate safety in other parts of the grid, due to the high degree of interconnection in such systems. Manipulating a line is not a trivial task, as some maintenance operations could be simultaneously conducted on it, and any unwanted reconnection may endanger human lives. A good assistant would provide real-time information about areas that could be affected by the considered operation. 
+
+\textbf{Scope services and inform the user when in doubt} - 
+Doubt can happen when the assistant is uncertain about the user's goal, but also in our case because of assistant model limitations (imperfect grid simulator) or uncertainties in the system (poor weather forecast). Operators are often dealing with variability, be it when anticipating potential hazards due to volatile renewable energies or exploring the effects of preventive actions. 
+
+Let's zoom on the ``Anticipation \& forecasts" slot of fig. \ref{fig:assistant}. When facing uncertainty, for example  when provided with a highly volatile wind forecast, the operator can first simply indicate his intention of monitoring more stable, aggregated regional forecasts and let the assistant switch to a higher resolution as operations shift closer to real-time and more precise weather information arrives. This example also shows that uncertainties when providing assistance should be jointly presented with their probable causes (missing data, poor forecast...), to help decision-making and reinforce operator trust. 
+
+
+
+%The operator should eventually know if any result is deterministic or probabilistic.
+
+
+%Being able to quantify variability enables them to make informed decisions, such as running manual security assessments, or waiting to get more insight before the decision window expires. 
+
+%For example, when provided ahead of time with a highly volatile weather forecast, the operator can first simply indicate his intention of monitoring aggregated load forecasts (say, at regional level), and switch to individual loads as operations shift closer to real-time and new weather information arrives. This example also shows that uncertainties should be jointly presented with their probable causes (missing data, poor forecast...), to comfort operator diagnostic.
+
+\textbf{Support efficient invocation and dismissal} - The number of actions an operator can do in a time window is limited. Interacting with an assistant has to be straightforward. Verbosity should be kept to a minimum, and function of the operator context. In tense situations (e.g.  volatile renewable production), the assistant should initiate interactions more frugally, be more succinct, and support faster dismissal. Knowing how to adapt interactions is not straightforward, as it involves capturing a lot of implicit contextual hints, and getting operator feedback through dialog should play a major role.
+
+\textbf{Take into account and learn from user behavior and feedback} - Grid operators are well-trained experts, capable of evaluating the assistant's answers and providing feedback. Thus, to ensure continuous performance improvement (Fig. \ref{fig:assistant}), the latter must be able to learn from users, for instance by understanding that additional context needs to be considered alongside a specific action, or remembering that a line is under maintenance during a user-provided period. Remembering recent interactions is paramount to user acceptance (nobody likes repeating requests) and capturing user context. 
+%Operators inquiring about a line disconnection should be notified when the status changes.  
+
+Moreover, each operator has a personal decision-making style, some relying on numerous power-flow simulations to assess a situation, others relying on their expertise. A good assistant should adjust to these user-specific profiles. %For instance, when supporting a user accustomed to grid simulations, it could recompute them when the user is busy on the phone to integrate the latest grid changes when he hangs up. 
+
+
+\textbf{Convey the consequences of user actions} - Not only should an assistant avoid operator deskilling for what was already done effectively, but also should it reinforce user expertise through interaction. In power systems, it is often deplored that the consequences of grid operations are poorly monitored, which in return deprives operators of valuable feedback. Assistants delivering a detailed report of how the grid evolved after a specific action would tremendously speed up the way operators acquire experience by mobilizing their deliberative thinking process (S2 in section \ref{sec:humanai_dynamics_in_decision_making}), and yield better grid management. As what KPIs should be tracked is task-dependent, the operator is also implied in this bidirectional dialog. Logically, interpretability and explainability are inseparable from building this successful human-AI hybridization (fig. \ref{fig:assistant}).
+
+
+
+%\end{itemize}
+
+We have seen that human-assistant partnership could be built upon hypervision (\ref{hypervision}), bidirectional interactions and a set of key features. We will now propose some guidelines on more concretely developing, implementing and testing such an assistant.
+\vspace{-0.5cm}
+\section{Guidelines for developing, implementing and testing an assistant}
+\label{sec:guidelines}
+Designing an assistant in practice might still seem complex beyond the discussed framework and principles. We devise here some pragmatic guidelines to start simple on a common but modular ground, listing some already available building blocks as well.
+
+\subsection{Grounded Design Considerations}
+\vspace{-0.2cm}
+%\iffalse
+\subsubsection{Tasks and Visualizations as shared representations}
+In smart grids, functions have been presented in \cite{Li2010_vision, gopstein2021nist,marot2022perspectives} and  tasks described at a high level in \cite{prostejovsky2019future,abram2021flexibility} or through a detailed example \cite{EPRI2021}. In other industrial sectors such as aeronautics \cite{boy2017human}, tasks in processes have been codified more precisely at a granular level
+with ontologies \cite{reiss2006using} or conceptual designs from human-computer design \cite{boy2017human}, which gives the operator a clearer framework to work and coordinate with, as for the assistant. %We should aim at such explicit modeling as recently exemplified in \cite{EPRI2021}.
+
+A task is first defined by the problem to solve specifically, such as a safety problem - a line overload, its priority and the residual time to complete it. It should contain relevant context to understand the root of the problem, what might be already known about it, recent related events or tasks, as well as the persons involved. Building on causal and counterfactual models \cite{pearl2018book} is desirable. A task should further come with suggestions about available actions, and their expected effectiveness. It should finally retain a decision for completion and meta-attributes about it. Structuring tasks this way would allow shared representations \cite{heer2019agency} between the operator and the assistant. Task categories and attributes should be more exhaustively drawn through future works. Eventually, comprehensive activity studies involving multiple tasks in time \cite{boy2017human} should be run.
+
+Also, unlike traditional approaches in power systems that mainly tries to focus on the most critical situations we ever have to solve, we suggest here to start studying tasks in regular situations and gradually increasing the number of needed bidirectional interaction. To operators, it should prove useful to start experimenting on the most routine but sometimes time-consuming tasks with often low added value \cite{endsley2018level}. That way, building trust in the first place should be easier while still helping ease their cognitive load.
+
+Additionally, powerful and interactive visualizations are a common and much appreciated approach for operators to support shared representations and task completion. They are useful companions of an assistant. A recent survey in power grids advocates for such new developments 
+\cite{fischer2021towards}. Effective superimposed forecasted and current system state visualization \cite{prouzeau2016towards}, dynamic and temporal network exploration \cite{bach2013graphdiaries,bach2015networkcube}, and high-dimensional event-based visualizations \cite{fouse2011chronoviz} could prove beneficial in that regard.
+
+%\fi
+\subsection{Simple situational use case as a sandbox}
+\label{sec:use_case_example}
+We offer a simple interesting use case to highlight key difficulties in daily grid management through the interplay of preventive and corrective decisions under uncertainty. This makes us think about how the operator-agent interaction should take place.
+%An operator starts monitoring a grid composed of two smaller areas at 7:00am. Forecasts show that an incident should occur around 9:00am in area 1, with three available corrective actions after simulations, each being able to be executed just before 9:00am. Another incident should happen around 8:30am in area 2, leaving only a couple of minutes to execute the only preventive action.
+An operator starts monitoring a two-area grid at 7:00am. Forecasts show 2 issues:
+\begin{itemize}
+    \item An incident in area 1 could happen around 9:00am and would lead to some overloads, with three available corrective actions after simulations.%, each being able to be executed just before 9:00am. 
+    \item Another such incident in area 2 could happen around 8:30am with only one preventive action available. This leaves only a couple of minutes to execute it or not.
+\end{itemize}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.8\textwidth,height=4cm]{pictures/scenario_1_small_bis.png}
+\caption{A simple scenario where incidents are forecasted in multiple parts of a grid, and several corrective actions with different setup duration are possible. Green dots each represent an available action, and the blue arrows the time it needs to be effective. For instance, starting a nuclear power plant takes longer than applying topological grid changes, and would have a longer blue arrow.}
+\label{fig:L2RPNserieDiff}
+%\vspace{-0.8cm}
+\end{figure}
+A couple of questions arise on the best strategy to follow:
+\begin{itemize}
+    
+    \item Which decisions have priority? It seems that a preventive action on area 2 should be urgently taken, but maybe the forecast isn't that reliable yet. 
+    
+    \item When should we implement actions? Waiting for the last simulation at 8:00am in area 1 shows that the forecasted problem disappeared which is the best option.
+    \item How does applying a preventive action on area 2 reflect on area 1? Would it lead to a less secure grid state? What coordination is required? Maybe there's a new outage operation in this area that isn't yet taken into account by the simulation.
+    \item Which of the three corrective actions in area 1 should be taken? The operator has to mediate between economical, practical and safety arguments, each with a degree of uncertainty over an activation horizon. 
+
+    %\item Which decisions have priority ? It seems that a preventive action on area 2 should be urgently taken, but maybe the forecast isn't that reliable. The assistant should be able to provide the operator with these uncertainties.
+    
+    %\item How should the result of the simulations be presented to the operator ? We can see that the last simulation of 8:00am in area 1 shows that the forecasted incident should not happen anymore. Is it a simulation artifact, or has the situation improved with more recent measurements? Maybe the assistant should run successive simulations over time and alert the operator as soon as the forecasted situation evolves.
+    
+    %\item How does applying a corrective action on area 1 reflect on area 2 ? Would it lead to a less secure grid state ? What coordination is required ? Maybe there's a new maintenance operation in this area that isn't taken into account by the simulation.
+    
+    %\item Which of the three corrective action in area 1 should be taken ? The operator has to mediate between economical, practical and safety arguments, each with a degree of uncertainty. How could the assistant be helpful there ?
+\end{itemize}
+
+Our objective here is not to provide any viable solution, but rather to demonstrate that grid operators are confronted with complex decisions even on apparently simple cases, in which context-dependent trade-offs always have to be made. Future works could build a library of such canonical cases to be studied in the community.
+
+\subsection{Unified Interface \& Data collection as an industrial stack}
+The hypervision framework relies on a generic single interface that should be able to integrate any kind of tasks, and apply to different industrial systems for instance. 
+%While previous supervised applications would still run in the background, hypervision is a master process responsible for displaying the right information in a proper and standardized format. 
+An example of an existing framework is the open-source Operator Fabric \cite{op_fab}. It could be used both by industrial and researchers as a unified interface for decision-making processes across teams. 
+Such a framework is also a cornerstone to digitalize the decision-making process, centralize every necessary information, hence capitalize on them. This historical data collection is essential for continuous improvement, experiments, as well as for creating datasets from which AI can learn recommendations. Data should get labeled and its quality properly monitored. These developments should create a necessary technical stack or data platform for an assistant, to overcome challenges in deploying AI \cite{paleyes2020challenges,baier2019challenges}.
+
+
+\subsection{Power system AI modules for assistant functions}\label{sec:AIModules}
+Recent surveys list interesting developments of AI for climate change \cite{rolnick2022tackling} and for power systems more specifically \cite{kezunovic2020big}, \cite{duchesne2020recent}. For an assistant, AI can today be used to make corrective action recommendations to an operator through adaptive interpretable expert system \cite{marot2018expert},  imitation learning \cite{donnot2017introducing} or reinforcement learning on robustness, adaptability or trust dimensions \cite{marot2021learning,l2rpn_with_trust} which are key in Human-centered AI \cite{shneiderman2020human}. It can learn from user behaviour and help convey the consequences of the operator's action by comparison. Exhaustive risk assessment \cite{donnot2018optimization} also helps in prioritizing tasks. Further, automatic hierarchical and contextual representations of the grid \cite{marot2018guided} enable scope services and give greater flexibility to convey the right context and interpret a situation. \cite{crochepierre2020interpretable} also lets an AI learn interpretable and physically-consistent contextual indicators associated with a particular operator's task or help build knowledge graphs \cite{huang2020knowledge}. Finally, \cite{marot2019interpreting,boudjeloud2016interactive,gkorou2020get} let operators explore interactively and iteratively historical explainable factors across similar situations and decisions for augmenting and keeping up-to-date the system knowledge and proper labels. This should all be carefully developed within a trustworthy framework \cite{stiasny2022closing}. This is an illustrative sample of today's AI potential \cite{Li18, Shi20} to provide effective assistance functions and interactions which needs to be developed further. 
+
+\subsection{Assistant evaluation \& development of shared benchmarks}
+ In order to assess the relevance of an assistant in a real-world scenario, and eventually compare multiple assistants, it is necessary to set up repeatable evaluation protocols and define common benchmark tasks.
+ 
+ %\subsubsection{Evaluation}
+ As for now, there is not yet a standard testing protocol to evaluate AI assistants. However, we could draw insights from other domains such as interpretable machine-learning \cite{doshi2017towards}, explainable AI \cite{pruthi2020evaluating, rosenfeld2021better}, or interactive visualization \cite{Borgo2018InformationVE}. As done in \cite{doshi2017towards}, we could come to structured step-by-step experimental practices to evaluate candidate assistants on incrementally difficult tasks.
+ %: by starting on a simpler task without a human-in-the-loop (also called ``functionally-grounded evaluation") and comparing the proposed solution against other state-of-the-art methods or a baseline, we could progressively introduce a human interaction (``human-grounded evaluation"), until eventually evaluating a real-world complex task with human interaction (``application-grounded evaluation"). 
+ %\laure{peut être supprimer à partir de ': by starting" s'il n'y a plus de places. On gagne un paragraphe et une citation}
+ %Starting with a ``functionally-grounded evaluation" where we compare the proposed solution against other state-of-the-art methods on a simple task without a human interaction, we could then perform a ``human-grounded evaluation" by evaluating interaction on the same simple task as before. Eventually, the final evaluation would here be an ``application-grounded evaluation" . 
+ Moreover, several Virtual-Assistant (VA) related studies have also tried to define custom evaluation criteria. In \cite{martin2020daphne}, authors compare their VA against both a simpler interactive data-exploration scheme and a non-interactive solution-search. They assess the use of their assistant on three factors: \textit{performance} with task-specific metrics; \textit{human-learning} using questions and tests at the end of each task; \textit{usability}  for example using System Usability Scale \cite{Brooke1996SUSA}. During this evaluation biases, over-reliance and deskilling (from sections \ref{sec:human_biaises} and \ref{sec:pitfalls}) can be addressed.
+ \iffalse
+ \begin{itemize}
+ \item \textbf{Performance} Is an operator more efficient with a VA ? Here, task-specific performance metrics are used. 
+ \item  \textbf{Human-learning} Is a virtually-assisted operator learning as much about the problem and it's underlying model than without the assistant ? This factor is assessed using questions and tests at the end of each task. 
+ \item  \textbf{Usability} Is a user able to handle the use of the assistant ? This evaluation can be performed using a standard System Usability Scale (SUS) \cite{Brooke1996SUSA}. 
+ \end{itemize}
+ \fi
+
+ 
+ 
+%Eventually, to assess whether a %given assistant will be used in %practice by operators we need to %make that they have a modicum of %trust in it. As proposed by %\cite{zierau2020trust}, three axes %could be considered for evaluation : %user-interface driven trust, %interaction-driven trust and %explanation-driven trust. 
+%\laure{peut être supprimer à partir %de "Eventually, to assess" s'il n'y %a plus de places. On gagne un %paragraphe et une citation}
+
+%As in \cite{doshi2017towards} we have to come with structured and step-by-step experimental practices (functionally grounded -> human grounded -> application grounded)
+%\laure{Je ne sais pas bien où vous pourriez en parler, peut être ici. Il serait important d'évaluer l'acceptation (``trust'') que l'utilisateur a dans son assistant . Trois axes peuvent être considérés selon \cite{zierau2020trust}: user interface driven trust, interaction driven trust et explanation driven trust}
+
+%\subsubsection{Benchmarks}
+Because of confidentiality issues, it is often hard to share real-world data on decision-making problems. Thus, we should aim at developing synthetic but realistic environments from which to extract representative and relevant scenarios%. To define these scenarios, we could rely on already existing decision-making assessment frameworks, such as \cite{dilemmas} originally designed for road safety. 
+, for example by drawing inspiration from road safety decision-making assessment frameworks \cite{dilemmas}.
+Moreover, synthetic and realistic environments for sequential decision-making have recently been developed for power grids \cite{marot2020learning,marot2021learning,l2rpn_with_trust} and could be interactively further studied with grid2viz \cite{grid2viz} and grid2grame \cite{grid2game} study tools. %studied  in various fields (L2RPN %\cite{marot2019learning} for power %systems applications or CARLA %simulator \cite{Dosovitskiy17} for %autonomous driving) and come with %some pretrained AIs which be used to %further develop assistants.
+%\laure{Peut etre supprimer CARLA %simulator si il n'y a plus de place}
+%As decision-making assessment frameworks already exist and are already applied to problems such as road safety \cite{dilemmas}, they could be of great use to define decision-making benchmarks scenarios.
+
+
+%% ANCIEN TEXTE EN DESSOUS (au cas où): 
+%It is hard to share real data about decisions (confidentiality, etc...). So we should aim at developping synthetic but realistic environments from which to extract representative and interesting scenarios. Decision-making assessment frameworks already exist in numerous fields, including but not restricted to road safety \cite{dilemmas}, . This way we could define benchmarks of assistants for decision-making. Example of such synthetic environments already exists (L2RPN) and come with some pretrained AIs which be used in developping assistants.
+
+
+
+\section{Conclusion}
+In this paper, we have presented the framework and principles for designing an AI assistant based on the concept of Hypervision and bidirectional interactions for power grid operators. It combined insights from various research fields, opening new research directions for augmented decision-making. We have provided initial guidelines of expected functions and practical needs, as well as already available materials in power grids, to continue exploring this promising and very much needed new field of human-machine partnership. Building on this proposed framework and existing L2RPN with Trust environment \cite{l2rpn_with_trust}, future work should aim soon at extending testbed environments and instantiate first complete implementations of assistant to be benchmarked, in order to operate the grid with greater flexibility and coordination to support the ongoing energy transition.
+
+\bibliographystyle{ieeetr}
+\bibliography{powertech}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\iffalse
+\section{Introduction}
+This document provides instructions for style and layout and how to submit the final
+version. Although it was written for individual authors contributing to IOS Press books,
+it can also be used by the author/editor preparing a monograph or an edited volume.
+
+Authors should realize that the manuscript submitted by the volume editor to IOS
+Press will be almost identical to the final, published version that appears in the book,
+except for the pagination and the insertion of running headlines. Proofreading as
+regards technical content and English usage is the responsibility of the author.
+
+A template file for \LaTeX2e is available from http://www.iospress.nl/service/authors/\allowbreak latex-and-word-tools-for-book-authors/. \LaTeX{} styles required for the \LaTeX{} template are also
+available.\footnote{For authors using MS Word separate Instructions as well
+as a Word template are available from http://www.iospress.nl/service/authors/latex-and-word-tools-for-book-authors/.}
+
+\section{Typographical Style and Layout}
+
+\subsection{Type Area}
+The text output area is automatically set within an area 12.4 cm
+horizontally and 20 cm vertically. Please do not use any
+\LaTeX{} or \TeX{} commands that affect the layout or formatting of
+your document (i.e. commands like \verb|\textheight|,
+\verb|\textwidth|, etc.).
+
+
+
+\subsection{Font}
+
+The font type for running text (body text) is 10~point Times New Roman.
+There is no need to code normal type (roman text). For literal text, please use
+\texttt{type\-writer} (\verb|\texttt{}|)
+or \textsf{sans serif} (\verb|\textsf{}|). \emph{Italic} (\verb|\emph{}|)
+or \textbf{boldface} (\verb|\textbf{}|) should be used for emphasis.
+
+\subsection{General Layout}
+Use single (1.0) line spacing throughout the document. For the main
+body of the paper use the commands of the standard \LaTeX{}
+``article'' class. You can add packages or declare new \LaTeX{}
+functions if and only if there is no conflict between your packages
+and the \texttt{IOS-Book-Article}.
+
+Always give a \verb|\label| where possible and use \verb|\ref| for cross-referencing.
+
+
+\subsection{(Sub-)Section Headings}
+Use the standard \LaTeX{} commands for headings: {\small \verb|\section|, \verb|\subsection|, \verb|\subsubsection|, \verb|\paragraph|}.
+Headings will be automatically numbered.
+
+Use initial capitals in the headings, except for articles (a, an, the), coordinate
+conjunctions (and, or, nor), and prepositions, unless they appear at the beginning
+of the heading.
+
+\subsection{Footnotes and Endnotes}
+Please keep footnotes to a minimum. If they take up more space than roughly 10\% of
+the type area, list them as endnotes, before the References. Footnotes and endnotes
+should both be numbered in arabic numerals and, in the case of endnotes, preceded by
+the heading ``Endnotes''.
+
+\subsection{References}
+
+Please use the Vancouver citing \& reference system, and the National Library of
+Medicine (NLM) style.
+
+Place citations as numbers in square brackets in the text. All publications cited in
+the text should be presented in a list of references at the end of the manuscript.
+List the references in the order in which they appear in the text. Some examples of
+the NLM style:
+
+\medskip
+\noindent\ul{Journal article:}\par\noindent
+Petitti DB, Crooks VC, Buckwalter JG, Chiu V. Blood pressure levels before dementia.
+Arch Neurol. 2005 Jan;62(1):112-6.
+
+\medskip
+\noindent\ul{Paper from a proceedings:}\par\noindent
+Rice AS, Farquhar-Smith WP, Bridges D, Brooks JW. Canabinoids and pain. In: Dostorovsky
+JO, Carr DB, Koltzenburg M, editors. Proceedings of the 10th World Congress on Pain;
+2002 Aug 17-22; San Diego, CA. Seattle (WA): IASP Press; c2003. p. 437-68.
+
+\medskip
+\noindent\ul{Contributed chapter in a book:}\par\noindent
+Whiteside TL, Heberman RB. Effectors of immunity and rationale for immunotherapy. In:
+Kufe DW, Pollock RE, Weichselbaum RR, Bast RC Jr, Gansler TS, Holland JF, Frei~E~3rd,
+editors. Cancer medicine 6. Hamilton (ON): BC Decker Inc; 2003. p. 221-8.
+
+%\medskip
+\smallskip
+\noindent\ul{Book by author(s):}\par\noindent
+Jenkins PF. Making sense of the chest x-ray: a hands-on guide. New York: Oxford
+University Press; 2005. 194 p.
+
+%\medskip
+\smallskip
+\noindent\ul{Edited book:}\par\noindent
+Izzo JL Jr, Black HR, editors. Hypertension primer: the essentials of high blood pressure.
+3rd ed. Philadelphia: Lippincott Williams \& Wilkins; c2003. 532 p.
+
+%\medskip
+\smallskip
+\noindent\ul{Proceedings:}\par\noindent
+Ferreira de Oliveira MJ, editor. Accessibility and quality of health services. Proceedings of
+the 28th Meeting of the European Working Group on Operational Research Applied to Health
+Services (ORAHS); 2002 Jul 28-Aug 2; Rio de Janeiro, Brazil. Frankfurt (Germany): Peter Lang;
+c2004. 287 p.
+
+\vspace*{6pt}
+If your bibliography is structured in the BibTeX format, loading your *.bib file and the provided  BibTeX style vancouver.bst allows you to get the final format of the bibliography. Please note that the bibtex program should be used to generate the *.bbl file.
+
+\section{Illustrations}
+
+\subsection{General Remarks on Illustrations}
+The text should include references to all illustrations. Refer to illustrations in the
+text as Table~1, Table~2, Figure~1, Figure~2, etc., not with the section or chapter number
+included, e.g. Table 3.2, Figure 4.3, etc. Do not use the words ``below'' or ``above''
+referring to the tables, figures, etc.
+
+Do not collect illustrations at the back of your article, but incorporate them in the
+text. Position tables and figures with at least 2 lines
+extra space between them and the running text.
+
+Illustrations should be centered on the page, except for small figures that can fit
+side by side inside the type area. Tables and figures should not have text wrapped
+alongside.
+
+Place figure captions \textit{below} the figure, table captions \textit{above} the table.
+Use bold for table/figure labels and numbers, e.g.: \textbf{Table 1.}, \textbf{Figure 2.},
+and roman for the text of the caption. Keep table and figure captions justified. Center
+short figure captions only.
+
+The minimum \textit{font size} for characters in tables is 8 points, and for lettering in other
+illustrations, 6 points.
+
+On maps and other figures where a \textit{scale} is needed, use bar scales rather than
+numerical ones of the type 1:10,000.
+
+\subsection{Quality of Illustrations}
+%Use only Type I fonts for lettering in illustrations.
+Embed the fonts used if the application provides that option.
+Ensure consistency by using similar sizes and fonts for a group of small figures.
+To add lettering to figures, it is best to use Helvetica or Arial (sans serif fonts)
+to avoid effects such as shading, outline letters, etc.
+
+ Avoid using illustrations
+taken from the Web. The resolution of images intended for viewing on a screen is
+not sufficient for the printed version of the book.
+
+If you are incorporating screen captures, keep in mind that the text may not be
+legible after reproduction.
+
+\subsection{Color Illustrations}
+Please note, that illustrations will only be printed in color if the volume editor agrees to
+pay the production costs for color printing. Color in illustrations will be retained
+in the online (ebook) edition.
+
+
+\section{Equations}
+Number equations consecutively, not section-wise. Place the numbers in parentheses at
+the right-hand margin, level with the last line of the equation. Refer to equations in the
+text as Eq. (1), Eqs. (3) and (5).
+
+\section{Fine Tuning}
+
+\subsection{Type Area}
+\textbf{Check once more that all the text and illustrations are inside the type area and
+that the type area is used to the maximum.} You may of course end a page with one
+or more blank lines to avoid `widow' headings, or at the end of a chapter.
+
+\subsection{Capitalization}
+Use initial capitals in the title and headings, except for articles (a, an, the), coordinate
+conjunctions (and, or, nor), and prepositions, unless they appear at the beginning of the
+title or heading.
+
+\subsection{Page Numbers and Running Headlines}
+You do not need to include page numbers or running headlines. These elements will be
+added by the publisher.
+
+\section{Submitting the Manuscript}
+Submit the following to the volume editor:
+
+\begin{enumerate}
+\item The main source file, and any other required files. Do not submit more than
+one version of any item.
+
+\item The source files should compile without errors with pdflatex or latex.
+
+\item Figures should be submitted in EPS, PDF, PNG or JPG format.
+
+\item A high resolution PDF file generated from the source files you submit.
+\end{enumerate}
+
+\begin{thebibliography}{99}
+
+
+\bibitem{r1}
+Petitti DB, Crooks VC, Buckwalter JG, Chiu V. Blood pressure levels before dementia.
+Arch Neurol. 2005 Jan;62(1):112-6.
+
+\bibitem{r2}
+Rice AS, Farquhar-Smith WP, Bridges D, Brooks JW. Canabinoids and pain. In: Dostorovsky JO,
+Carr DB, Koltzenburg M, editors. Proceedings of the 10th World Congress on Pain;  2002 Aug
+17-22; San Diego, CA. Seattle (WA): IASP Press; c2003. p. 437-68.
+
+\end{thebibliography}
+\fi
+
+\end{document}

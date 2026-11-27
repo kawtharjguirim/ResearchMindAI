@@ -1,0 +1,117 @@
+\section{Learnability}\label{section5}
+%\section{The Learnability of Multi-Round Language Models}
+\begin{comment}
+%\subsection{A Universal Multi-Round Language Model Dynamic System}
+
+%Modeling neural networks to neural ODEs. Then Multi-Round Language Model can be modeled as superposition of sub-dynamic systems.
+\subsection{Multi-Round language modeling is a universal learner}
+
+
+
+
+\begin{lemma}\label{lamma:1}
+
+If hypothesises $ \mathcal H{_1^{(i)}}, \mathcal H{_2^{(i)}}, \mathcal \cdots, \mathcal H{_n^{(i)}}$ are PAC-learnable within Vocabulary $V$, their auto regressive composition $ \mathcal H = \mathcal H{_1^{(i)}}\bullet \mathcal H{_2^{(i)}} \mathcal \bullet\cdots\bullet \mathcal H{_n^{(i)}}$ with window size N is AR-Learnable with sample complexity $m(\varepsilon/N,\delta/N)$.
+
+\end{lemma}
+The Lamma \ref{lamma:1} illustrates that, given an autoregressive language model, it can learn compositions, or lexical transformations, of vocabulary of finite length within its window. The window size determines the learnable nature of the problem.
+
+
+\begin{theorem}\label{a}
+
+If hypothesises $ \mathcal H{{(1)}}, \mathcal H{^{(2)}}, \mathcal \cdots, \mathcal H{^{(T)}}$ are AR-learnable, their composition $ \mathcal H^{(i)} = \mathcal H{^{(1)}}\bullet \mathcal H{^{(2)}} \mathcal \bullet\cdots\bullet \mathcal H{^{(T)}}$ in T rounds is sequence-learnable in sample complexity $m(\varepsilon/T,\delta/T)$.
+
+\end{theorem}
+
+
+\end{comment}
+
+
+In Section~\ref{section:approximation}, we illustrated the ability of the autoregressive Transformer to approximate a sequence just like a Turing machine, which is a preliminary indication of the inference potential of language models. However, we still do not know what scale of training the model needs to undergo to obtain such a capability. In this section, we explore the learning ability of autoregressive models for sequences of arbitrary length.
+
+
+To get this point, we aim to demonstrate that auto-regressive sequence models, which possess universal approximation capabilities, can be sequential PAC-learnable under certain constraints. In order to ensure that a sequential model learns effectively from finite data, we need to determine the minimum sample size \( m \) required to guarantee that the model's error on unseen data does not exceed a specified threshold \( \epsilon \) with a high level of confidence \( 1 - \delta \). This involves deriving a bound on the generalization error using tools from statistical learning theory, such as Rademacher complexity \citep{bartlett2002rademacher} and spectral norm constraints\citep{bartlett2017spectrally}.
+
+\subsection{Basic Assumptions and Lemmas}
+
+We consider an auto-regressive next-token prediction model with a context window size \( k \). At each time step \( t \), the model predicts the next element based on the previous \( k \) elements in the sequence. The hypothesis class \( \mathcal{H}_k \) now consists of functions \( h: \Sigma^k \to \Sigma \), where \( \Sigma^k \subset \Sigma^*\) is context window of the auto-regressive language model, belonging to the input space. We make the following assumption: 
+
+\begin{assumption}[Bounded Input Norms]
+     Each element \( x_i \) in the sequence satisfies \( \| x_i \| \leq R_x \), therefore each input sequence in the context window \( x \in \Sigma^k \) has bounded norm \( \| x \| \leq R_x \sqrt{k} \).
+\end{assumption}
+This assumption is reasonable because, within a finite dictionary, we can always find a sufficiently large number, denoted as \(R_x\), such that the norm of a finite-dimensional embedding is less than \(R_x\).
+
+\begin{assumption}[Lipschitz-Continuous Activation Functions]
+    The activation functions \( \phi \) used in the neural network are \( L_{\phi} \)-Lipschitz continuous.
+\end{assumption} 
+
+This assumption is reasonable because commonly used activation functions such as GELU, ReLU, etc, conform to Lipschitz continuity. 
+
+\begin{assumption}[Lipschitz-Continuous Loss Function] 
+The loss function \( \ell \) is \( L \)-Lipschitz with respect to its first argument and bounded by \( C > 0 \).
+\end{assumption}
+
+{\color{black} This assumption is reasonable because commonly used loss functions such as cross-entropy conform to Lipschitz continuity and are bounded in practice, we will show this in Appendix~\ref{appendix:l}.}
+
+\begin{assumption}[Spectral norms~\citep{bartlett2017spectrally}] 
+For layer \( 1<l<l_{\text{max}} \), the spectral norms of the weight matrices \( W_l \) in the neural network are bounded by a layer Boundary \(B_l\) such that \( \| W_l \|_2 \leq B_l \), and \( B_{\text{spec}} = \prod_{l=1}^{l_{\text{max}}} B_l \).
+    
+\end{assumption}
+We first consider the learnability of the next token prediction. Within a finite context window k, consider the generalization bound defined by Rademacher complexity~\citep{bartlett2002rademacher}:
+
+\begin{lemma}[Rademacher complexity boundary for next token prediction]\label{lemmarad}
+The Rademacher complexity of the hypothesis class \( \mathcal{H}_k \) satisifies:
+    \[ \mathcal{R}_m(\mathcal{H}_k) \leq \frac{B_{\text{spec}} L_{\phi}^{l_{\text{max}}-1} R_x \sqrt{k}}{\sqrt{m}} \]
+\end{lemma}\label{generalization bound}
+We provide the computation of Rademacher complexity for next-token prediction in Appendix~\ref{appendix: rade}.
+\begin{lemma}
+    For the standard generalization bound via Rademacher complexity, we have the loss L(h) with probability at least \( 1 - \delta \):
+\[
+L(h) \leq \hat{L}_S(h) + 2 \mathcal{R}_m(\mathcal{H}_k) + C \sqrt{\frac{\log(1/\delta)}{2m}},
+\]
+\end{lemma}
+
+\subsection{Sample Complexity of Next-token Prediction}
+ 
+Now, we show that in order to obtain the ability to predict the next token, an auto-regressive model should be trained with at least a certain sample complexity. For the generation of individual tokens, we do not consider error propagation for now. This paradigm is consistent with decoder-only autoregressive model training since each token is determined by up to k previous tokens.
+\begin{theorem}[Sample Complexity for Next-token Learning]\label{theorem:learn}
+    To ensure that the expected loss \( L(h) \) does not exceed \( \epsilon \) with confidence at least \( 1 - \delta \), under perfect empirical risk minimization %(\( \hat{L}_S(h) = 0 \))
+    , the required sample size \( m \) must satisfy:
+\[
+m \geq \frac{1}{\epsilon^2} \left[ 4 L^2 B_{\text{spec}}^2 L_{\phi}^{2(l_{\text{max}}-1)} R_x^2 k + 4 L B_{\text{spec}} L_{\phi}^{l_{\text{max}}-1} R_x C \sqrt{k} \sqrt{\frac{\log(1/\delta)}{2}} + \frac{C^2 \log(1/\delta)}{2} \right].
+\]
+\end{theorem}
+
+The proof of Theorem~\ref{theorem:learn} can be done by solving inequality properties \(L(h)\leq \epsilon\). We provide detailed proof in Appendix~\ref{appendix:theorem5.6}. Specifically, the three terms are Capacity Term, Mixed Term, and Confidence Term, respectively. The Capacity Term is the dominant term for the sample complexity needed to reach the window size \(k\), while the Confidence Term denotes the complexity needed to reach higher learning confidence \(1-\delta\), and the Mixed Term is a lower-order mixture of these two terms that does not dominate. The Capacity Term is the dominant term when we consider larger context window \( k \) and moderate confidence level \( \delta \). For simplicity, we combine the Mixed Term and the Confidence Term into one low-order term. Therefore, for single next token prediction, we have sample complexity as:
+\[
+m \geq \frac{1}{\epsilon^{2} } \left[ 4 L^2 B_{\text{spec}}^2 L_{\phi}^{2(l_{\text{max}}-1)} R_x^2 k + \text{low order term} \right].
+\]
+
+\subsection{Sample Complexity of Sequence Generation}
+Next, we consider the generation of a sequence of arbitrary length \(T\). When the model generates sequences over 
+\(T\) time steps, the cumulative error over the sequence is of interest. Due to the dependencies introduced by using the model's own predictions as inputs in subsequent time, errors can compound over time. This phenomenon is known as error propagation in auto-regressive models~\citep{wu2018beyond}. We bound the cumulative error carefully by considering the worst-case scenario where errors add up linearly so that cumulative error \( \epsilon  < \sum_{t=0}^{T}\epsilon_t \). For hypothesis \( \mathcal{H}_k\), we recursively define the output at time \(t\) to be \(h^{(t)}(x_t) = h(x_t,(h^{\text{max}(t-k,1)}(x_{\text{max}(t-k,1)}),\cdots,h^{(t-1)}(x_{t-1}))\), starting with \(h^{(1)}(x) = h(x)\). By extending Therorem~\ref{theorem:learn} to sequence generation, we have the following:
+
+\begin{theorem}[Sample Complexity for Sequence Learning]\label{corollary1} For any sequence of length T, to ensure that the expected loss \( L(h^{(T)}) \) does not exceed \( \epsilon \) with confidence at least \( 1 - \delta \),  the required sample size \( m \) must satisfy:
+    \[
+m \geq \frac{\left( B_{\text{spec}} L_{\phi}^{l_{\text{max}}-1} \right)^{2T}}{\epsilon^{2} \left( B_{\text{spec}} L_{\phi}^{l_{\text{max}}-1} - 1 \right)^{4}} \left[ 4 L^2 B_{\text{spec}}^2 L_{\phi}^{2(l_{\text{max}}-1)} R_x^2 k + \text{low order term} \right]. 
+\]
+\end{theorem}
+
+Theorem \ref{corollary1} tells us that the sample complexity of learning a sequence is far higher than the prediction of a single token. This complexity grows exponentially with the length of the sequence. The proof of Theorem~\ref{corollary1} can be found in Appendix~\ref{appendix:theorem5.7}.  
+We next consider that if the learning of a sequence of length \(T\) is performed in \(R\) rounds, where each round involves generating a sequence of length \(T/R\), its sample complexity is affected by \(R\). %We conclude that its single-round complexity decreases exponentially with \(R\), and its cumulative complexity increases linearly with \(R\).
+\footnote{{\color{black}It is important to note that, the difference between generating T tokens via R rounds and generating T tokens in 1 round is that the 1-round generation looks for T-independent tokens directly in the dictionary to complete the composition of the sequence, whereas the R round generation generates shorter sequences, and the learning of such shorter sequences requires a smaller sample complexity (by Theorem \ref{corollary1}), but a certain amount of sample complexity to complete the reassembling of the shorter sequences. The idea of Divide and Conquer~\cite{cormen2022introduction} is used here, although not exactly the same.
+}}
+
+\begin{theorem}[Sample Complexity for Multi-Round Sequence Learning]\label{theorem5.9}
+   For any sequence of length T, if the sequence is dismantled to the R rounds learning, to ensure that the expected loss \( L(h^{(T)}) \) does not exceed \( \epsilon \) with confidence at least \( 1 - \delta \),  the required sample size \( m \) must satisfy:
+   \[
+m \geq  \frac{\left(B_{\text{spec}} L_{\phi}^{l_{\text{max}}-1}\right)^{\frac{2T}{R}+2} \cdot R^2 }{\epsilon^2 (B_{\text{spec}} L_{\phi}^{l_{\text{max}}-1} - 1)^4}  \left[ 4 L^2 B_{\text{spec}}^2 L_{\phi}^{2(l_{\text{max}}-1)} R_x^2 k + \text{low order term} \right].
+\]
+\end{theorem}
+
+%Theorem~\ref{theorem5.9} illustrates that for a complex problem that needs to be solved by generating a long sequence of growths (large T), the sampling complexity will be somewhat reduced if we learn the problem sequence by decomposing it into multiple rounds. 
+
+The essence of Theorem~\ref{theorem5.9} is that decomposing a large sequence learning problem into multiple rounds can significantly reduce the sample complexity required for effective learning. In multi-round training, the model learns \(R\) smaller sequences of length \(T/R\) per round, effectively distributing the task across rounds. This reduction in the learning burden for each round minimizes the potential for error propagation and avoids the exponential growth of sample complexity typically associated with longer sequences, as seen in Theorem~\ref{corollary1}. By breaking down the sequence, the single-round complexity decreases exponentially with \(R\), while the cumulative complexity grows polynomially. 
+This balance leads to an overall more efficient learning process, ensuring that the required sample size \(m\) for a given confidence \(1 - \delta\) and error threshold \( \epsilon \) becomes more manageable. The proof of Theorem~\ref{theorem5.9} is provided in Appendix~\ref{appendix:theorem5.9}.
+%The ability to control complexity via multiple rounds of learning allows the autoregressive model to maintain high accuracy while minimizing the computational cost, offering a practical solution to the challenge of learning long sequences in language generation. 
+This insight opens a path toward reducing the complexity of sampling, thereby optimizing training regimes in auto-regressive sequence models.

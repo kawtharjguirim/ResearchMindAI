@@ -1,0 +1,24 @@
+\section{Related Works}
+
+\subsection{LLMs for MT}
+Machine translation researchers have widely recognized the potential of utilizing LLMs for MT, as these models acquire advanced language understanding skills during pretraining. The prevailing paradigm for leveraging LLMs for MT is in-context learning (ICL). For instance, \citet{lin-etal-2022-shot} demonstrated that providing 32 examples during translation can outperform GPT-3 and a supervised multilingual translation model. Other studies such as \citet{vilar-etal-2023-prompting}, \citet{agrawal-etal-2023-context}, and \citet{zhu2023multilingual} have investigated different factors that affect ICL's performance, including example quality, example selection strategy, and template sensitivity. Moreover, works such as \citet{hendy2023good} and \citet{jiao2023chatgpt} have studied the translation quality of various GPT-3 models and found their performances to be comparable to commercial translation systems on high-resource language pairs. In contrast to these works, our research focuses on exploring existing LLMs' translation ability by directly tuning them to follow translation instructions.
+
+
+The most similar work to ours is \citet{jiao2023parrot}, which finetunes an open-source LLM LLaMA~\citep{touvron2023llama} on the mixes translation data and the \textit{alpaca} instruction dataset~\citep{alpaca} to make it a better translator. However, they mainly focus on the bilingual translation setting while our work investigates the multilingual generalization when finetuning LLMs to carry out translation instructions. 
+
+\subsection{Generalization On Unseen Language Pairs}
+Our work also has a close relation to zero-shot translation in the multilingual translation setting, where there are no direct parallel sentences between the source and target language. There are two major problems for zero-shot translation: generating correct languages and learning universal language representations. 
+
+For the first problem, \citet{gu-etal-2019-improved,zhang-etal-2020-improving} leverage back-translation to add more target-language-related training data. \citet{arivazhagan2019missing,liu-etal-2021-improving} impose regularization on the encoder/decoder to make the model more aware of the target language. Unlike their works, we discuss the off-target problem in the context of LLMs, and find adding both irrelevant language pairs and additional monolingual sentences can ease the problem to a great extent.
+
+For the second problem, previous works focus on learning language-agnostic representations through additional regularization of model representations~\citep{arivazhagan2019missing,pan-etal-2021-multilingual}, and consistency between semantic equivalent sentences~\citep{al-shedivat-parikh-2019-consistency,yang-etal-2021-multilingual}. Instead, our works mainly aim to reveal the helpfulness of multilingual finetuning LLMs for unseen language pairs by internalizing the pivot language information.
+
+Furthermore, our discussion encompasses a more stringent version of zero-shot translation, where neither source nor target language sentences are present in the finetuning corpus. This demands a stronger generalization ability, as the model must effectively utilize the language knowledge acquired during pretraining and the translation task knowledge acquired during finetuning to generate high-quality translations.
+
+\subsection{Instruction Finetuning}
+
+Our work focuses on finetuning LLMs with instructions to improve zero-shot translation performance. Prior works have demonstrated that LLMs face great difficulty in achieving good performance in zero-shot settings when lacking few-shot examples. Nevertheless,  finetuning LLMs on a variety
+of tasks can significantly improve zero-shot performance on several tasks. For instance, \citet{wei2022finetuned} aims to improve generalization in unseen tasks by performing instruction tuning. \citet{muennighoff2023crosslingual} further extend to finetune LLM by multilingual data instead of English data and find that multilingual finetuning leads to better performance on unseen tasks and unseen languages. \citet{chung2022scaling} explore instruction tuning from the perspective of the number of tasks in finetuning corpus and LLM size. \citet{chung2022scaling} found that scaling these factors can dramatically improve zero-shot performance.
+
+In our work, we primarily focus on the translation performance of LLMs. We adopt a comprehensive approach to consider the factors mentioned above, including the scale of the finetuning corpus, the size of model parameters, and the language selection within the fine-tuning corpus, for a comprehensive analysis of the translation performance of the LLMs. Additionally, we conduct a detailed analysis of the model's understanding and execution capabilities in translation tasks after instruction finetuning.
+

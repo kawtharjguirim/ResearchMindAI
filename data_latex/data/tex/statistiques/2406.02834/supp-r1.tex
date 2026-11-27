@@ -1,0 +1,1338 @@
+\documentclass[12pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{amsfonts}
+\usepackage{graphicx}
+\usepackage{multirow}
+\usepackage{enumerate}
+\usepackage{url} % not crucial - just used below for the URL
+\usepackage{float}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{calc}
+
+\usepackage[top=1in,bottom=1.5in,left=1in,right=1in]{geometry}
+
+\usepackage{natbib}
+\usepackage[unicode=true,bookmarks=true,bookmarksnumbered=false,bookmarksopen=false,breaklinks=false,pdfborder={0 0 1},backref=false,colorlinks=true]{hyperref}
+\hypersetup{citecolor=blue}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{corollary}{Corollary}
+\newtheorem{proposition}{Proposition}
+\newtheorem{condition}{Condition}
+\newtheorem{assumption}{Assumption}
+\newtheorem{definition}{Definition}
+\newtheorem{claim}{Claim}
+\newcommand{\bX}{\boldsymbol{X}}
+\newcommand{\bO}{\boldsymbol{O}}
+\newcommand{\bW}{\boldsymbol{W}}
+\newcommand{\bI}{\boldsymbol{I}}
+\newcommand{\bZ}{\boldsymbol{Z}}
+\newcommand{\bU}{\boldsymbol{U}}
+\newcommand{\bR}{\boldsymbol{R}}
+\newcommand{\bD}{\boldsymbol{D}}
+\newcommand{\bL}{\boldsymbol{L}}
+\newcommand{\bY}{\boldsymbol{Y}}
+\newcommand{\bN}{\boldsymbol{N}}
+\newcommand{\bS}{\boldsymbol{S}}
+\newcommand{\bV}{\boldsymbol{V}}
+\newcommand{\bT}{\boldsymbol{T}}
+
+
+\newcommand{\ba}{\boldsymbol{a}}
+\newcommand{\bo}{\boldsymbol{o}}
+\newcommand{\bz}{\boldsymbol{z}}
+\newcommand{\bl}{\boldsymbol{l}}
+\newcommand{\bu}{\boldsymbol{u}}
+\newcommand{\bt}{\boldsymbol{t}}
+\newcommand{\bh}{\boldsymbol{h}}
+
+
+\newcommand{\indep}{\mbox{$\perp\!\!\!\perp$}}
+\newcommand\numberthis{\addtocounter{equation}{1}\tag{\theequation}}
+
+
+\newcommand{\bone}{\boldsymbol{1}}
+\newcommand{\bzero}{\boldsymbol{0}}
+\newcommand{\balpha}{\boldsymbol{\alpha}}
+\newcommand{\bbeta}{\boldsymbol{\beta}}
+\newcommand{\btheta}{\boldsymbol{\theta}}
+\newcommand{\bTheta}{\boldsymbol{\Theta}}
+\newcommand{\bpsi}{\boldsymbol{\psi}}
+\newcommand{\bSigma}{\mathbf{\Sigma}}
+\newcommand{\bvarepsilon}{\boldsymbol{\varepsilon}}
+
+
+\newcommand{\bfB}{\mathbf{B}}
+\newcommand{\bfV}{\mathbf{V}}
+\newcommand{\bfI}{\mathbf{I}}
+\newcommand{\bfH}{\mathbf{H}}
+
+
+\newcommand{\tbfV}{\widetilde{\bfV}}
+\newcommand{\tbepsilon}{\widetilde{\bvarepsilon}}
+\newcommand{\tA}{\widetilde{A}}
+
+
+
+%\title{M-estimation under rerandomization}
+\title{Supplementary Material to ``Asymptotic inference with flexible covariate adjustment under rerandomization and stratified rerandomization''}
+\author{}
+
+\begin{document}
+\def\spacingset#1{\renewcommand{\baselinestretch}%
+{#1}\small\normalsize} \spacingset{1}
+
+\date{\vspace{-5ex}}
+
+\maketitle
+
+\spacingset{1.8}
+\appendix
+
+\section{Consistent variance estimators}
+For M-estimators, we construct consistent variance estimators $\widehat{V}$ for $V$ in Equation~\eqref{def: vhat}, $\widehat{R}^2$ for $R^2$ in Equation~\eqref{def: rhat}, $\widehat{\widetilde{V}}$ for $\widetilde{V}$ in Equation~\eqref{def: vv-hat}, and  $\widehat{\widetilde{R}^2}$ for $\widetilde{R}^2$ in Equation~\eqref{def: rr-hat}. 
+For efficient estimators, we construct consistent variance estimators $\widehat{V}$ for $V$ in Equation~\eqref{Vhat: ml}, $\widehat{R}^2$ for $R^2$ in Equation~\eqref{R2hat: ml}, $\widehat{\widetilde{V}}$ for $\widetilde{V}$ in Equation~\eqref{vhat: ml-st}, and  $\widehat{\widetilde{R}^2}$ for $\widetilde{R}^2$ in Equation~\eqref{R2hat: ml-st}. 
+We do not reiterate those expressions here for brevity; the precise equations will be presented in the subsequent proofs.
+
+% For efficient estimators, we define
+% \begin{align*}
+%     \widehat{EIF}_i(a) = \frac{I\{A_i=a\}}{\pi^a(1-\pi)^{1-a}}\frac{R_i}{\widehat{\kappa}_a(\bX_i)}\{Y_i - \widehat{\eta}_a(\bX_i)\} + \widehat{\eta}_a(\bX_i)-\widehat{\mu}_a^{\textup{dml}}, 
+% \end{align*}
+% and $\widehat{EIF}_{i}= f_1' \widehat{EIF}_{i}(1)+ f_0'\widehat{EIF}_{i}(0)$. Under rerandomization, we construct
+% \begin{align*}
+%     \widehat{V} &= \frac{1}{K}\sum_{k=1}^K \frac{1}{|\mathcal{I}_k|} \sum_{i \in \mathcal{I}_k} \widehat{EIF}_{i}^2, \\
+%     \widehat{C} &= \frac{1}{K}\sum_{k=1}^K \frac{1}{|\mathcal{I}_k|} \sum_{i \in \mathcal{I}_k} \frac{A_i-\pi}{\pi(1-\pi)} \widehat{EIF}_{i} (\bX_i^r - \overline{\bX}^r), \\
+%     \widehat{R^2} &= \frac{1}{\widehat{V}} \widehat{C}^\top \{n \widehat{Var}(\bI)\}^{-1} \widehat{C}.
+% \end{align*}
+% Under stratified randomization, we construct
+% \begin{align*}
+%        \widehat{\widetilde{V}} &= \widehat{V} - \pi(1-\pi) \sum_{s \in \mathcal{S}} \widehat{p}_s \widehat{d}_s^2, \\
+%     \widehat{\widetilde{R}^2} &= \frac{1}{\widehat{\widetilde{V}}} \widehat{C}^\top \widehat{Var}(\widetilde{\bI})^{-1} \widehat{C},
+% \end{align*}
+% where $\widehat{p}_s = n^{-1}\sum_{i=1}^n I\{S_i=s\}$ and
+% \begin{align*}
+%     \widehat{V} &= \frac{1}{K}\sum_{k=1}^K \sum_{s \in \mathcal{S}} \widehat{p}_s\frac{1}{|\mathcal{I}_{sk}|} \sum_{i \in \mathcal{I}_{sk}} \widehat{EIF}_{i}^2, \\
+%     \widehat{d}_s &= \frac{1}{K}\sum_{k=1}^K \frac{1}{|\mathcal{I}_{sk}|}\sum_{i \in \mathcal{I}_{sk}}\frac{A_i-\pi}{\pi(1-\pi)}  \widehat{EIF}_i, \\
+%     \widehat{C} &=  \sum_{s \in \mathcal{S}} \widehat{p}_s \left[ \frac{1}{K}\sum_{k=1}^K \frac{1}{|\mathcal{I}_{sk}|}\sum_{i \in \mathcal{I}_{sk}}\frac{A_i-\pi}{\pi(1-\pi)}  \widehat{EIF}_i\bX_i^r -\widehat{d}_s\overline{\bX}_s^r \right], \\
+%     \overline{\bX}_s^r &= \frac{1}{n} \sum_{i=1}^n \frac{I\{S_i=s\}} {\widehat{p}_s}\bX_i^r. 
+% \end{align*}
+
+
+
+\section{Proofs}
+\subsection{Results under rerandomization}
+\subsubsection{Lemmas}
+
+\begin{lemma}[Conditional Lindeberg-Feller central limit theorem]\label{lem:condCLT}
+Let $\{\bX_{ni}\}_{i=1}^n\subset\mathbb R^d$ be random vectors adapted to some sigma-field $\mathcal F_n$ and denote $\bS_n=\sum_{i=1}^n \bX_{ni}$. Assume (1) $\{\bX_{ni}\}_{i=1}^n$ are independent given $\mathcal F_n$, (2) $E[\bS_n\mid \mathcal F_n]=0$, (3)  $\bSigma_n=\sum_{i=1}^n E\!\big[\bX_{ni}\bX_{ni}^\top\mid \mathcal F_n\big]$ is finite almost surely, and (4)  the conditional Lindeberg condition in probability:
+for each $\varepsilon>0$ and unit-lengh vector $\bu$, $\sum_{i=1}^n E\!\Big[(\bu^\top \bX_{ni})^2\,\mathbf 1\{|\bu^\top \bX_{ni}|>\varepsilon\}\ \Big|\ \mathcal F_n\Big]\xrightarrow{p}0.$
+
+
+Then, for each unit $\bu$ and $t\in\mathbb R$, we have $E\!\left[e^{\,it\,\bu^\top \bS_n}\ \big|\ \mathcal F_n\right]-\exp\!\left(-\frac12 t^2\,\bu^\top\bSigma_n \bu\right)\ \xrightarrow{p}\ 0$; that is, $\bS_n$ and $N(0,\bSigma_n)$ are asymptotically equivalent conditioning on $\mathcal{F}_n$, which we denote as $\bS_n | \mathcal{F}_n \overset{\bullet}{\sim} N(0,\bSigma_n) | \mathcal{F}_n$.  
+If moreover $\bSigma_n \xrightarrow{p} \bSigma$, then $\bS_n \xrightarrow{d} N(0,\bSigma)$ unconditionally.
+\end{lemma}
+
+\begin{proof}
+This is the standard Lindeberg--Feller central limit theorem carried out with conditional characteristic functions (e.g.,
+\citealp{aldous1978mixing} on stable convergence).
+\end{proof}
+
+\begin{lemma}\label{lemma1}
+    Let $h(\bW;\btheta)$ be some measurable real-valued function $h$ on $\bW$ defined in Assumption 1 and parameters $\btheta \in \bTheta \subset \mathbb{R}^p$. 
+    We assume that $\bTheta$ is a compact set, $h$ is a continuous function on $\btheta$, and  $h(\bW;\btheta)$ is dominated by an integrable function. 
+    Under rerandomization and Assumption 1, we have $\sup_{\btheta \in \bTheta}||\frac{1}{n} \sum_{i=1}^n A_i h(\bW_i;\btheta) - \pi E[h(\bW_i;\btheta)] ||_2 \xrightarrow{p} 0$ and $\sup_{\btheta \in \bTheta}||\frac{1}{n} \sum_{i=1}^n (1-A_i) h(\bW_i;\btheta) - (1-\pi) E[h(\bW_i;\btheta)] ||_2 \xrightarrow{p} 0$.
+\end{lemma}
+
+\begin{proof}
+Define $\mathcal{F}_n = \sigma(\bW_1,\dots,\bW_n)$ as the sigma-field generated under Assumption 1. For brevity, we further denote $U_n(A,\bW) = \sup_{\btheta \in \bTheta}||\frac{1}{n} \sum_{i=1}^n A_i h(\bW_i;\btheta) - \pi E[h(\bW_i;\btheta)]||_2$. Our goal is to show $P(U_n(A,\bW) > \varepsilon) \rightarrow 0$ for any $\varepsilon >0$, and it suffices to prove $P(U_n(A,\bW) > \varepsilon | \mathcal{F}_n) \xrightarrow{p} 0$ due to the dominated convergence theorem for convergence in probability \citep[Theorem 1.5.3]{durrett2019probability}. 
+
+Using the definition of rerandomization, we have 
+\begin{align*}
+    P\left(U_n(A,\bW) > \varepsilon | \mathcal{F}_n\right) &= P\left(U_n(A^*,\bW) > \varepsilon | \mathcal{F}_n, \bI^\top \{\widehat{Var}(\bI)\}^{-1} \bI < t\right) \\
+    &= \frac{ P\left(U_n(A^*,\bW) > \varepsilon, \bI^\top \{\widehat{Var}(\bI)\}^{-1} \bI < t | \mathcal{F}_n\right)}{P\left(\bI^\top \{\widehat{Var}(\bI)\}^{-1} \bI < t | \mathcal{F}_n\right)} \\
+    &\le \frac{ P\left(U_n(A^*,\bW) > \varepsilon | \mathcal{F}_n\right)}{P\left(\bI^\top \{\widehat{Var}(\bI)\}^{-1} \bI < t | \mathcal{F}_n\right)},
+\end{align*}
+% For any $\varepsilon >0$, the definition of rerandomization implies that
+% \begin{align*}
+%    & P\left(\sup_{\btheta \in \bTheta}||\frac{1}{n} \sum_{i=1}^n A_i h(\bW_i;\btheta) - \pi E[h(\bW_i;\btheta)] ||_2 > \varepsilon\right) \\
+%    &= P\left(\sup_{\btheta \in \bTheta}||\frac{1}{n} \sum_{i=1}^n A_i^* h(\bW_i;\btheta) - \pi E[h(\bW_i;\btheta)] ||_2 > \varepsilon\bigg|\bI^\top \{\widehat{Var}(\bI)\}^{-1} \bI < t \right) \\
+%    &= \frac{P\left(\sup_{\btheta \in \bTheta}||\frac{1}{n} \sum_{i=1}^n A_i^* h(\bW_i;\btheta) - \pi E[h(\bW_i;\btheta)] ||_2 > \varepsilon, \bI^\top \{\widehat{Var}(\bI)\}^{-1} \bI < t \right)}{P(\bI^\top \{\widehat{Var}(\bI)\}^{-1} \bI < t)} \\
+%    &\le \frac{P\left(\sup_{\btheta \in \bTheta}||\frac{1}{n} \sum_{i=1}^n A_i^* h(\bW_i;\btheta) - \pi E[h(\bW_i;\btheta)] ||_2 > \varepsilon\right)}{P(\bI^\top \{\widehat{Var}(\bI)\}^{-1} \bI < t)},
+% \end{align*}
+where $A^*$ represents treatment allocation under simple randomization and $\bI = \frac{1}{N_1} \sum_{i=1}^n A_i^* \bX^r_i - \frac{1}{N_0} \sum_{i=1}^n (1-A_i^*) \bX^r_i$. \underline{For the numerator term}, $A_i^* h(\bW_i;\btheta), i = 1,\dots, n$ are independent and identically distributed. Since we assume that $\bTheta$ is a compact set, $h$ is a continuous function on $\btheta$, and  $h(\bW;\btheta)$ is dominated by an integrable function, then Example 19.8 of \cite{vaart_1998} implies that $A^* h(\bW;\btheta)$ is P-Glinveko-Cantelli, which ensures that $P\left(U_n(A^*,\bW) > \varepsilon\right) \rightarrow 0$. Applying Markov's inequality, we have $P\left(U_n(A^*,\bW) > \varepsilon| \mathcal{F}_n\right) \xrightarrow{p} 0$.
+\underline{For the denominator term}, we define $\bX_{in} = (A_i^*-\pi, (A_i^*-\pi)\bX_i^r)$, which are conditionally independent across $i$ given $\mathcal{F}_n$ (due to simple randomization), mean-zero, and satisfy the Lindberg condition due to the finite-second-moment assumption. Lemma~\ref{lem:condCLT} implies the conditionally asymptotic normality of $\bX_{in}$, and we apply the Delta method to get $\sqrt{n}\bI |\mathcal{F}_n \overset{\bullet}{\sim} N(0, \bV_{I,n}) |\mathcal{F}_n$, where $\bV_{I,n} = \frac{1}{\pi(1-\pi)} \frac{1}{n}\sum_{i=1}^n (X_{r,i}-\overline X_r)(X_{r,i}-\overline X_r)^\top$. Since $n\widehat{Var}(\bI) - \bV_{I,n} \xrightarrow{p}$ conditioning on $\mathcal{F}_n$, conditional Slutsky's theorem implies $\bI^\top \{\widehat{Var}(\bI)\}^{-1} \bI|\mathcal{F}_n\overset{\bullet}{\sim}\mathcal{X}^2_q|\mathcal{F}_n$, where $q$ is the dimension of $\bX^r$. Therefore, $P(\bI^\top \{\widehat{Var}(\bI)\}^{-1} \bI < t|\mathcal{F}_n) \rightarrow P(\mathcal{X}^2_q < t|\mathcal{F}_n) = P(\mathcal{X}^2_q < t)$, which is greater than zero since $t > 0$. Combining the convergence of both numerator and denominator terms, we obtain $P\left(U_n(A,\bW) > \varepsilon | \mathcal{F}_n\right) \xrightarrow{p} \frac{0}{P(\mathcal{X}^2_q < t)} = 0$. This completes the proof for $\sup_{\btheta \in \bTheta}||\frac{1}{n} \sum_{i=1}^n A_i h(\bW_i;\btheta) - \pi E[h(\bW_i;\btheta)] ||_2 \xrightarrow{p} 0$.
+
+
+
+% Therefore, if we could show the denominator term $P(\bI^\top \{\widehat{Var}(\bI)\}^{-1} \bI < t)$ coverage to a constant $c>0$, then
+% \begin{align*}
+%   & \lim_{n\rightarrow\infty} P\left(\sup_{\btheta \in \bTheta}||\frac{1}{n} \sum_{i=1}^n A_i h(\bW_i;\btheta) - \pi E[h(\bW_i;\btheta)] ||_2 > \varepsilon\right) \\
+%   &\le \lim_{n\rightarrow\infty} \frac{P\left(\sup_{\btheta \in \bTheta}||\frac{1}{n} \sum_{i=1}^n A_i^* h(\bW_i;\btheta) - \pi E[h(\bW_i;\btheta)] ||_2 > \varepsilon\right)}{P(\bI^\top \{\widehat{Var}(\bI)\}^{-1} \bI < t)} \\
+%   &= \frac{0}{c} \\
+%   &=0,
+% \end{align*}
+% which will complete the proof. To this end, the central limit theorem yields $\sqrt{n}\bI \xrightarrow{d} N(\bzero, \bfV_I)$, where $\bfV_I = \frac{1}{\pi(1-\pi)} Var(\bX^r)$. In addition, we also have $n\widehat{Var}(\bI) \xrightarrow{p} \bfV_I$ by weak Law of large numbers. By the Slutsky's theorem, we obtain $\bI^\top \{\widehat{Var}(\bI)\}^{-1} \bI \xrightarrow{d} \mathcal{X}^2_q$, where $q$ is the dimension of $\bX^r$. Using the delta method, we get $P(\bI^\top \{\widehat{Var}(\bI)\}^{-1} \bI < t) \rightarrow P(\mathcal{X}^2_q < t)$, which is great than zero since $t > 0$. This completes the proof for $\sup_{\btheta \in \bTheta}||\frac{1}{n} \sum_{i=1}^n A_i h(\bW_i;\btheta) - \pi E[h(\bW_i;\btheta)] ||_2 \xrightarrow{p} 0$.
+
+Following similar steps, we can get $\sup_{\btheta \in \bTheta}||\frac{1}{n} \sum_{i=1}^n (1-A_i) h(\bW_i;\btheta) - (1-\pi) E[h(\bW_i;\btheta)] ||_2 \xrightarrow{p} 0$.
+\end{proof}
+
+\begin{lemma}\label{lemma2}
+    Let $\bZ_i(a) = h_a(Y_i(a), M_i(a), \bX_i)$  for some $k$-dimensional function $h_a, a \in \{0,1\}$ taking values in the Euclidean space such that $E[||\bZ_i(a)||_2^2] < \infty$. Under rerandomization and Assumption 1, we have
+    \begin{align*}
+        \frac{1}{\sqrt{n}}\sum_{i=1}^n \left\{A_i\bZ_i(1) + (1-A_i)\bZ_i(0) - \pi E[\bZ_i(1)] - (1-\pi) E[\bZ_i(0)]\right\} \xrightarrow{d}  \boldsymbol{\varepsilon}_k + \bfV_{UI}^\top \bfV_I^{-0.5} \bR_{q,t},
+    \end{align*}
+    where $\boldsymbol{\varepsilon}_k \sim N(\bzero,\bfV_U -  \bfV_{UI}^\top \bfV_I^{-1}\bfV_{UI})$, $\bR_{q,t} \sim  \bD_q|( \bD^\top  \bD < t)$,  where $\bD \sim N(\bzero, \mathbf{I}_q)$ with
+    \begin{align*}
+        \bfV_U &= Var\{A_i^*\bZ_i(1) + (1-A_i^*)\bZ_i(0)\} \\
+        \bfV_I &= \frac{1}{\pi(1-\pi)}Var(\bX_i^r) \\
+        \bfV_{UI} &= Cov\left\{\frac{A_i^*-\pi}{\pi(1-\pi)}(\bX_i^r-E[\bX_i^r]), A_i^*\bZ_i(1) + (1-A_i^*)\bZ_i(0)\right\}\\
+        &= Cov\{\bX_i^r, \bZ_i(1)-\bZ_i(0)\}.
+    \end{align*}
+\end{lemma}
+\begin{proof}
+We first introduce some notation as follows:
+\begin{align*}
+    \bI_n(A) &= \sqrt{n} \left(\frac{\sum_{i=1} A_i \bX_i^r}{\sum_{i=1} A_i} - \frac{\sum_{i=1} (1-A_i) \bX_i^r}{\sum_{i=1} (1-A_i)}\right), \\
+    \mathcal A_n &=\Big\{\, \bI_n(A^*)^\top\,\widehat{\mathrm{Var}}(\bI_n(A^*))^{-1}\,\bI_n(A^*)< t\,\Big\},\\
+    \bU_n(A) &=\frac{1}{\sqrt n}\sum_{i=1}^n\!\Big\{A_i \bZ_i(1)+(1-A_i)\bZ_i(0)-\pi E\bZ(1)-(1-\pi)E\bZ(0)\Big\},\\
+    \bT_n(A) &= \frac{1}{\sqrt n}\sum_{i=1}^n\!\Big\{(A_i-\pi) (\bZ_i(1)-\bZ_i(0)))\Big\},\\
+    \bR_n &= \frac{1}{\sqrt n}\sum_{i=1}^n\!\Big\{\pi \bZ_i(1)+(1-\pi)\bZ_i(0)-\pi E\bZ(1)-(1-\pi)E\bZ(0)\Big\}.
+\end{align*}
+Then we have $\bU_n(A) = \bT_n(A) + \bR_n$. We further define $\mathcal{F}_n = \sigma(\bW_1,\dots,\bW_n)$ as the sigma-field generated under Assumption 1, and $X \overset{d}{=} Y$ if $X$ and $Y$ have the same distribution. By the definition of rerandomization, we have $g(A,\bW)| \mathcal{F}_n \overset{d}{=} g(A^*,\bW)| (\mathcal{F}_n, \mathcal{A}_n)$ for any measurable function $g$.
+
+We first provide the conditional Normal approximation under simple randomization. To utilize Lemma~\ref{lem:condCLT}, we define $\bX_{ni} = \{A_i^*-\pi, (A_i^*-\pi)\bX_i^r, (A_i^*-\pi)(\bZ_i(1)-\bZ_i(0))\}$, which are conditionally independent across $i$ given $\mathcal{F}_n$ (due to simple randomization), mean-zero, and satisfies the Lindberg condition due to the finite-second-moment assumption. Then, Lemma~\ref{lem:condCLT} implies that $\bX_{ni}$ is asymptotically equivalent to a Gaussian distribution, conditioning on $\mathcal{F}_n$. 
+Since $\bI_n(A^*), \bT_n(A^*)$ are functions of $\bX_{ni}$, the Delta method implies $(\bI_n(A^*), \bT_n(A^*)) | \mathcal{F}_n \overset{\bullet}{\sim} N(0, \bSigma_n) | \mathcal{F}_n$, where
+\[
+\bSigma_n=
+\begin{bmatrix}
+\displaystyle \bV_{I,n} & \displaystyle \bV_{IT,n}\\[4pt]
+\displaystyle \bV_{IT,n}^\top & \displaystyle \bV_{T,n}
+\end{bmatrix},
+\]
+with blocks (all $\mathcal F_n$-measurable sample moments)
+\[
+\bV_{I,n}=\frac{1}{\pi(1-\pi)}\cdot \frac{1}{n}\sum_{i=1}^n (\bX_i^r-\overline \bX_r)(\bX_i^r-\overline \bX_r)^\top,\quad
+\bV_{IT,n}=\frac{1}{n}\sum_{i=1}^n (\bX_i^r-\overline \bX_r)\,(\bZ_i(1)-\bZ_i(0))^\top,
+\]
+\[
+\bV_{T,n}=\pi(1-\pi)\cdot \frac{1}{n}\sum_{i=1}^n (\bZ_i(1)-Z_i(0))(\bZ_i(1)-\bZ_i(0))^\top.
+\]
+Following a similar procedure, we also get $n\widehat{Var}(\bI_n(A^*)) - \bV_{I,n} \xrightarrow{p} 0$ and
+\begin{equation}\label{eq: ivi}
+\{\bT_n(A^*), \bI_n(A^*)^\top n\widehat{Var}(\bI_n(A^*))^{-1}\bI_n(A^*)\} | \mathcal{F}_n\overset{\bullet}{\sim} \left\{\bT_n(A^*), \bI_n(A^*)^\top \bV_{I,n}^{-1}\bI_n(A^*) \right\} | \mathcal{F}_n
+\end{equation}
+as they are functions of $\bX_{ni}$.
+
+
+We next derive the asymptotic distribution of $\bT_n(A^*) | \mathcal{F}_n, \mathcal{A}_n$. Denoting $\bvarepsilon_n = \bT_n(A^*) -  \bV_{IT,n}^\top   \bV_{I,n}^{-1}\bI_n(A^*)$, our result of $(\bI_n(A^*), \bT_n(A^*)) | \mathcal{F}_n \overset{\bullet}{\sim} N(0, \bSigma_n) | \mathcal{F}_n$ implies that $\bvarepsilon_n | \mathcal{F}_n \overset{\bullet}{\sim} N(0, \bV_{T,n} - \bV_{IT,n}^\top \bV_{I,n}^{-1}\bV_{IT,n}) | \mathcal{F}_n$ and that $\varepsilon_n$ is asymptotically independent of $I_n(A^*)$ given $\mathcal{F}_n$. Combined with Equation~\eqref{eq: ivi}, we have
+\begin{align*}
+    \bT_n(A^*)| \mathcal{F}_n, \mathcal{A}_n &\overset{\bullet}{\sim} \bT_n(A^*)| \mathcal{F}_n, \bI_n(A^*)^\top \bV_{I,n}^{-1}\bI_n(A^*)< t \\
+    &\overset{\bullet}{\sim} \bvarepsilon_n| \mathcal{F}_n +  \bV_{IT,n}^\top   \bV_{I,n}^{-1}\bI_n(A^*)| \mathcal{F}_n, \bI_n(A^*)^\top \bV_{I,n}^{-1}\bI_n(A^*)< t \\
+    &\overset{\bullet}{\sim}\bvarepsilon_n| \mathcal{F}_n +  \bV_{IT,n}^\top   \bV_{I,n}^{-0.5} \bR_{q,t} | \mathcal{F}_n,
+\end{align*}
+where the last step comes from $\bV_{I,n}^{-0.5} \bI_n(A^*)| \mathcal{F}_n \overset{\bullet}{\sim} \mathcal{N}(0, \bI_q)| \mathcal{F}_n$ and the definition of $\bR_{q,t}$ in the Lemma statement.
+
+We then obtain
+\begin{align*}
+    \bU_n(A) |\mathcal{F}_n  &\overset{\bullet}{\sim} \bT_n(A) | \mathcal{F}_n\quad  + \quad  \bR_n  | \mathcal{F}_n \\
+    &\overset{\bullet}{\sim} \bT_n(A^*)| (\mathcal{F}_n, \mathcal{A}_n) \quad + \quad \bR_n  | \mathcal{F}_n \\
+    &\overset{\bullet}{\sim} (\bvarepsilon_n +  \bV_{IT,n}^\top   \bV_{I,n}^{-0.5} \bR_{q,t} + \bR_n)  | \mathcal{F}_n,
+\end{align*}
+where the first step is by definition, the second step is implied by rerandomization, and the last step uses the above results. 
+
+Finally, we derive the asymptotic distribution of $\bU_n(A)$.
+Conditionally on $\mathcal F_n$, $\bvarepsilon_n$ is independent of $\bI_n(A^*)$ and hence of
+$\bR_{q,t}$. Since $\bR_n$ is $\mathcal F_n$-measurable, the triple
+$(\bvarepsilon_n,\ \bR_{q,t},\ \bR_n)$ is conditionally independent in the sense that, given $\mathcal F_n$,
+the joint conditional characteristic function factorizes:
+\begin{align*}
+& E\!\left[\exp\!\Big\{i\big(\bt_1^\top \bvarepsilon_n
++ \bt_2^\top \bV_{IT,n}^\top   \bV_{I,n}^{-0.5} \bR_{q,t}  + \bt_3^\top \bR_n)\big)\Big\}\ \Big|\ \mathcal F_n\right]\\
+&=
+\underbrace{E\!\left[\exp\{\,i \bt_1^\top \bvarepsilon_n\}\ \Big|\ \mathcal F_n\right]}_{=: \psi_{n}(\bt_1)}
+\underbrace{E\!\left[\exp\{\,i \bt_2^\top  \bV_{IT,n}^\top   \bV_{I,n}^{-0.5} \bR_{q,t}\}\ \Big|\ \mathcal F_n\right]}_{=: \eta_{n}(\bt_2)}
+ \exp\{\,i \bt_3^\top \bR_n\}.    
+\end{align*}
+
+For $\psi_{n}(\bt_1)$, since we have obtained $\bvarepsilon_n | \mathcal{F}_n \overset{\bullet}{\sim} N(0, V_{T,n} - \bV_{IT,n}^\top \bV_{I,n}^{-1}\bV_{IT,n}) | \mathcal{F}_n$, and by law of large numbers, $\bV_{T,n} \xrightarrow{p} Var\{(A^*-\pi)(\bZ(1)-\bZ(0)\}$, $\bV_{IT,n} \xrightarrow{p} \bV_{UI}$, $\bV_{I,n} \xrightarrow{p} \bV_I$, then $\psi_{n}(\bt_1) \xrightarrow{p} \exp\!\Big(-\tfrac12 \bt_1^\top \bSigma_e\, \bt_1\Big)$, where  $\bSigma_e = Var\{(A^*-\pi)(\bZ(1)-\bZ(0)\} - \bV_{UI}^\top \bV_I^{-1} \bV_{UI}$.
+For $\eta_n(\bt_2)$, a similar prove shows that $\eta_n(\bt_2) = E\!\big[\exp\{\,i \bt_2^\top \bV_{UI}^\top \bV_I^{-1/2} \bR_{q,t}\}\big]$
+Finally, by the classical (unconditional) CLT across units,
+$\bR_n\ \xrightarrow{d}  N(0,\ \bSigma_r)$ with $\bSigma_r = Var\left\{\pi \bZ(1) + (1-\pi) \bZ(0)\right\}$.
+
+To obtain the unconditional characteristic function of $\bU_n(A)$, we take the unconditional expectation and use the dominated convergence theorem to get
+\begin{align*}
+    & E\!\left[\exp\!\Big\{i\big(\bt_1^\top \bvarepsilon_n
++ \bt_2^\top \bV_{IT,n}^\top   \bV_{I,n}^{-0.5} \bR_{q,t}  + \bt_3^\top \bR_n)\big)\Big\}\ \right]\\
+&\rightarrow \exp\!\Big(-\tfrac12 \bt_1^\top \Sigma_e\, \bt_1\Big) \eta_n(\bt_2) E[\exp\{i\bt_3^\top \bR_n\}] \\
+&= \exp\!\Big\{-\tfrac12 \bt_1^\top (\bSigma_e +\bSigma_r) \bt_1\Big\} E\!\big[\exp\{\,i \bt_2^\top \bV_{UI}^\top \bV_I^{-1/2} \bR_{q,t}\}\big].
+\end{align*}
+This result shows that $\bU_n(A)$ coverages in distribution to $\bvarepsilon_k + \bV_{UI}^\top \bV_I^{-1/2} \bR_{q,t}$ with $\bvarepsilon_k \sim N(0, \bSigma_e +\bSigma_r)$ and $\bR_{q,t}$ being independent  of $\bvarepsilon_k$. 
+Since direct algebra shows that 
+\begin{align*}
+    \bSigma_e +\bSigma_r &= Var\{(A^*-\pi)(\bZ(1)-\bZ(0)\} - \bV_{UI}^\top \bV_I^{-1} \bV_{UI} + Var\left\{\pi \bZ(1) + (1-\pi) \bZ(0)\right\} \\
+    &= Var(A^* \bZ(1) + (1-A^*) \bZ(0)) - \bV_{UI}^\top \bV_I^{-1} \bV_{UI},
+\end{align*}
+we obtain the desired asymptotic distribution.
+\end{proof}
+
+
+
+
+% \begin{proof}
+%     % Denote $\mathbb{P}_n X = \frac{1}{n} \sum_{i=1}^n X_i$ and $\mathbb{G}_n X =  \frac{1}{\sqrt{n}}\sum_{i=1}^n $ for any sequence of random variables $X_1,\dots, X_n$. 
+%     Denote $X \overset{d}{=} Y$ if $X$ and $Y$ follow the same distribution and $E^*[\bZ] = \pi E[\bZ_i(1)] + (1-\pi) E[\bZ_i(0)]$.     By definition of rerandomization, we have
+%     \begin{align*}
+%          & \frac{1}{\sqrt{n}}\sum_{i=1}^n \left\{A_i\bZ_i(1) + (1-A_i)\bZ_i(0) - E^*[\bZ]\right\}\\
+%          &\overset{d}{=} \frac{1}{\sqrt{n}}\sum_{i=1}^n \left\{A_i^*\bZ_i(1) + (1-A_i^*)\bZ_i(0) - E^*[\bZ]\right\}\bigg| (\bI^\top \{\widehat{Var}(\bI)\}^{-1} \bI < t),
+%     \end{align*}
+%     where $\bI = \frac{1}{N_1} \sum_{i=1}^n A_i^* \bX^r_i - \frac{1}{N_0} \sum_{i=1}^n (1-A_i^*) \bX^r_i$. Therefore, our goal is to show the weak convergence of $\frac{1}{\sqrt{n}}\sum_{i=1}^n \left\{A_i^*\bZ_i(1) + (1-A_i^*)\bZ_i(0) - E^*[\bZ]\right\}\Big| (\bI^\top \{\widehat{Var}(\bI)\}^{-1} \bI < t)$. To further simplify notation, we denote $\bU^*_n = \frac{1}{n} \sum_{i=1}^n \left\{A_i^*\bZ_i(1) + (1-A_i^*)\bZ_i(0) - E^*[\bZ]\right\}$.
+
+%     In the first step, we prove the following result:
+% \begin{align*}
+%     \left(\begin{array}{c}
+%         \sqrt{n} \bU_n^* \\
+%          \sqrt{n} \bI
+%     \end{array}\right)\bigg| (\bI^\top \{\widehat{Var}(\bI)\}^{-1} \bI < t) \xrightarrow{d} \left(\begin{array}{c}
+%         \bU^*_{\infty} \\
+%         \bI_{\infty}
+%     \end{array}\right)\bigg|  (\bI_{\infty}^\top \bfV_I^{-1} \bI_{\infty} < t), 
+% \end{align*}
+% where
+% \begin{align*}
+%     \left(\begin{array}{c}
+%         \bU^*_{\infty} \\
+%         \bI_{\infty}
+%     \end{array}\right) \sim N\left(\bzero, \left(\begin{array}{cc}
+%      \bfV_U    &  \bfV_{UI}^\top \\
+%      \bfV_{UI}    & \bfV_I
+%     \end{array}\right)\right).
+% \end{align*}
+% By Theorem 3.2.5 of \cite{durrett2019probability}, the weak convergence is equivalent showing, for all continuity set $\mathcal{C}$ of the limiting distribution $(\bU^*_{\infty}, \bI_{\infty})|(\bI_{\infty}^\top \bfV_I^{-1} \bI_{\infty} < t)$,
+% \begin{equation}\label{eq: lemma2-1}
+% P\{(\sqrt{n} \bU^*_n, \sqrt{n} \bI) \in \mathcal{C}| \bI^\top \{\widehat{Var}(\bI)\}^{-1} \bI < t\} \rightarrow     P\{(\bU^*_{\infty}, \bI_{\infty}) \in \mathcal{C}| \bI_{\infty}^\top \bfV_I^{-1} \bI_{\infty} < t\}.
+% \end{equation}
+% By the central limit theorem and continuous mapping theorem, we have 
+% \begin{equation}\label{eq: lemma2-2}
+%     (\sqrt{n} \bU^*_n, \sqrt{n}\bI^\top, \bI^\top \{\widehat{Var}(\bI)\}^{-1}\bI^\top) \xrightarrow{d} (\bU^*_{\infty}, \bI_{\infty}, \bI_{\infty}^\top \bfV_I^{-1} \bI_{\infty}).
+% \end{equation}
+% Since $\bI_{\infty}^\top \bfV_I^{-1} \bI_{\infty} \overset{d}{=} \mathcal{X}^2_q$, then $(-\infty, t)$ is a continuity set for $\bI_{\infty}^\top \bfV_I^{-1} \bI_{\infty}$ if $t>0$, and so $\mathcal{C} \times (-\infty, t)$ is a continuity set for $(\bU^*_{\infty}, \bI_{\infty}, \bI_{\infty}^\top \bfV_I^{-1} \bI_{\infty})$. By the weak convergence result~\eqref{eq: lemma2-2}, we have 
+% \begin{align*}
+%     P\{(\sqrt{n} \bU^*_n, \sqrt{n} \bI) \in \mathcal{C}, \bI^\top \{\widehat{Var}(\bI)\}^{-1} \bI < t\} &\rightarrow     P\{(\bU^*_{\infty}, \bI_{\infty}) \in \mathcal{C}, \bI_{\infty}^\top \bfV_I^{-1} \bI_{\infty} < t\},\\
+%     P( \bI^\top \{\widehat{Var}(\bI)\}^{-1} \bI < t) &\rightarrow     P( \bI_{\infty}^\top \bfV_I^{-1} \bI_{\infty} < t),
+% \end{align*}
+% which implies~\eqref{eq: lemma2-1} and completes the proof of this step.
+
+% In the next step, we further simplify the limiting distribution $\bU^*_{\infty}|(\bI_{\infty}^\top \bfV_I^{-1} \bI_{\infty} < t)$. Denoting $\boldsymbol{\varepsilon}_k = \bU^*_{\infty} - \bfV_{UI}^\top \bfV_I^{-1} \bI_{\infty}$, we observe $\boldsymbol{\varepsilon}_k$ is independent of $\bI_{\infty}$ since $(\bU^*_{\infty}, \bI_{\infty})$ jointly follows a normal distribution (where no correlation means independence). Therefore, $\bU^*_{\infty}|(\bI_{\infty}^\top \bfV_I^{-1} \bI_{\infty} < t) = \boldsymbol{\varepsilon}_k + \bfV_{UI}^\top \bfV_I^{-1} \bI_{\infty}|(\bI_{\infty}^\top \bfV_I^{-1} \bI_{\infty} < t)$. For the second term, we have $\bfV_{UI}^\top \bfV_I^{-1} \bI_{\infty}|(\bI_{\infty}^\top \bfV_I^{-1} \bI_{\infty} < t) \overset{d}{=} \bfV_{UI}^\top \bfV_I^{-0.5} \bD|( \bD^\top  \bD < t)$,  where $\bD \sim N(\bzero, \mathbf{I}_q)$. Therefore, 
+% \begin{align*}
+%     \sqrt{n}\bU^*_n|(\bI^\top \{\widehat{Var}(\bI)\}^{-1} \bI < t) \xrightarrow{d} \boldsymbol{\varepsilon}_k + \bfV_{UI}^\top \bfV_I^{-0.5} \bR_{q,t},
+% \end{align*}
+% which completes the proof.
+% \end{proof}
+
+% \begin{lemma}
+%     Under rerandomization, $A_i$ is independent of $\bW_i$, and $P(A_i=1) = \pi$ for each $i=1,\dots,n$.
+% \end{lemma}
+% \begin{proof}
+%     Let $\ba \in \{0,1\}^n$ denote an arbitrary $n$-dimensional binary vector and
+%     \begin{align*}
+%         \bI(\ba) = \frac{1}{\sum_{i=1}^n a_i} \sum_{i=1}^n a_i \bX^r_i - \frac{1}{\sum_{i=1}^n (1-a_i)} \sum_{i=1}^n (1-a_i) \bX^r_i,
+%     \end{align*}
+%     where $a_i$ is the  $i$-th entry of $\ba$. Denoting $\bone_n$ as an $n$-dimensional vector of ones, we observe the following symmetry: 
+%     \begin{align*}
+%         \bI(\bone_n-\ba) = \frac{1}{\sum_{i=1}^n (1-a_i)} \sum_{i=1}^n (1-a_i) \bX^r_i- \frac{1}{\sum_{i=1}^n a_i} \sum_{i=1}^n a_i \bX^r_i = -\bI(\ba),
+%     \end{align*}
+%     which means, if we flip all treatments and controls in $\ba$, the resulting treatment imbalance score simply flips its sign. As a result, if we have $\bI(\ba)^\top \{\widehat{Var}(\bI(\ba))\}^{-1} \bI(\ba) < q$, then we also have $\bI(\bone_n-\ba)^\top \{\widehat{Var}(\bI(\bone_n-\ba))\}^{-1} \bI(\bone_n-\ba) < q$.
+% \end{proof}
+
+\subsubsection{Proof of Theorem 1}
+% \begin{theorem}\label{thm1}
+%     Assume Assumptions~\ref{assp1} and \ref{assp3}. Under simple or rerandomization, we have $\widehat{\Delta} \xrightarrow{p} \underline{\Delta}$ and asymptotic linearity, i.e., 
+%     \begin{equation}
+%     \sqrt{n}(\widehat{\Delta} - \underline{\Delta}) = \frac{1}{\sqrt{n}}\sum_{i=1}^nIF(\bO_i) + o_p(1), \label{asymptoticlinearity}
+%     \end{equation} 
+% 	where the influence function $IF(\bO_i)$ is the first entry of $-\bfB^{-1}\bpsi(\bO_i;\underline{\btheta})$ with\\ $\bfB = \pi E[\frac{\partial}{\partial \btheta} \bpsi(\bO(1);\btheta)\big|_{\btheta=\underline{\btheta}}] + (1-\pi)E[\frac{\partial}{\partial \btheta} \bpsi(\bO(0);\btheta)\big|_{\btheta=\underline{\btheta}}]$.
+
+%  Furthermore, under rerandomization,
+%  \begin{align}
+%      \sqrt{n}(\widehat{\Delta} - \underline\Delta) \xrightarrow{d} \sqrt{V}\{\sqrt{1-R^2}\ z + \sqrt{R^2}\ r_{q,t} \},
+%  \end{align}
+% where $z \sim N(0,1)$, $r_{q,t} \sim D_1|( \bD^\top  \bD < t)$ for $\bD \sim N(\bzero, \mathbf{I}_q)$ with $D_1$ being the first element of $\bD$ and $r_{q,t}$ being independent of $z$, $V$ is the asymptotic variance of $\widehat{\Delta}$ under simple randomization, and
+% \begin{equation*}
+%     R^2 = \frac{1}{\pi(1-\pi)V} Cov[IF\{\bO(1)\}- IF\{\bO(0)\}, \bX^r]Var(\bX^r)^{-1}Cov[\bX^r, IF\{\bO(1)\}- IF\{\bO(0)\}].
+% \end{equation*}
+% Consistent estimators for $V$ and $R^2$ are provided in the Supplementary Material.
+% \end{theorem}
+\begin{proof}[Proof of Theorem 1.]
+The results under simple randomization can be directly obtained by Chapter 5 of \cite{vaart_1998}. Therefore, we focus on rerandomizaiton in this proof. We denote $\bO_i(a) = \{R_i(a), R_i(a)Y_i(a), a, \bX_i\}$ for $a  = 0,1$.
+
+In the first step, we prove $\widehat{\btheta} \xrightarrow{p} \underline{\btheta}$, which implies $\widehat{\Delta} \xrightarrow{p} \underline{\Delta}$. The estimating equations for M-estimator can be rewritten as
+\begin{align*}
+    \bzero = \sum_{i=1}^n \bpsi(\bO_i;\btheta) = \sum_{i=1}^n [A_i\bpsi\{\bO_i(1);\btheta\} + (1-A_i) \bpsi\{\bO_i(0);\btheta\}].
+\end{align*}
+By regularity conditions (1) and (4), we can apply Lemma~\ref{lemma1} by setting $h(\bW_i; \btheta) = \bpsi\{\bO(a);\btheta\}$ and get $\sup_{\btheta \in \bTheta}||\frac{1}{n} \sum_{i=1}^n A_i \bpsi\{\bO_i(1);\btheta\} - \pi E[\bpsi\{\bO_i(1);\btheta\}] ||_2 \xrightarrow{p} 0$ and $\sup_{\btheta \in \bTheta}||\frac{1}{n} \sum_{i=1}^n (1-A_i) \bpsi\{\bO_i(0);\btheta\} - (1-\pi) E[\bpsi\{\bO_i(0);\btheta\}] ||_2 \xrightarrow{p} 0$. This implies that
+\begin{align*}
+    &\sup_{\btheta \in \bTheta}||\frac{1}{n} \sum_{i=1}^n\bpsi(\bO_i;\btheta) - \pi E[\bpsi(\bO_i(1);\btheta)] - (1-\pi)E[\bpsi(\bO_i(0);\btheta)]   ||_2 \\
+    &\le \sup_{\btheta \in \bTheta}||\frac{1}{n} \sum_{i=1}^n A_i \bpsi\{\bO_i(1);\btheta\} - \pi E[\bpsi\{\bO_i(1);\btheta\}] ||_2\\
+    &\quad + \sup_{\btheta \in \bTheta}||\frac{1}{n} \sum_{i=1}^n (1-A_i) \bpsi\{\bO_i(0);\btheta\} - (1-\pi) E[\bpsi\{\bO_i(0);\btheta\}] ||_2\\
+    &= o_p(1) + o_p(1) \\
+    &= o_p(1).
+\end{align*}
+Since $\frac{1}{n} \sum_{i=1}^n\bpsi(\bO_i;\widehat{\btheta})=\bzero$ and regularity condition (3) implies that $\underline{\btheta}$ is a unique solution to $\pi E[\bpsi(\bO_i(1);\btheta)] + (1-\pi)E[\bpsi(\bO_i(0);\btheta)] = \bzero$, Theorem 5.9 of \cite{vaart_1998} implies that $\widehat{\btheta} \xrightarrow{p} \underline{\btheta}$.
+
+Next, we prove the asymptotic linearity of $\widehat{\btheta}$ following the general approach in Theorem 5.41 of \cite{vaart_1998}. By multivariate Taylor expansion of the function $\sum_{i=1}^n \bpsi\{\bO_i;\btheta\}$ on $\btheta = \underline{\btheta}$, there exists a $\widetilde{\btheta}$ (that depends on $\widehat{\btheta}$) on the line segment between $\widehat{\btheta}$ and $\underline{\btheta}$ such that
+\begin{align*}
+    \bzero &= \frac{1}{n}\sum_{i=1}^n \bpsi\{\bO_i;\widehat{\btheta}\} \\
+    &= \frac{1}{n}\sum_{i=1}^n \bpsi(\bO_i;\underline{\btheta})+ \frac{1}{n}\sum_{i=1}^n \dot{\bpsi}(\bO_i;\underline{\btheta}) (\widehat{\btheta} - \underline{\btheta}) + \sum_{j=1}^{l+1}\frac{1}{2}(\widehat{\btheta} - \underline{\btheta})^\top \left\{\frac{1}{n}\sum_{i=1}^n \Ddot{\psi}_j(\bO_i;\widetilde{\btheta})\right\}(\widehat{\btheta} - \underline{\btheta})\boldsymbol{e}_j,
+\end{align*}
+where $\dot{\bpsi}(\bO_i;\underline{\btheta}) = \frac{\partial}{\partial \btheta}\bpsi(\bO_i;\btheta)\Big|_{\btheta=\underline{\btheta}}$, $\psi_j$ is the $j$-th element of $\bpsi$, $\Ddot{\psi}_j(\bO_i;\widetilde{\btheta}) = \frac{\partial^2}{\partial\btheta\partial\btheta^\top} \psi_j(\bO_i;\btheta)\Big|_{\btheta=\widetilde{\btheta}}$, and $\boldsymbol{e}_j$ is a $(l+1)$-dimensional vector with the $j$-th entry 1 and the rest 0. By regularity conditions (1), (4), and (5), we can apply Lemma 1 again to obtain $\frac{1}{n}\sum_{i=1}^n\dot{\bpsi}(\bO_i;\underline{\btheta}) = \pi E[\dot{\bpsi}\{\bO_i(1);\underline{\btheta}\}]+ (1-\pi) E[\dot{\bpsi}\{\bO_i(0);\underline{\btheta}\}] + o_p(\bone) = \bfB + o_p(\bone)$. Since $\widehat{\btheta} \xrightarrow{p} \underline{\btheta}$, Regularity (5) implies that, when $n$ is large enough,  $||\frac{1}{n}\sum_{i=1}^n \Ddot{\psi}_j(\bO_i;\widetilde{\btheta})||_2 \le \frac{1}{n}\sum_{i=1}^n v(\bO_i) = O_p(1)$ by law of large numbers. Combination of the above facts implies that 
+\begin{equation}\label{eq: proof1-1}
+    \frac{1}{n}\sum_{i=1}^n \bpsi(\bO_i;\underline{\btheta}) = - \{\bfB + o_p(1)\} (\widehat{\btheta} - \underline{\btheta}) - O_p(\bone) ||\widehat{\btheta} - \underline{\btheta}||_2^2.
+\end{equation}
+To obtain the desired asymptotic linearity, we still need to show $\sqrt{n}(\widehat{\btheta} - \underline{\btheta}) = O_p(\bone)$. To see this, regularity condition (2) states $E[||\bpsi(\bO(a);\underline{\btheta})||_2] < \infty$, and regularity condition (3) states $\pi E[\bpsi(\bO_i(1);\underline\btheta)] + (1-\pi)E[\bpsi(\bO_i(0);\underline\btheta)] = \bzero$. We can then apply Lemma~\ref{lemma2} with $\bZ_i(a) = \bpsi(\bO_i(a);\underline{\btheta})$ and get
+\begin{align*}
+    \frac{1}{\sqrt{n}}\sum_{i=1}^n \bpsi(\bO_i;\underline{\btheta}) = \frac{1}{\sqrt{n}}\sum_{i=1}^n [A_i\bpsi\{\bO_i(1);\underline{\btheta}\} + (1-A_i)\bpsi\{\bO_i(0);\underline{\btheta}\}] = O_p(\bone).
+\end{align*}
+Multiplying $\sqrt{n}$ to both sides of Equation~\eqref{eq: proof1-1}, we get
+\begin{align*}
+    O_p(\bone) = - \{\bfB + o_p(1)\} \sqrt{n}(\widehat{\btheta} - \underline{\btheta}) - O_p(\bone) \sqrt{n}||\widehat{\btheta} - \underline{\btheta}||_2^2.
+\end{align*}
+Since $\widehat{\btheta} - \underline{\btheta} = o_p(\bone)$ and $\bfB$ is invertible (regularity condition (6)), we have
+\begin{align*}
+     O_p(\bone) = - \{\bfB + o_p(1) + O_p(\bone)o_p(\bone)\} \sqrt{n}||\widehat{\btheta} - \underline{\btheta}||_2,
+\end{align*}
+implying $\sqrt{n}(\widehat{\btheta} - \underline{\btheta}) = O_p(\bone)$. Therefore, Equation~\eqref{eq: proof1-1} implies
+\begin{align*}
+    \sqrt{n}(\widehat{\btheta} - \underline{\btheta}) = - \frac{1}{\sqrt{n}}\sum_{i=1}^n \bfB^{-1} \bpsi(\bO_i;\underline{\btheta}) + o_p(\bone),
+\end{align*}
+which directly yields the asymptotic linearity of $\widehat{\Delta}$.
+
+We then derive the asymptotic distribution for $\widehat{\Delta}$. By regularity condition (2), $IF(\bO(a))$ has finite second moments. Furthermore, $\pi E[IF(\bO(1))] + (1-\pi) E[IF(\bO(0))] = \bzero$ by the definition of $\underline{\btheta}$. Applying Lemma~\ref{lemma2} with $\bZ_i(a) = IF(\bO_i(a))$, we obtain 
+\begin{align*}
+    \sqrt{n}(\widehat{\Delta} - \underline{\Delta}) \xrightarrow{d} \varepsilon_1 + \bfV_{UI}^\top \bfV_I^{-0.5} \bR_{q,t},
+\end{align*}
+where $\varepsilon_1 \sim N(0, V-\bfV_{UI}^\top \bfV_I^{-1}\bfV_{UI})$ and $\bR_{q,t} \sim  \bD|( \bD^\top  \bD < t)$,  where $\bD \sim N(\bzero, \mathbf{I}_q)$ and $\varepsilon_1$ is independent of $\bR_{q,t}$. Since $V = Var\{A^* IF(\bO(1))+(1-A^*)IF(\bO(0))\}$, $V$ is the asymptotic variance under simple randomization. Since $\bfV_{UI}^\top \bfV_I^{-0.5}$ is a vector, Lemma A1 of \cite{li2018asymptotic} shows that $\bfV_{UI}^\top \bfV_I^{-0.5} \bR_q \overset{d}{=} \sqrt{\bfV_{UI}^\top \bfV_I^{-1} \bfV_{UI}}\ D_1|\bD^\top \bD < t$. Defining
+\begin{align*}
+    R^2 &= \frac{\bfV_{UI}^\top \bfV_I^{-1} \bfV_{UI}}{V}\\
+    &= \frac{\pi(1-\pi)}{V} Cov[IF\{\bO(1)\}- IF\{\bO(0)\}, \bX^r]Var(\bX^r)^{-1}Cov[\bX^r, IF\{\bO(1)\}- IF\{\bO(0)\}],
+\end{align*}
+we get the desired asymptotic distribution. 
+
+In the final step, we construct consistent estimators for $V$ and $R^2$ based on sandwich variance estimation. First, define $\widehat{IF}_i$ as the first element of $\left\{ \frac{1}{n}\sum_{i=1}^n \dot{\bpsi}(\bO_i; \widehat{\btheta}) \right\}^{-1} \bpsi(\bO_i; \widehat{\btheta})$ and
+\begin{equation}\label{def: vhat}
+    \widehat{V} = \frac{1}{n}\sum_{i=1}^n \widehat{IF}_i^2
+\end{equation}
+Since $\widehat{V}$ is the first-row first-column entry of 
+\begin{equation*}
+   \left\{ \frac{1}{n}\sum_{i=1}^n \dot{\bpsi}(\bO_i; \widehat{\btheta}) \right\}^{-1} \left\{\frac{1}{n}\sum_{i=1}^n \bpsi(\bO_i; \widehat{\btheta})\bpsi(\bO_i; \widehat{\btheta})\right\}\left\{ \frac{1}{n}\sum_{i=1}^n \dot{\bpsi}(\bO_i; \widehat{\btheta}) \right\}^{-1\ T},
+\end{equation*}
+To show $\widehat{V} \xrightarrow{p} V$, it suffices to show $\frac{1}{n}\sum_{i=1}^n \dot{\bpsi}(\bO_i; \widehat{\btheta}) \xrightarrow{p} \bfB$ and $\frac{1}{n}\sum_{i=1}^n \bpsi(\bO_i; \widehat{\btheta})\bpsi(\bO_i; \widehat{\btheta}) \xrightarrow{p} \pi E[\bpsi(\bO_i(1); \widehat{\btheta})\bpsi(\bO_i(1); \widehat{\btheta})^\top] + (1-\pi)E[\bpsi(\bO_i(0); \underline{\btheta})\bpsi(\bO_i(0); \underline{\btheta})^\top]$. We next detail the proof for the former argument, and the latter can be derived following a similar way. Denoting $\dot{\bpsi}_{j}(\bO_i;  \widehat{\btheta}) = \dot{\psi}_j(\bO_i;  \widehat{\btheta})$, which is also the transpose of the $j$-th row of $\dot{\bpsi}(\bO_i;  \widehat{\btheta})$. By multivariate Taylor's expansion of $\dot{\bpsi}_{j}(\bO_i;  {\btheta})$ at $\btheta = \underline{\btheta}$, we have
+\begin{align*}
+    \frac{1}{n} \sum_{i=1}^n \dot{\bpsi}_{j}(\bO_i;  \widehat{\btheta}) - \frac{1}{n} \sum_{i=1}^n \dot{\bpsi}_{j}(\bO_i; \underline{\btheta}) = \frac{1}{n} \Ddot{\bpsi}_j(\bO_i; \widetilde{\btheta}) (\widehat{\btheta}- \underline{\btheta})
+\end{align*}
+for some $\widetilde{\btheta}$ on the line segment between $\widehat{\btheta}$ and $\underline{\btheta}$. By regularity condition (5) and $\widehat{\btheta}- \underline{\btheta} = o_p(\bone)$, we get $\frac{1}{n} \sum_{i=1}^n \dot{\bpsi}_{j}(\bO_i;  \widehat{\btheta}) - \frac{1}{n} \sum_{i=1}^n \dot{\bpsi}_{j}(\bO_i; \underline{\btheta}) = o_p(\bone)$. Applying Lemma~\ref{lemma1} with $h_a(\bW_i;\btheta) =  \dot{\bpsi}_{j}(\bO_i(a); \underline{\btheta})$, we get $\frac{1}{n} \sum_{i=1}^n \dot{\bpsi}_{j}(\bO_i; \underline{\btheta}) = \bfB + o_p(1)$. Therefore, $\frac{1}{n}\sum_{i=1}^n \dot{\bpsi}(\bO_i; \widehat{\btheta}) \xrightarrow{p} \bfB$. 
+
+For estimating $R^2$, we define 
+\begin{equation}\label{def: rhat}
+    \widehat{R^2} = \frac{1}{\widehat{V}} \left\{\frac{1}{n}\sum_{i=1}^n \frac{A_i-\pi}{\pi(1-\pi)}\widehat{IF}_i(\bX_i^r-\overline{\bX}^r)^\top\right\}\{n\widehat{Var}(\bI)\}^{-1} \left\{\frac{1}{n}\sum_{i=1}^n \frac{A_i-\pi}{\pi(1-\pi)}\widehat{IF}_i(\bX_i^r-\overline{\bX}^r)\right\}.
+\end{equation}
+The result $\widehat{R^2} \xrightarrow{p} R^2$ can be proved in a similar way to $\widehat{V} \xrightarrow{p} V$. 
+\end{proof}
+
+
+\subsubsection{Proof of Theorem 2}
+\begin{proof}
+    Since the ANCOVA and logistic regression estimators can be viewed as special cases of the DR-WLS estimator, for brevity, we focus on the proof for the DR-WLS estimator here. The proof for the mixed-ANCOVA estimator is given separately in Proposition~\ref{prop: mixed-ancova} for a clear presentation. For notation convenience, we denote $\bZ = (1, A, \bX^\top)^\top$, $\bZ^* = (1, A^*, \bX^\top)^\top$, $\bZ(1) = (1, 1, \bX^\top)^\top$, $\bZ(0) = (1, 0, \bX^\top)^\top$, $\balpha = (\alpha_0, \alpha_A, \balpha_X^\top)^\top$, $\widehat\balpha = (\widehat\alpha_0, \widehat\alpha_A, \widehat\balpha_X^\top)^\top$, $\bbeta = (\beta_0, \beta_A, \bbeta_X^\top)^\top$, $\widehat\bbeta = (\widehat\beta_0, \widehat\beta_A, \widehat\bbeta_X^\top)^\top$, $\underline{\balpha}$ as the probability limit of $\widehat{\balpha}$, $\underline{\bbeta}$ as the probability limit of $\widehat{\bbeta}$. Furthermore, we define $e(\bz) = \text{expit}(\underline{\balpha}^\top \bz)$, $\dot{e}(\bz)=\frac{\partial}{\partial \balpha}\text{expit}(\balpha^\top \bz)\Big|_{\balpha = \underline{\balpha}}$, $h(\bz) = g^{-1}(\underline{\bbeta}^\top \bz)$, and $\dot{h}(\bz) = \frac{\partial}{\partial \bbeta}g^{-1}(\underline{\bbeta}^\top \bz)\Big|_{\bbeta = \underline{\bbeta}}$ for $\bz = \bZ, \bZ^*, \bZ(1)$ or $\bZ(0)$. Finally, we denote $\pi_a = \pi^a(1-\pi)^{1-a}$ and $E^*[h(\bO)] = \pi E[h(\bO(1))] + (1-\pi)E[h(\bO(0))]$ for any integrable function $h$.
+
+    Given the above notation, the DR-WLS estimator can be equivalently computed by solving estimating functions with $\btheta = (\Delta, \mu_1, \mu_0, \bbeta^\top, \balpha^\top)^\top$ and
+    \begin{align*}
+        \bpsi(\bO;\btheta) = \left(\begin{array}{c}
+            f(\mu_1,\mu_0) - \Delta \\
+            g^{-1}(\bbeta^\top \bZ(1)) - \mu_1 \\
+            g^{-1}(\bbeta^\top \bZ(0)) - \mu_0 \\
+            \frac{R}{\text{expit}(\balpha^\top \bZ)}\{Y - g^{-1}(\bbeta^\top \bZ)\} \bZ \\
+            \{R-\text{expit}(\balpha^\top \bZ)\} \bZ
+        \end{array}\right)
+    \end{align*}
+    since $g$ and $\text{expit}$ are both canonical link functions.
+
+    We next show that the influence function for $\widehat{\Delta}$ is
+    \begin{align}
+    IF(\bO)& = \left(\dot{\underline{f}}_1\frac{A}{\pi} + \dot{\underline{f}}_0\frac{(1-A)}{1-\pi} - \boldsymbol{c}_1^\top \bZ\right)\frac{R\{Y-h(\bZ)\}}{ e(\bZ)} - \boldsymbol{c}_2^\top \bZ \{R - e(\bZ)\} \nonumber\\
+    &\quad + \dot{\underline{f}}_1\{h(\bZ(1)) - \underline{\mu}_1\} + \dot{\underline{f}}_0\{h(\bZ(0)) - \underline{\mu}_0\}, \label{IF_formula}  
+    \end{align}
+where $\{\dot{\underline{f}}_1,  \dot{\underline{f}}_0\}$ is the gradient of $f$ evaluated at $(\underline{\mu}_1, \underline{\mu}_0)$,
+\begin{align*}
+    \boldsymbol{c}_1^\top  &= E^*\left[\left\{\dot{\underline{f}}_1\frac{A}{\pi} + \dot{\underline{f}}_0\frac{(1-A)}{1-\pi}\right\}\left(\frac{R}{e(\bZ)}-1\right)\dot{h}(\bZ) \right]^\top E^*\left[\frac{R}{e(\bZ)}\dot{h}(\bZ)\bZ^\top\right]^{-1},\\
+    \boldsymbol{c}_2^\top &=  E[\dot{\underline{f}}_1\dot{h}(\bZ(1)) + \dot{\underline{f}}_0\dot{h}(\bZ(0))]^\top E^*\left[\frac{R}{e(\bZ)}\dot{h}(\bZ)\bZ^\top\right]^{-1} E^*\left[\frac{R\dot{e}(\bZ)}{e(\bZ)^2}\{Y - h(\bZ)\}\bZ^\top\right]E^*[ \dot{e}(\bZ)\bZ^\top]^{-1}.
+\end{align*}
+By the definition of $\bfB$, we have
+\begin{align*}
+    \bfB = \left(\begin{array}{ccccc}
+        -1 & \dot{\underline{f}}_1 &  \dot{\underline{f}}_0 & \bzero & \bzero\\
+        0 & -1 & 0 & E[\dot{h}(\bZ(1))] & \bzero \\
+        0 & 0 & -1 & E[\dot{h}(\bZ(0))] & \bzero \\
+        0 & 0 & 0 &  -E^*[\frac{R}{e(\bZ)} \dot{h}(\bZ) \bZ^\top] & -E^*[\frac{R\dot{e}(\bZ)}{e(\bZ)^2}\{Y-h(\bZ)\}\bZ^\top] \\
+        0 & 0 & 0 & 0 & - E^*[\dot{e}(\bZ) \bZ^\top]
+    \end{array}\right).
+\end{align*}
+Using the block matrix inversion formula, the first row of $-\bfB^{-1}$ is \\ $-\boldsymbol{e}_1^\top \bfB^{-1} = (1, \dot{\underline{f}}_1,  \dot{\underline{f}}_0, E[\dot{\underline{f}}_1\dot{h}(\bZ(1)) + \dot{\underline{f}}_0\dot{h}(\bZ(0))]^\top E^*\left[\frac{R}{e(\bZ)}\dot{h}(\bZ)\bZ^\top\right]^{-1}, -\boldsymbol{c}_2^\top)$, which implies
+\begin{align*}
+    IF(\bO)&=  f(\underline{\mu}_1,\underline{\mu}_0) - \underline{\Delta} + \dot{\underline{f}}_1\{h(\bZ(1)) - \underline{\mu}_1\} + \dot{\underline{f}}_0\{h(\bZ(0)) - \underline{\mu}_0\}\\
+    &\quad + E[\dot{\underline{f}}_1\dot{h}(\bZ(1)) + \dot{\underline{f}}_0\dot{h}(\bZ(0))]^\top E^*\left[\frac{R}{e(\bZ)}\dot{h}(\bZ)\bZ^\top\right]^{-1} \bZ  \frac{R\{Y-h(\bZ)\}}{ e(\bZ)} - \boldsymbol{c}_2^\top \bZ \{R - e(\bZ)\}.
+\end{align*}
+To get the expression~\eqref{IF_formula}, it remains to show
+\begin{align*}
+    E[\dot{\underline{f}}_1\dot{h}(\bZ(1)) + \dot{\underline{f}}_0\dot{h}(\bZ(0))]^\top E^*\left[\frac{R}{e(\bZ)}\dot{h}(\bZ)\bZ^\top\right]^{-1} \bZ = \dot{\underline{f}}_1\frac{A}{\pi} + \dot{\underline{f}}_0\frac{(1-A)}{1-\pi} - \boldsymbol{c}_1^\top \bZ.
+\end{align*}
+To see this, we denote $\mathbf{M} = E^*\left[\frac{R}{e(\bZ)}\dot{h}(\bZ)\bZ^\top\right]$ and observe that $\mathbf{M}$ is symmetric since $\dot{h}(\bZ) = \frac{\partial}{\partial x} g^{-1}(x)\big|_{x=\underline{\bbeta}^\top \bZ} \bZ$. In addition, we also have
+\begin{align*}
+    E[\dot{\underline{f}}_1\dot{h}(\bZ(1)) + \dot{\underline{f}}_0\dot{h}(\bZ(0))] &= E^*\left[\left\{\dot{\underline{f}}_1\frac{A}{\pi} + \dot{\underline{f}}_0\frac{(1-A)}{1-\pi}\right\} \dot{h}(\bZ)\right] \\
+    \mathbf{M} \left(\frac{\dot{\underline{f}}_0}{1-\pi}, \frac{\dot{\underline{f}}_1}{\pi}-\frac{\dot{\underline{f}}_0}{1-\pi}, \bzero\right)^\top &= E^*\left[\left\{\dot{\underline{f}}_1\frac{A}{\pi} + \dot{\underline{f}}_0\frac{(1-A)}{1-\pi}\right\} \frac{R}{e(\bZ)}\dot{h}(\bZ)\right].
+\end{align*}
+Then, by the definition of $\boldsymbol{c}_1$, we have
+\begin{align*}
+    \boldsymbol{c}_1^\top \bZ &=E^*\left[\left\{\dot{\underline{f}}_1\frac{A}{\pi} + \dot{\underline{f}}_0\frac{(1-A)}{1-\pi}\right\}\frac{R}{e(\bZ)} \dot{h}(\bZ)\right]^\top \mathbf{M}^{-1} \bZ - E^*\left[\left\{\dot{\underline{f}}_1\frac{A}{\pi} + \dot{\underline{f}}_0\frac{(1-A)}{1-\pi}\right\} \dot{h}(\bZ)\right]^\top  \mathbf{M}^{-1} \bZ \\
+    &= \left(\frac{\dot{\underline{f}}_0}{1-\pi}, \frac{\dot{\underline{f}}_1}{\pi}-\frac{\dot{\underline{f}}_0}{1-\pi}, \bzero\right) \mathbf{M}^\top \mathbf{M}^{-1} \bZ - E[\dot{\underline{f}}_1\dot{h}(\bZ(1)) + \dot{\underline{f}}_0\dot{h}(\bZ(0))]\mathbf{M}^{-1} \bZ \\
+    &= \dot{\underline{f}}_1\frac{A}{\pi} + \dot{\underline{f}}_0\frac{(1-A)}{1-\pi} - E[\dot{\underline{f}}_1\dot{h}(\bZ(1)) + \dot{\underline{f}}_0\dot{h}(\bZ(0))]\mathbf{M}^{-1} \bZ,
+\end{align*}
+which completes the derivation of Equation~\eqref{IF_formula}.
+
+Given the influence function~\eqref{IF_formula}, we get
+\begin{align*}
+    IF(\bO(1)) - IF(\bO(0)) &= \left(\frac{\dot{\underline{f}}_1}{\pi} - \boldsymbol{c}_1^\top \bZ(1) \right)\frac{R(1)\{Y(1)-h(\bZ(1))\}}{ e(\bZ(1))} - \boldsymbol{c}_2^\top \bZ(1)\{R(1)- e(\bZ(1))\} \\
+    & -  \left(\frac{\dot{\underline{f}}_0}{1-\pi} - \boldsymbol{c}_1^\top \bZ(0) \right)\frac{R(0)\{Y(0)-h(\bZ(0))\}}{ e(\bZ(0))} + \boldsymbol{c}_2^\top \bZ(0)\{R(0)- e(\bZ(0))\}.
+\end{align*}
+To compute $Cov(IF(\bO(1)) - IF(\bO(0)), \bX^r)$, we observe the following facts. If the missingness model is correctly specified, we have $\boldsymbol{c}_1 = \bzero$ and $E[\boldsymbol{c}_2^\top \bZ(a)\{R- e(\bZ(a))\}|\bX^r] = 0$. If the outcome regression model is correctly specified, we have $\boldsymbol{c}_2 = \bzero$ and under MAR,
+\begin{align*}
+    E\left[\boldsymbol{c}_1^\top \bZ(a)\frac{R(a)\{Y(a)-h(\bZ(a))\}}{ e(\bZ(a))}\bigg| \bX^r\right] = E\left[\boldsymbol{c}_1^\top \bZ(a)\frac{E[R(a)|\bZ(a)]\{E[Y(a)|\bZ(a)]-h(\bZ(a))\}}{ e(\bZ(a))}\bigg| \bX^r\right] = 0.
+\end{align*}
+As a result, if either of the two working models is correctly specified, we have
+\begin{align}
+    & Cov\{IF(\bO(1)) - IF(\bO(0)), \bX^r\}\nonumber\\
+    &= Cov\left\{\frac{\dot{\underline{f}}_1}{\pi} \frac{R(1)\{Y(1)-h(\bZ(1))\}}{ e(\bZ(1))} -  \frac{\dot{\underline{f}}_0}{1-\pi} \frac{R(0)\{Y(0)-h(\bZ(0))\}}{ e(\bZ(0))}, \bX^r\right\}.\label{proof1-cov}
+\end{align}
+Given the above expression, if the outcome model is correctly specified, i.e., $E[Y(a)|\bZ(a)] = h(\bZ(a))$, we directly get $Cov\{IF(\bO(1)) - IF(\bO(0)), \bX^r\} = 0$, which implies $R^2=0$ by definition. If, alternatively, $\pi = 0.5$ and $\dot{\underline{f}}_1 = - \dot{\underline{f}}_0 = 1$, we get
+\begin{align*}
+    & Cov\{IF(\bO(1)) - IF(\bO(0)), \bX^r\}\\
+    &= 4\ Cov\left\{\pi \frac{R(1)\{Y(1)-h(\bZ(1))\}}{ e(\bZ(1))} + (1-\pi) \frac{R(0)\{Y(0)-h(\bZ(0))\}}{ e(\bZ(0))}, \bX^r\right\}.
+\end{align*}
+Since $\pi E[\bpsi(\bO(1);\underline{\btheta}] + (1-\pi) E[\bpsi(\bO(0);\underline{\btheta}] =\bzero$, the definition of $\bpsi$ implies that
+\begin{align*}
+    E\left[\pi \frac{R(1)\{Y(1)-h(\bZ(1))\}}{ e(\bZ(1))} + (1-\pi) \frac{R(0)\{Y(0)-h(\bZ(0))\}}{ e(\bZ(0))}\right] &= \bzero \\
+    E\left[\left\{\pi \frac{R(1)\{Y(1)-h(\bZ(1))\}}{ e(\bZ(1))} + (1-\pi) \frac{R(0)\{Y(0)-h(\bZ(0))\}}{ e(\bZ(0))}\right\}\bX^r\right] &= \bzero,
+\end{align*}
+which also yields $Cov\{IF(\bO(1)) - IF(\bO(0)), \bX^r\} = \bzero$ and hence $R^2=0$.
+
+Finally, if we include treatment-covariate interaction terms, then update the definition to $\bZ = (1, A, \bX^\top, A\bX^\top)^\top$, $\bZ^* = (1, A^*, \bX^\top, A\bX^\top)^\top$, $\bZ(1) = (1, 1, \bX^\top, A\bX^\top)^\top$, $\bZ(0) = (1, 0, \bX^\top, A\bX^\top)^\top$ and update $\balpha, \bbeta$ to further include $\balpha_{AX}, \bbeta_{AX}$. Then the estimating function and influence function remain unchanged. Following a similar proof, we get the same expression of $Cov\{IF(\bO(1)) - IF(\bO(0)), \bX^r\}$ as in Equation~\eqref{proof1-cov}. By the definition of $\underline{\btheta}$ and $\bpsi$, we have
+\begin{align*}
+    E\left[\frac{R(a)\{Y(a)-h(\bZ(a))\}}{ e(\bZ(a))}\right] &= \bzero \\
+    E\left[\frac{R(a)\{Y(a)-h(\bZ(a))\}}{ e(\bZ(a))}\bX^r\right] &= \bzero,
+\end{align*}
+which implies $ Cov\{IF(\bO(1)) - IF(\bO(0)), \bX^r\} = \bzero$ and hence $R^2=0$.
+\end{proof}
+
+
+\begin{proposition}\label{prop: mixed-ancova}
+    Theorem 2 in the main paper holds for the mixed-ANCOVA estimator. 
+\end{proposition}
+\begin{proof}
+    We inherit all notations from the proof of Theorem 2. 
+    Since we are handling cluster data, we define $\bY = (\bY_{.1}, \dots, \bY_{.N})^\top$, $\bZ = (\bone_N, A\bone_N, \mathbf{X})$, $\bZ(1) = (\bone_N, \bone_N, \mathbf{X})$, $\bZ = (\bone_N, \bzero_N, \mathbf{X})$, where $\mathbf{X} = (\bX_{.1}, \dots, \bX_{.N})^\top$.
+    By \cite{wang2023CRT}, the estimating equation for the mixed-model ANCOVA estimator is 
+    \begin{equation}\label{eq: lmm-psi-C}
+    \bpsi(\bO,\btheta) = \left(\begin{array}{c}
+    f(\mu_1,\mu_0) -\Delta\\
+    \mu_1 - \frac{1}{N}\bone_{N}^\top\bZ(1)\bbeta \\
+    \mu_0 - \frac{1}{N}\bone_{N}^\top\bZ(0)\bbeta \\
+    \bZ^{\top}\bfV(\bY - \bZ\bbeta)  \\
+    -\textrm{tr}(\bfV) + (\bY - \bZ\bbeta)^\top \bfV^2(\bY - \bZ\bbeta)\\
+  -\bone_{N}^\top\bfV\bone_{N} + (\bY - \bZ\bbeta)^\top \bfV\bone_{N}\bone_{N}^\top \bfV(\bY - \bZ\bbeta)    
+   \end{array}\right),
+\end{equation}
+where $\bfV = (\sigma^2 \bfI_N + \tau^2 \bone_N \bone_N^\top)^{-1} = \frac{1}{\sigma^2} \bfI_N -  \frac{\tau^2}{\sigma^2(\sigma^2+N\tau^2)}\bone_{N}\bone_{N}^\top$, and the influence function for $\widehat{\Delta}$ is
+\begin{align*}
+    IF(\bO) &= \left\{\dot{\underline{f}}_1\frac{A}{\pi} + \dot{\underline{f}}_0\frac{(1-A)}{1-\pi}\right\} E\left[\frac{N}{ \underline\sigma_C^2 + N\underline\tau_C^2}\right]^{-1} \frac{1}{\underline\sigma_C^2 + N\underline\tau_C^2} \bone_N^\top (\bY - \bZ\underline{\bbeta})  \\
+    &\quad + \dot{\underline{f}}_1\left\{\frac{1}{N}\bone_{N}^\top\bZ(1)\underline{\bbeta} - \underline{\mu}_1\right\} + \dot{\underline{f}}_0\left\{\frac{1}{N}\bone_{N}^\top\bZ(0)\underline{\bbeta} - \underline{\mu}_0\right\}.
+\end{align*}
+Then, we get
+\begin{align*}
+    IF(\bO(1)) - IF(\bO(0)) & = \dot{\underline{f}}_1\frac{1}{\pi}E\left[\frac{N}{ \underline\sigma_C^2 + N\underline\tau_C^2}\right]^{-1} \frac{1}{\underline\sigma_C^2 + N\underline\tau_C^2} \bone_N^\top \{\bY(1) - \bZ(1)\underline{\bbeta}\} \\
+    &\quad - \dot{\underline{f}}_0\frac{1}{1-\pi}E\left[\frac{N}{ \underline\sigma_C^2 + N\underline\tau_C^2}\right]^{-1} \frac{1}{\underline\sigma_C^2 + N\underline\tau_C^2} \bone_N^\top \{\bY(0) - \bZ(0)\underline{\bbeta}\}.
+\end{align*}
+Given the definition of $\bpsi$, since $\bX^r$ is a cluster-level covariate included in $\mathbf{X}$ as $\bX^r \bone_{N}^\top$,  we have
+\begin{align*}
+    \bzero &= \pi E[\bX^r \bone_{N}^\top \bfV (\bY(1) - \bZ(1)\underline{\bbeta})] + (1-\pi) E[\bX^r \bone_{N}^\top \bfV (\bY(0) - \bZ(0)\underline{\bbeta})] \\
+    &= \pi E\left[\frac{1}{\underline\sigma_C^2 + N\underline\tau_C^2} \bX^r \bone_N^\top (\bY(1) - \bZ(1)\underline{\bbeta}) \right] + (1-\pi) E\left[\frac{1}{\underline\sigma_C^2 + N\underline\tau_C^2} \bX^r \bone_N^\top (\bY(0) - \bZ(0)\underline{\bbeta}) \right].
+\end{align*}
+As a result, if $\dot{\underline{f}}_1 = - \dot{\underline{f}}_0 = 1$ and $\pi = 1-\pi$, we get 
+\begin{align*}
+   & E[\{IF(\bO(1)) - IF(\bO(0))\}\bX^r] \\
+   &= 4E\left[\frac{N}{ \underline\sigma_C^2 + N\underline\tau_C^2}\right]^{-1} \sum_{a=0}^1 \pi^a(1-\pi)^a E\left[\frac{1}{\underline\sigma_C^2 + N\underline\tau_C^2} \bX^r \bone_N^\top (\bY(a) - \bZ(a)\underline{\bbeta}) \right] \\
+   &= \bzero.
+\end{align*}
+Following a similar proof, we also get $E[IF(\bO(1)) - IF(\bO(0))] = 0$. This implies, under condition (1), we have $Cov(IF(\bO(1)) - IF(\bO(0)), \bX^r) = \bzero$. 
+
+If the mixed-ANCOVA model is correctly specified, we directly have $E[\bY(a)|\bZ(a)] = \bZ(a)\bbeta$, which implies $Cov(IF(\bO(1)) - IF(\bO(0)), \bX^r) = \bzero$. 
+
+If the mixed-ANCOVA model further includes treatment-covariate interaction terms, the formula of $\{IF(\bO(1)) - IF(\bO(0))\}$ remains the same except that $\bZ(1) = (\bone_N, \bone_N, \mathbf{X}, \mathbf{X})$ and $\bZ(0) = (\bone_N, \bzero_N, \mathbf{X}, \bzero)$. Then the definition of $\bpsi$ implies that $E\left[\frac{1}{\underline\sigma_C^2 + N\underline\tau_C^2} \bX^r \bone_N^\top (\bY(a) - \bZ(a)\underline{\bbeta}) \right] = \bzero$, resulting in $Cov(IF(\bO(1)) - IF(\bO(0)), \bX^r) = \bzero$.
+\end{proof}
+
+\subsubsection{Rerandomization based on other balance criteria (distance functions)}
+Consider rerandomization using $\bI^\top \widehat{\bfH}^{-1} \bI < t$. We assume $n\widehat{\bfH} \xrightarrow{p} \underline{\bfH}$. 
+Since we have shown that $\bI \xrightarrow{d} N(0,\bfV_I)$, then the Delta method implies that $\bI^\top \bfV_{I}^{1/2}\underline{\bfH}^{-1} \bfV_{I}^{1/2}\bI \xrightarrow{d} \bD^\top \bfV_{I}^{1/2} \underline{\bfH}^{-1} \bfV_{I}^{1/2}\bD$, which is a generalized chi-squared distribution. By the assumption $n\widehat{\bfH} \xrightarrow{p} \underline{\bfH}$, the Slutsky's theorem implies that $\bI^\top \widehat{\bfH}^{-1} \bI \xrightarrow{d} \bD^\top \bfV_{I}^{1/2} \underline{\bfH}^{-1} \bfV_{I}^{1/2}\bD$, the same generalized chi-squared distribution. Therefore, $P(\bD^\top \bfV_{I}^{1/2} \underline{\bfH}^{-1} \bfV_{I}^{1/2}\bD < t) > 0$ if $t > 0$. Therefore, Lemma~\ref{lemma1} remains the same except that $\widehat{Var}(\bI)$ is replaced by $\widehat{\bfH}$ in the proof. Similarly, Lemma~\ref{lemma2} remains the same except that $\bR_{qt}$ is substituted by $\widetilde{\bR}_{\bfH,t} = \bD|(\bD^\top\bfV_{I}^{1/2} \underline{\bfH}^{-1} \bfV_{I}^{1/2}\bD <t)$. Following the proof of Theorem 1, we get the desired weak convergence result. 
+
+To show rerandomization does not increase variance, we first give a proposition below.
+
+\begin{proposition}
+    Let $X, Y$ be two independent, positive random variables. Then (1) $E[X|X<t]$ is nondecreasing in $t$ and (2) $E[X|X+Y<t] \le E[X|X<t]$ for any $t >0$.
+\end{proposition}
+\begin{proof}
+For (1), we have
+\begin{align*}
+    \frac{d}{dt}E[X|X<t] &= \frac{d}{dt} \frac{\int_{0}^t x f(x)dx}{\int_{0}^t  f(x)dx} = \frac{tf(t)\int_{0}^t  f(x)dx - \int_{0}^t x f(x)dx f(t)}{\left(\int_{0}^t  f(x)dx\right)^2} = \frac{f(t)\int_{0}^t  (t-x)f(x)dx}{\left(\int_{0}^t  f(x)dx\right)^2} \ge 0.
+\end{align*}
+For (2), (1) implies that $E[X|X<t-y] \le E[X|X<t]$ for any $y \ge0$, which implies
+\begin{align*}
+    \int_{0}^{t-y} x f(x) dx \le E[X|X<t] \int_{0}^{t-y} f(x) dx.
+\end{align*}
+Therefore, we have
+\begin{align*}
+    E[X|X+Y<t] &= \frac{\int_{0}^t \int_{0}^{t-y} x f(x) dx f(y) dy}{\int_{0}^t \int_{0}^{t-y}  f(x) dx f(y) dy} \\
+    &\le \frac{\int_{0}^t \int_{0}^{t-y} E[X|X<t] \int_{0}^{t-y} f(x) dx dx f(y) dy}{\int_{0}^t \int_{0}^{t-y}  f(x) dx f(y) dy} \\
+    &= E[X|X<t].
+\end{align*}
+\end{proof}
+Returning to $\widetilde{\bR}_{\bfH,t}$, we aim to show $Var(\bD)-Var(\widetilde{\bR}_{\bfH,t})$ is positive semi-definite. Letting $\mathbf{P}\mathbf{\Lambda}\mathbf{P}^\top$ be the singular value decomposition of $\bfV_{I}^{1/2} \underline{\bfH}^{-1} \bfV_{I}^{1/2}$, we denote $\widetilde{\bD} = \mathbf{P}^\top \bD$, we have $\widetilde{\bD} \sim N(0,\bfI_q)$ and  $Var(\widetilde{\bR}_{\bfH,t}) = \mathbf{P}^\top Var(\widetilde{\bD}| \widetilde{\bD}^\top \mathbf{\Lambda}\widetilde{\bD} < t)\mathbf{P}$, which implies that it suffices to prove $Var(\widetilde{\bD}) - Var(\widetilde{\bD}| \widetilde{\bD}^\top \mathbf{\Lambda}\widetilde{\bD} < t)$ is positive definite. 
+Since $\widetilde{\bD} \sim N(0,\bfI_q)$, we have $E[\widetilde{D}_i|\widetilde{D}_j= d_j, \widetilde{\bD}^\top \mathbf{\Lambda}\widetilde{\bD} < t] = E[\widetilde{D}_i|\sum_{j'\ne j} \lambda_{j'} D_{j'}^2 < t - \lambda_j d_j^2] = E[-\widetilde{D}_i|\sum_{j'\ne j} \lambda_{j'} D_{j'}^2 < t - \lambda_j d_j^2] = 0$, which implies $E[\widetilde{D}_i\widetilde{D}_j|\widetilde{\bD}^\top \mathbf{\Lambda}\widetilde{\bD} < t] = 0$ for $i\ne j$.  Therefore, it is sufficient to show $E[\widetilde{D}_i^2|\widetilde{\bD}^\top \mathbf{\Lambda}\widetilde{\bD} < t] \le E[\widetilde{D}_i^2]$. Now, using the above proposition with $X = \widetilde{D}_i^2$ and $Y = \sum_{j\ne i} \lambda_j \widetilde{D}_j^2$, we have $X$ is independent of $Y$, and then $E[\widetilde{D}_i^2|\widetilde{\bD}^\top \mathbf{\Lambda}\widetilde{\bD} < t] \le E[\widetilde{D}_i^2|\lambda_i\widetilde{D}_i^2<t] \le E[\widetilde{D}_i^2]$, which completes the proof.
+
+% For rerandomization using $\sqrt{|\bI|}^\top \widehat{\bfH}^{-1} \sqrt{|\bI|} < t$, the proof of Theorem 1 is similar, and the $\widetilde{\bR}_{\bfH,t} = \bD|(\bD^\top\bfV_{I}^{1/2} \underline{\bfH}^{-1} \bfV_{I}^{1/2}\bD <t)$
+
+
+
+
+
+\subsubsection{A counterexample showing rerandomization may increase variance in finite-samples}
+
+
+We consider a randomized experiment with $N_1 = 1$ and $N_0=2$. Let $X^r$ follow a dichotomous distribution with $P(X^r=2) = p,\ p < 0.5$ and $P(X^r=-1)=1-p$, $Y(a) \sim N(0, 1 + M a I\{X^r = -1\})$ with $M$ being a positive constant, and $t=1$ for rerandomization. For the unadjusted estimator, $\widehat{\Delta} = \sum_{i=1}^n {A_iY_i/N_1 - (1-A_i)Y_i/N_0}$, we denote its variance under simple randomization as $V^*$ and under rerandomization as $V$. Without loss of generality, our derivation is conditioned on $N_1$ being a fixed number. 
+
+We next enumerate all possible values of $X_{1:3} = (X_1^r,X_2^r, X_3^r)$. When $X_{1:3} = (2,2,2)$ or $(-1,-1,-1)$, the covariance imbalance $I$ is always zero, yielding the same variance under simple or rerandomization. When $X_{1:3} = (-1,-1,2)$, we have $I = 3$ (if the one with $X^r =2$ is assigned to treatment) or $I=-1.5$ (if the one with $X^r =2$ is assigned to control). Since $\widehat{V}(I) = 3$, only the second scenario will be picked by rerandomization with $t=1$. Therefore, conditioning on $X_{1:3} = (-1,-1,2)$, the variance of $\widehat{\Delta}$ is $ M+1.5$ under rerandomization. Since the other scenario gives variance 1.5, the variance of $\widehat{\Delta}$ under simple randomization is $1.5/3 + 2(M+1.5)/3 = 2M/3 + 1.5$. Therefore, these covariate value specifications make rerandomization increase the variance. Finally, when $X_{1:3} = (2,2,-1)$, a similar procedure gives the variance of $\widehat{\Delta}$ as 1.5 under rerandomization and $M/3 + 1.5$ under simple randomization. Marginalizing over the distribution of $X_{1:3}$ and noting $P(X_{1:3} = (-1,-1,2)) = 3p(1-p)^2$ and $P(X_{1:3} = (2,2,-1)) = 3p^2(1-p)$, we have
+\begin{align*}
+    V^*-V &= 3p(1-p)^2 \left\{(M + 1.5) - \left(\frac{2M}{3} + 1.5\right)\right\} + 3p^2(1-p) \left\{1.5 - \left(\frac{M}{3} + 1.5\right)\right\} \\
+    &= Mp(1-p)^2 - Mp^2(1-p) \\
+    &= Mp(1-p)(1-2p),
+\end{align*}
+ which is positive when $M>0$ and $p< 0.5$.  Notably, the same results also hold if ANCOVA is used to adjust for $X^r$, following the same proof.
+
+\subsection{Results under stratified rerandomization}
+\subsubsection{Lemmas}
+
+\begin{lemma}\label{lemma:stratified}
+Let $\tA_1,\dots, \tA_n$ be treatment allocation under stratified randomization, $\bh(\bW_i)$ denote a multidimensional function of $\bW_i$ with finte second moments, and $\mathcal{F}_n$ denote the sigma field generated by $\bW_1,\dots, \bW_n$. We have $n^{-1/2} \sum_{i=1}^n (\tA_i - \pi) \bh(\bW_i) | \mathcal{F}_n \overset{\bullet}{\sim} N(0, \widetilde{\bSigma}_n) | \mathcal{F}_n$, where $\widetilde{\bSigma}_n = \frac{\pi(1-\pi)}{n}\sum_{s \in \mathcal{S}} \sum_{i: S_i = s} (\bh(\bW_i) - \overline{\bh}_s)(\bh(\bW_i) - \overline{\bh}_s)^\top$ with \\
+$\overline{\bh}_s = (\sum_{i=1}^n I\{S_i=s\})^{-1}(\sum_{i: S_i = s} \bh(\bW_i))$.
+\end{lemma}
+
+\begin{proof}
+By conditioning on $\mathcal{F}_n$, $\bh(\bW_i)$ is deterministic, and the only randomness comes from treatment assignment. Under stratified randomization, treatment assignment is independent across strata and follows a complete randomization within each stratum. Therefore, the standard finite-sample central limit theorem \citep{li2017general} can be applied to each stratum, and we combine all strata to obtain the joint convergence. See \cite{pirondini2022covariate} for a detailed proof. 
+\end{proof}
+
+\begin{lemma}\label{lemma3}
+Let $\mathcal{F}_n$ denote the sigma field generated by $\bW_1,\dots, \bW_n$.
+    Under stratified randomization, $\sqrt{n}\widetilde{\bI}|\mathcal{F}_n \overset{\bullet}{\sim} N(0, \widetilde{\bfV}_{I,n})|\mathcal{F}_n$ and $n\widehat{Var}(\widetilde{\bI}) - \widetilde{\bfV}_{I,n} \xrightarrow{p}0$ conditioning on $\mathcal{F}_n$,  where $\widetilde{\bfV}_{I,n} = \frac{1}{n\pi(1-\pi)}\sum_{s \in \mathcal{S}} \sum_{i: S_i = s} (\bX_i^r - \overline{\bX}_s^r)(\bX_i^r - \overline{\bX}_s^r)^\top$. Furthermore, define
+    \begin{align*}
+        \widetilde{\bI}^{\dagger} = \sum_{s \in \mathcal{S}} \widehat{p}_s\sum_{i=1}^n \left[\frac{I\{S_i=s\}\tA_i\bX_i^r}{\sum_{i=1}^n I\{S_i=s\}\tA_i} - \frac{I\{S_i=s\}(1-\tA_i)\bX_i^r}{\sum_{i=1}^n I\{S_i=s\}(1-\tA_i)}\right]
+    \end{align*}
+    where $\widehat{p}_s=\frac{1}{n}\sum_{i=1}^n I\{S_i=s\}$. Here, $\widetilde{\bI}^{\dagger}$ is used for computing the overall Mahalanobis distance in \cite{wang2022rerandomization}. Then $\sqrt{n}\widetilde{\bI}^{\dagger}|\mathcal{F}_n \overset{\bullet}{\sim} N(0, \widetilde{\bfV}_{I,n})|\mathcal{F}_n$, implying that $\widetilde{\bI}^{\dagger}$ is asymptotically equivalent to $\widetilde{\bI}$.
+\end{lemma}
+
+\begin{proof}
+ Setting $\bh(\bW_i) = (1,\bX_i^r)$, Lemma~\ref{lemma:stratified} implies the conditional Gaussian approximation of  $(A_i-\pi,(A_i-\pi)\bX_i^r)$. Since $\widetilde{\bI}$ is a deterministic function of $(A_i-\pi,(A_i-\pi)\bX_i^r)$ conditioning on $\mathcal{F}_n$, we apply the Delta method and obtain the desired conditional convergence of $\sqrt{n}\widetilde{\bI}$ and $n\widehat{Var}(\widetilde{\bI})$. For $\widetilde{\bI}^{\dagger}$, we set $\bh(\bW_i) = (I\{S_i=1\}, I\{S_i=1\}\bX_i^r,\dots, I\{S_i=|\mathcal{S}|\}, I\{S_i=|\mathcal{S}|\}\bX_i^r)$, and the same procedure yeilds the desired convergence.
+\end{proof}
+
+% \begin{proof}
+% In this proof, we mainly use two results (Lemmas 1 and 2) from the Supplementary Material of \cite{wang2023model} for stratified randomization. Let $\bZ_i(a) = h_a(Y_i(a),M_i(a),\bX_i)$ be a random vector with finite second moment. Then, under stratified randomization, (I) $\sum_{i=1}^n \tA_i\bZ_i(1) + (1-\tA_i)\bZ_i(0) \xrightarrow{p} \pi E[\bZ_i(1)] + (1-\pi) E[\bZ_i(0)]$,\\ (II) $\frac{1}{\sqrt{n}} \sum_{i=1}^n \left\{\frac{\tA_i}{\pi}(\bZ_i(1)-E[\bZ_i(1)]) - \frac{1-\tA_i}{1-\pi}(\bZ_i(0)-E[\bZ_i(0)])\right\} \xrightarrow{d} N(0,\sigma_1^2 + \sigma_2^2)$, where $\sigma_1^2=\frac{1}{\pi}E[Var(\bZ(1)|S)] + \frac{1}{1-\pi} E[Var(\bZ(0)|S)]$ and $\sigma_2^2 = Var(E[\bZ(1)-\bZ(0)|S])$. Of note, Lemma 2 of \cite{wang2023model} only states result (II) if  $\bZ_i(a)$ is a scalar; here, we generalize that result to random vectors by adapting Lemma B.1 and Lemma B.2 in the supplementary material of \cite{bugni2018}.
+
+% For $\widetilde{\bI}$, result (I) implies $\widetilde{\bI} \xrightarrow{p} \frac{1}{\pi} \pi E[\bX^r] - \frac{1}{1-\pi} (1-\pi) E[\bX^r] = \bzero$. Since $\widetilde{\bI}$ is also an M-estimator for $\btheta = (\btheta_I, \btheta_1)$ and
+% \begin{align*}
+%     \bpsi(\bO_i;\btheta) = \left(\begin{array}{c}
+%         \frac{1}{\btheta_1} \tA_i \bX_i^r -   \frac{1}{1-\btheta_1} (1-\tA_i) \bX_i^r - \btheta_I\\
+%          \tA_i - \btheta_1
+%     \end{array}\right),
+% \end{align*}
+% Theorem 1 of \cite{wang2023model} and result (II) implies that
+% \begin{align*}
+%     \sqrt{n}\widetilde{\bI} &= \frac{1}{\sqrt{n}}\sum_{i=1}^n \frac{\tA_i}{\pi} (\bX_i^r - E[\bX_i^r]) - \frac{1-\tA_i}{1-\pi} (\bX_i^r - E[\bX_i^r]) + o_p(1) \\
+%     &\xrightarrow{d} N\left\{0, \frac{1}{\pi}E[Var(\bX_i^r|S)] + \frac{1}{1-\pi} E[Var(\bX_i^r|S)]\right\}.
+% \end{align*}
+% For $\widehat{Var}(\widetilde{\bI})$, result (I) implies $\widetilde{N}_1/n \xrightarrow{p} \pi$ and $\widetilde{N}_0/n \xrightarrow{p} 1-\pi$. Furthermore, since  $\sum_{i=1}^n \bX^r_i\bX^r_i{}^\top/n \xrightarrow{p} E[\bX_i^r\bX^r_i{}^\top] $,  $\sum_{i=1}^n I\{S_i=s\}/n \xrightarrow{p} P(S_i=s)$, and $\sum_{i=1}^n I\{S_i=s\}\bX_i^r/n \xrightarrow{p} E[I\{S_i=s\}\bX_i^r]$, the continuous mapping theorem implies
+% \begin{align*}
+%     n\widehat{Var}(\widetilde{\bI}) &\xrightarrow{p} \frac{1}{\pi(1-\pi)}\left\{E[\bX_i^r\bX^r_i{}^\top] - \sum_{s \in \mathcal{S}}P(S_i=s)\frac{E[I\{S_i=s\}\bX_i^r]}{P(S_i=s)}\frac{E[I\{S_i=s\}\bX_i^r]}{P(S_i=s)}^\top \right\}\\
+%     &= \frac{1}{\pi(1-\pi)}\sum_{s \in \mathcal{S}}P(S_i=s)\left\{E[\bX_i^r\bX^r_i{}^\top|S_i=s] - \frac{E[I\{S_i=s\}\bX_i^r]}{P(S_i=s)}\frac{E[I\{S_i=s\}\bX_i^r]}{P(S_i=s)}^\top \right\} \\
+%     &= \frac{1}{\pi(1-\pi)}\sum_{s \in \mathcal{S}}P(S_i=s)\left\{E[\bX_i^r\bX^r_i{}^\top|S_i=s] - E[\bX_i^r|S_i=s]E[\bX_i^r|S_i=s]^\top \right\} \\
+%     &= \frac{1}{\pi(1-\pi)} E[Var(\bX^r|S)].
+% \end{align*}
+% For $\widetilde{\bI}^\dagger$, result (I) and continuous mapping theorem imply that
+% $$\widetilde{\bI}^\dagger \xrightarrow{p}\sum_{s\in\mathcal{S}}P(S_i=s) \left(\frac{\pi E[I\{S_i=s\}\bX_i^r]}{\pi E[I\{S_i=s\}]} - \frac{(1-\pi) E[I\{S_i=s\}\bX_i^r]}{(1-\pi) E[I\{S_i=s\}]}\right) = 0.$$
+% In addition, we can write $\widetilde{\bI}^\dagger$ as an M-estimator with $\btheta = (\theta_I, \theta_{S1}, \dots, \theta_{S,K-1}, \theta_{AS1}, \dots, \theta_{AS,K-1})$ and
+% \begin{align*}
+%     \bpsi(\bO_i;\btheta) = \left(\begin{array}{c}
+%     \sum_{k=1}^K   \theta_{Sk} \left(\frac{1}{\theta_{ASk}}I\{S_i=k\} \tA_i\bX_i^r - \frac{1}{\theta_{Sk}-\theta_{ASk}}I\{S_i=k\}(1- \tA_i)\bX_i^r\right) -\btheta_I  \\
+%     \theta_{Sk} - I\{S_i=k\}, k = 1,\dots, K \\
+%     \theta_{ASk} - \tA_iI\{S_i=k\}, k = 1,\dots, K
+%     \end{array}\right),
+% \end{align*}
+% where $\mathcal{S} = \{1,\dots, K\}$. By Theorem 1 of \cite{wang2023model}, we have
+% \begin{align*}
+%     \sqrt{n}\widetilde{\bI}^\dagger &= \frac{1}{\sqrt{n}} \sum_{i=1}^n \sum_{k=1}^K  \theta_{Sk} \left(\frac{1}{\theta_{ASk}}I\{S_i=k\} \tA_i\bX_i^r - \frac{1}{\theta_{Sk}-\theta_{ASk}}I\{S_i=k\}(1- \tA_i)\bX_i^r\right) \\
+% & - \frac{1}{\sqrt{n}} \sum_{i=1}^n\sum_{k=1}^K \left[\frac{1}{1-\pi} (\theta_{Sk} - I\{S_i=k\}) - \frac{1}{\pi(1-\pi)}(\theta_{ASk}-A_iI\{S_i=k\})\right]E[\bX_i^r] +o_p(1)\\
+% &= \frac{1}{\sqrt{n}} \sum_{i=1}^n \sum_{k=1}^K  \left(\frac{\tA_i}{\pi}I\{S_i=k\} (\bX_i^r-E[\bX_i^r]) - \frac{1- \tA_i}{1-\pi}I\{S_i=k\}(\bX_i^r-E[\bX_i^r])\right) +o_p(1)\\
+% &= \frac{1}{\sqrt{n}} \sum_{i=1}^n \left(\frac{\tA_i}{\pi} (\bX_i^r-E[\bX_i^r]) - \frac{1- \tA_i}{1-\pi}(\bX_i^r-E[\bX_i^r])\right) +o_p(1), 
+% \end{align*}
+% where the second equation uses the fact that $\underline{\theta}_{Sk} = P(S_i=s)$ and $\underline{\theta}_{ASk} = \pi P(S_i=s)$. By result (II),  we get $ \sqrt{n}\widetilde{\bI}^\dagger  \xrightarrow{d} N(0, \frac{1}{\pi(1-\pi) E[Var(\bX^r|S)]})$.
+% \end{proof}
+
+\begin{lemma}\label{lemma4}
+    Let $h(\bW;\btheta)$ be some measurable real-valued function $h$ on $\bW$ defined in Assumption 1 and parameters $\btheta \in \bTheta \subset \mathbb{R}^p$. 
+    We assume that $\bTheta$ is a compact set, $h$ is a continuous function on $\btheta$, and  $h(\bW;\btheta)$ is dominated by an integrable function. 
+    Under stratified rerandomization and Assumption 1, we have $\sup_{\btheta \in \bTheta}||\frac{1}{n} \sum_{i=1}^n A_i h(\bW_i;\btheta) - \pi E[h(\bW_i;\btheta)] ||_2 \xrightarrow{p} 0$ and $\sup_{\btheta \in \bTheta}||\frac{1}{n} \sum_{i=1}^n (1-A_i) h(\bW_i;\btheta) - (1-\pi) E[h(\bW_i;\btheta)] ||_2 \xrightarrow{p} 0$.
+\end{lemma}
+
+\begin{proof}
+This proof is similar to the proof for Lemma~\ref{lemma1}. The major difference is in that we use Lemma~1 from the Supplementary Material of \cite{wang2023model} to handle stratified randomization and use Lemma~\ref{lemma3} to handle the distribution $\widetilde{\bI}^\top \{\widehat{Var}(\widetilde{\bI})\}^{-1} \widetilde{\bI}$.
+
+Define $\mathcal{F}_n = \sigma(\bW_1,\dots,\bW_n)$ as the sigma-field generated under Assumption 1. For brevity, we further denote $U_n(A,\bW) = \sup_{\btheta \in \bTheta}||\frac{1}{n} \sum_{i=1}^n A_i h(\bW_i;\btheta) - \pi E[h(\bW_i;\btheta)]||_2$. Our goal is to show $P(U_n(A,\bW) > \varepsilon) \rightarrow 0$ for any $\varepsilon >0$, and it suffices to prove $P(U_n(A,\bW) > \varepsilon | \mathcal{F}_n) \xrightarrow{p} 0$ due to the dominated convergence theorem for convergence in probability \citep[Theorem 1.5.3]{durrett2019probability}. 
+
+Using the definition of rerandomization, we have 
+\begin{align*}
+    P\left(U_n(A,\bW) > \varepsilon | \mathcal{F}_n\right) &= P\left(U_n(\tA,\bW) > \varepsilon | \mathcal{F}_n, \widetilde{\bI}^\top \{\widehat{Var}(\widetilde{\bI})\}^{-1} \widetilde{\bI} < t\right) \\
+    &= \frac{ P\left(U_n(\tA,\bW) > \varepsilon, \widetilde{\bI}^\top \{\widehat{Var}(\widetilde{\bI})\}^{-1} \widetilde{\bI} < t | \mathcal{F}_n\right)}{P\left(\widetilde{\bI}^\top \{\widehat{Var}(\widetilde{\bI})\}^{-1} \widetilde{\bI} < t | \mathcal{F}_n\right)} \\
+    &\le \frac{ P\left(U_n(\tA,\bW) > \varepsilon | \mathcal{F}_n\right)}{P\left(\widetilde{\bI}^\top \{\widehat{Var}(\widetilde{\bI})\}^{-1} \widetilde{\bI} < t | \mathcal{F}_n\right)},
+\end{align*}
+where $\tA$ represents treatment allocation under stratified randomization and $\widetilde{\bI} = \frac{1}{N_1} \sum_{i=1}^n \tA_i \bX^r_i - \frac{1}{N_0} \sum_{i=1}^n (1-\tA_i) \bX^r_i$.
+% For any $\varepsilon >0$, the definition of stratified rerandomization implies that
+% \begin{align*}
+%    & P\left(\sup_{\btheta \in \bTheta}||\frac{1}{n} \sum_{i=1}^n \tA_i h(\bW_i;\btheta) - \pi E[h(\bW_i;\btheta)] ||_2 > \varepsilon\right) \\
+%    &= P\left(\sup_{\btheta \in \bTheta}||\frac{1}{n} \sum_{i=1}^n \tA_i h(\bW_i;\btheta) - \pi E[h(\bW_i;\btheta)] ||_2 > \varepsilon\bigg|\widetilde{\bI}^\top \{\widehat{Var}(\widetilde{\bI})\}^{-1} \widetilde{\bI} < t \right) \\
+%    &= \frac{P\left(\sup_{\btheta \in \bTheta}||\frac{1}{n} \sum_{i=1}^n \tA_i h(\bW_i;\btheta) - \pi E[h(\bW_i;\btheta)] ||_2 > \varepsilon, \widetilde{\bI}^\top \{\widehat{Var}(\widetilde{\bI})\}^{-1} \widetilde{\bI} < t \right)}{P(\widetilde{\bI}^\top \{\widehat{Var}(\widetilde{\bI})\}^{-1} \widetilde{\bI} < t)} \\
+%    &\le \frac{P\left(\sup_{\btheta \in \bTheta}||\frac{1}{n} \sum_{i=1}^n \tA_i h(\bW_i;\btheta) - \pi E[h(\bW_i;\btheta)] ||_2 > \varepsilon\right)}{P(\widetilde{\bI}^\top \{\widehat{Var}(\widetilde{\bI})\}^{-1} \widetilde{\bI} < t)}.
+% \end{align*}
+\underline{For the numerator term}, we define $\{h(\bW^{(s)};\btheta): \btheta \in \bTheta\}$ as the conditional process of $\{h(\bW;\btheta): \btheta \in \bTheta\}$ given $S=s$ for any $s$ in the support of $S$ (see Definition 1 in the Supplementary Material of \cite{wang2023model} for details). Since $\bW^{(s)}$ lies in the support of $\bW$, the regularity condition (4) implies that the map $\btheta \mapsto h(\bW^{(s)};\btheta)$ is continuous in its support and dominated by an integrable function. Then, Example 19.8 of \cite{vaart_1998} implies that $\{h(\bW^{(s)};\btheta): \btheta \in \bTheta\}$ is P-Glivenko-Cantelli. Furthermore, $\sup_{\btheta \in \bTheta} ||E[h(\bW^{(s)};\btheta)]||_2 < \infty$ since $h(\bW^{(s)};\btheta)$ is dominated by an integrable function. As a result, Lemma 1 (2) in the Supplementary Material of \cite{wang2023model} implies that $ P\left(U_n(\tA,\bW)\right) \rightarrow 0$. Applying Markov's inequality, we have $P\left(U_n(\tA,\bW) > \varepsilon| \mathcal{F}_n\right) \xrightarrow{p} 0$.
+\underline{For the denominator term}, Lemma~\ref{lemma3} and Slutsky's theorem implies $\widetilde{\bI}^\top \{\widehat{Var}(\widetilde{\bI})\}^{-1} \widetilde{\bI}|\mathcal{F}_n\overset{\bullet}{\sim}\mathcal{X}^2_q|\mathcal{F}_n$, where $q$ is the dimension of $\bX^r$. Therefore, $P(\widetilde{\bI}^\top \{\widehat{Var}(\widetilde{\bI})\}^{-1} \widetilde{\bI} < t|\mathcal{F}_n) \rightarrow P(\mathcal{X}^2_q < t|\mathcal{F}_n) = P(\mathcal{X}^2_q < t)$, which is greater than zero since $t > 0$. Combining the convergence of both numerator and denominator terms, we obtain $P\left(U_n(A,\bW) > \varepsilon | \mathcal{F}_n\right) \xrightarrow{p} \frac{0}{P(\mathcal{X}^2_q < t)} = 0$. This completes the proof for $\sup_{\btheta \in \bTheta}||\frac{1}{n} \sum_{i=1}^n A_i h(\bW_i;\btheta) - \pi E[h(\bW_i;\btheta)] ||_2 \xrightarrow{p} 0$ under stratified rerandomization. Following a similar proof, we can get $\sup_{\btheta \in \bTheta}||\frac{1}{n} \sum_{i=1}^n (1- A_i) h(\bW_i;\btheta) - (1-\pi) E[h(\bW_i;\btheta)] ||_2 \xrightarrow{p} 0$.
+\end{proof}
+
+\begin{lemma}\label{lemma5}
+    Let $\bZ_i(a) = h_a(Y_i(a), M_i(a), \bX_i)$  for some $k$-dimensional function $h_a, a \in \{0,1\}$ taking values in the Euclidean space such that $E[||\bZ_i(a)||_2^2] < \infty$. Under stratified rerandomization and Assumption 1, we have
+    \begin{align*}
+        \frac{1}{\sqrt{n}}\sum_{i=1}^n \left\{A_i\bZ_i(1) + (1-A_i)\bZ_i(0) - \pi E[\bZ_i(1)] - (1-\pi) E[\bZ_i(0)]\right\} \xrightarrow{d}  \widetilde{\boldsymbol{\varepsilon}}_k + \widetilde{\bfV}_{UI}^\top \widetilde{\bfV}_I^{-0.5} \bR_{q,t},
+    \end{align*}
+    where $\tbepsilon_k \sim N(\bzero,\widetilde{\bfV}_U -  \widetilde{\bfV}_{UI}^\top \widetilde{\bfV}_I^{-1}\widetilde{\bfV}_{UI})$, $\bR_{q,t} \sim  \bD_q|( \bD^\top  \bD < t)$,  where $\bD \sim N(\bzero, \mathbf{I}_q)$ with
+    \begin{align*}
+        \widetilde{\bfV}_U &= Var\{A_i^*\bZ_i(1) + (1-A_i^*)\bZ_i(0)\} - \pi(1-\pi) Var(E[\bZ(1)-\bZ(0)|S]) \\
+        \widetilde{\bfV}_I &= \frac{1}{\pi(1-\pi)}E[Var(\bX_i^r|S)] \\
+        \widetilde{\bfV}_{UI} &= E[Cov\{\bX_i^r, \bZ_i(1)-\bZ_i(0)|S\}].
+    \end{align*}
+\end{lemma}
+
+
+\begin{proof}
+This proof is similar to the proof for Lemma~\ref{lemma2}. The major difference is that we use Lemma~\ref{lemma:stratified} to obtain the weak convergence under stratified randomization. We use the same notation as in the proof for Lemma~\ref{lemma2}, which are
+\begin{align*}
+    \bI_n(A) &= \sqrt{n} \left(\frac{\sum_{i=1} A_i \bX_i^r}{\sum_{i=1} A_i} - \frac{\sum_{i=1} (1-A_i) \bX_i^r}{\sum_{i=1} (1-A_i)}\right), \\
+    \mathcal A_n &=\Big\{\, \bI_n(\tA)^\top\,\widehat{\mathrm{Var}}(\bI_n(\tA))^{-1}\,\bI_n(\tA)< t\,\Big\},\\
+    \bU_n(A) &=\frac{1}{\sqrt n}\sum_{i=1}^n\!\Big\{A_i \bZ_i(1)+(1-A_i)\bZ_i(0)-\pi E\bZ(1)-(1-\pi)E\bZ(0)\Big\},\\
+    \bT_n(A) &= \frac{1}{\sqrt n}\sum_{i=1}^n\!\Big\{(A_i-\pi) (\bZ_i(1)-\bZ_i(0)))\Big\},\\
+    \bR_n &= \frac{1}{\sqrt n}\sum_{i=1}^n\!\Big\{\pi \bZ_i(1)+(1-\pi)\bZ_i(0)-\pi E\bZ(1)-(1-\pi)E\bZ(0)\Big\}.
+\end{align*}
+Then we have $\bU_n(A) = \bT_n(A) + \bR_n$. We further define $\mathcal{F}_n = \sigma(\bW_1,\dots,\bW_n)$ as the sigma-field generated under Assumption 1, and $X \overset{d}{=} Y$ if $X$ and $Y$ have the same distribution. By the definition of rerandomization, we have $g(A,\bW)| \mathcal{F}_n \overset{d}{=} g(\tA,\bW)| (\mathcal{F}_n, \mathcal{A}_n)$ for any measurable function $g$.
+
+We first provide the conditional Normal approximation under stratified randomization. To utilize Lemma~\ref{lemma:stratified}, we define $\bh(\bW_i)= (1, \bX_i^r, \bZ_i(1) - \bZ_i(0))$, which has finite second moment. Then, Lemma~\ref{lemma:stratified} and the Delta method implies $(\bI_n(\tA), \bT_n(\tA)) | \mathcal{F}_n \overset{\bullet}{\sim} N(0, \widetilde{\bSigma}_n) | \mathcal{F}_n$, where
+\[
+\widetilde{\bSigma}_n=
+\begin{bmatrix}
+\displaystyle \tbfV_{I,n} & \displaystyle \tbfV_{IT,n}\\[4pt]
+\displaystyle \tbfV_{IT,n}^\top & \displaystyle \tbfV_{T,n}
+\end{bmatrix},
+\]
+with blocks (all $\mathcal F_n$-measurable sample moments)
+\begin{align*}
+    \tbfV_{I,n} &=\frac{1}{n\pi(1-\pi)}\sum_{s \in \mathcal{S}} \sum_{i: S_i = s} (\bX_i^r - \overline{\bX}_s^r)(\bX_i^r - \overline{\bX}_s^r)^\top,\\
+\tbfV_{IT,n} &=\frac{1}{n}\sum_{s \in \mathcal{S}}\sum_{i: S_i = s} (\bX_i^r - \overline{\bX}_s^r)\,(\bZ_i(1)-\bZ_i(0)-\overline{\bZ(1)}_s+\overline{\bZ(0)}_s)^\top,  \\
+\tbfV_{T,n}&=\frac{\pi(1-\pi)}{n}\sum_{s \in \mathcal{S}}\sum_{i: S_i = s} (\bZ_i(1)-\bZ_i(0)-\overline{\bZ(1)}_s+\overline{\bZ(0)}_s)(\bZ_i(1)-\bZ_i(0)-\overline{\bZ(1)}_s+\overline{\bZ(0)}_s)^\top.
+\end{align*}
+Following a similar procedure, we get
+\begin{equation}\label{eq: ivi}
+\{\bT_n(\tA), \bI_n(\tA)^\top n\widehat{Var}(\bI_n(\tA))^{-1}\bI_n(\tA)\} | \mathcal{F}_n\overset{\bullet}{\sim} \left\{\bT_n(\tA), \bI_n(\tA)^\top \bV_{I,n}^{-1}\bI_n(\tA) \right\} | \mathcal{F}_n.
+\end{equation}
+
+We next derive the asymptotic distribution of $\bT_n(\tA) | \mathcal{F}_n, \mathcal{A}_n$. Denoting $\tbepsilon_n = \bT_n(\tA) -  \tbfV_{IT,n}^\top   \tbfV_{I,n}^{-1}\bI_n(\tA)$, our result of $(\bI_n(\tA), \bT_n(\tA)) | \mathcal{F}_n \overset{\bullet}{\sim} N(0, \bSigma_n) | \mathcal{F}_n$ implies that $\bvarepsilon_n | \mathcal{F}_n \overset{\bullet}{\sim} N(0, \tbfV_{T,n} - \tbfV_{IT,n}^\top \tbfV_{I,n}^{-1}\tbfV_{IT,n}) | \mathcal{F}_n$ and that $\varepsilon_n$ is asymptotically independent of $\bI_n(\tA)$ given $\mathcal{F}_n$. Combined with Equation~\eqref{eq: ivi}, we have
+\begin{align*}
+    \bT_n(\tA)| \mathcal{F}_n, \mathcal{A}_n &\overset{\bullet}{\sim} \bT_n(\tA)| \mathcal{F}_n, \bI_n(\tA)^\top \tbfV_{I,n}^{-1}\bI_n(\tA)< t \\
+    &\overset{\bullet}{\sim} \tbepsilon_n| \mathcal{F}_n +  \tbfV_{IT,n}^\top   \tbfV_{I,n}^{-1}\bI_n(\tA)| \mathcal{F}_n, \bI_n(\tA)^\top \tbfV_{I,n}^{-1}\bI_n(\tA)< t \\
+    &\overset{\bullet}{\sim}\tbepsilon_n| \mathcal{F}_n +  \tbfV_{IT,n}^\top   \tbfV_{I,n}^{-0.5} \bR_{q,t} | \mathcal{F}_n,
+\end{align*}
+where the last step comes from $\tbfV_{I,n}^{-0.5} \bI_n(\tA)| \mathcal{F}_n \overset{\bullet}{\sim} \mathcal{N}(0, \bI_q)| \mathcal{F}_n$ and the definition of $\bR_{q,t}$ in the Lemma statement.
+
+We then obtain
+\begin{align*}
+    \bU_n(A) |\mathcal{F}_n  &\overset{\bullet}{\sim} \bT_n(A) | \mathcal{F}_n\quad  + \quad  \bR_n  | \mathcal{F}_n \\
+    &\overset{\bullet}{\sim} \bT_n(\tA)| (\mathcal{F}_n, \mathcal{A}_n) \quad + \quad \bR_n  | \mathcal{F}_n \\
+    &\overset{\bullet}{\sim} (\tbepsilon_n +  \tbfV_{IT,n}^\top   \tbfV_{I,n}^{-0.5} \bR_{q,t} + \bR_n)  | \mathcal{F}_n,
+\end{align*}
+where the first step is by definition, the second step is implied by rerandomization, and the last step uses the above results. 
+
+Finally, we derive the asymptotic distribution of $\bU_n(\tA)$.
+Conditionally on $\mathcal F_n$, $\tbepsilon_n$ is independent of $\bI_n(\tA)$ and hence of
+$\bR_{q,t}$. Since $\bR_n$ is $\mathcal F_n$-measurable, the triple
+$(\tbepsilon_n,\ \bR_{q,t},\ \bR_n)$ is conditionally independent in the sense that, given $\mathcal F_n$,
+the joint conditional characteristic function factorizes:
+\begin{align*}
+& E\!\left[\exp\!\Big\{i\big(\bt_1^\top \tbepsilon_n
++ \bt_2^\top \tbfV_{IT,n}^\top   \tbfV_{I,n}^{-0.5} \bR_{q,t}  + \bt_3^\top \bR_n)\big)\Big\}\ \Big|\ \mathcal F_n\right]\\
+&=
+\underbrace{E\!\left[\exp\{\,i \bt_1^\top \tbepsilon_n\}\ \Big|\ \mathcal F_n\right]}_{=: \psi_{n}(\bt_1)}
+\underbrace{E\!\left[\exp\{\,i \bt_2^\top  \tbfV_{IT,n}^\top   \tbfV_{I,n}^{-0.5} \bR_{q,t}\}\ \Big|\ \mathcal F_n\right]}_{=: \eta_{n}(\bt_2)}
+ \exp\{\,i \bt_3^\top \bR_n\}.    
+\end{align*}
+
+For $\psi_{n}(\bt_1)$, since we have obtained $\tbepsilon_n | \mathcal{F}_n \overset{\bullet}{\sim} N(0, \tbfV_{T,n} - \tbfV_{IT,n}^\top \tbfV_{I,n}^{-1}\tbfV_{IT,n}) | \mathcal{F}_n$, and by law of large numbers, $\tbfV_{T,n} \xrightarrow{p} \pi(1-\pi)E[Var\{(\bZ(1)-\bZ(0)|S\}]$, $\tbfV_{IT,n} \xrightarrow{p} \tbfV_{UI}$, $\tbfV_{I,n} \xrightarrow{p} \tbfV_I$, then $\psi_{n}(\bt_1) \xrightarrow{p} \exp\!\Big(-\tfrac12 \bt_1^\top \bSigma_e\, \bt_1\Big)$, where  $\bSigma_e = \pi(1-\pi)E[Var\{(\bZ(1)-\bZ(0)|S\}] - \tbfV_{UI}^\top \tbfV_I^{-1} \tbfV_{UI}$.
+For $\eta_n(\bt_2)$, a similar prove shows that $\eta_n(\bt_2) = E\!\big[\exp\{\,i \bt_2^\top \tbfV_{UI}^\top \tbfV_I^{-1/2} \bR_{q,t}\}\big]$
+Finally, by the classical (unconditional) CLT across units,
+$\bR_n\ \xrightarrow{d}  N(0,\ \bSigma_r)$ with $\bSigma_r = Var\left\{\pi \bZ(1) + (1-\pi) \bZ(0)\right\}$.
+
+To obtain the unconditional characteristic function of $\bU_n(A)$, we take the unconditional expectation and use the dominated convergence theorem to get
+\begin{align*}
+    & E\!\left[\exp\!\Big\{i\big(\bt_1^\top \tbepsilon_n
++ \bt_2^\top \tbfV_{IT,n}^\top   \tbfV_{I,n}^{-0.5} \bR_{q,t}  + \bt_3^\top \bR_n)\big)\Big\}\ \right]\\
+&\rightarrow \exp\!\Big(-\tfrac12 \bt_1^\top \bSigma_e\, \bt_1\Big) \eta_n(\bt_2) E[\exp\{i\bt_3^\top \bR_n\}] \\
+&= \exp\!\Big\{-\tfrac12 \bt_1^\top (\bSigma_e +\bSigma_r) \bt_1\Big\} E\!\big[\exp\{\,i \bt_2^\top \tbfV_{UI}^\top \tbfV_I^{-1/2} \bR_{q,t}\}\big].
+\end{align*}
+This result shows that $\bU_n(A)$ coverages in distribution to $\tbepsilon_k + \tbfV_{UI}^\top \tbfV_I^{-1/2} \bR_{q,t}$ with $\tbepsilon_k \sim N(0, \bSigma_e +\bSigma_r)$ and $\bR_{q,t}$ being independent  of $\tbepsilon_k$. 
+Since direct algebra shows
+\begin{align*}
+    \bSigma_e +\bSigma_r &= \pi(1-\pi)E[Var\{(\bZ(1)-\bZ(0)|S\}] - \tbfV_{UI}^\top \tbfV_I^{-1} \tbfV_{UI} + Var\left\{\pi \bZ(1) + (1-\pi) \bZ(0)\right\} \\
+    &= Var(A^* \bZ(1) + (1-A^*) \bZ(0)) - \pi(1-\pi)Var(E[\bZ(1)-\bZ(0)|S]) - \tbfV_{UI}^\top \tbfV_I^{-1} \tbfV_{UI},
+\end{align*}
+we obtain the desired asymptotic distribution.
+\end{proof}
+
+\subsubsection{Proof of Theorem 3}
+\begin{proof}[Proof of Theorem 3.]
+The proof for consistency, asymptotic normality, and weak convergence is the same as the proof of Theorem 1 except that Lemmas~\ref{lemma1} and \ref{lemma2} are substituted by Lemmas~\ref{lemma4} and \ref{lemma5}, respectively. 
+
+As a result, we obtain 
+\begin{align*}
+    \sqrt{n}(\widehat{\Delta} - \underline{\Delta}) \xrightarrow{d} \widetilde{\varepsilon}_1 + \widetilde{\bfV}_{UI}^\top \widetilde{\bfV}_I^{-0.5} \bR_{q,t},
+\end{align*}
+where $\varepsilon_1 \sim N(0, \widetilde{V}-\widetilde{\bfV}_{UI}^\top \widetilde{\bfV}_I^{-1}\widetilde{\bfV}_{UI})$ and $\bR_{q,t} \sim  \bD|( \bD^\top  \bD < t)$,  where $\bD \sim N(\bzero, \mathbf{I}_q)$ and $\varepsilon_1$ is independent of $\bR_{q,t}$.
+Furthermore, Lemma~\ref{lemma5} implies that
+\begin{align*}
+    \widetilde{V} &= V - \pi(1-\pi) E[E[IF(\bO(1)) - IF(\bO(0))|S]^2] \\
+    \widetilde{\bfV}_I &= \frac{1}{\pi(1-\pi)}E[Var(\bX_i^r|S)] \\
+    \widetilde{\bfV}_{UI} &= E[Cov\{\bX_i^r, IF(\bO(1)) - IF(\bO(0))|S\}],
+\end{align*}
+where $V = Var\{A^* IF(\bO(1))+(1-A^*)IF(\bO(0))\}$ is the asymptotic variance under simple randomization. Since $\widetilde{\bfV}_{UI}^\top \widetilde{\bfV}_I^{-0.5}$ is a vector, Lemma A1 of \cite{li2018asymptotic} shows that $\widetilde{\bfV}_{UI}^\top \widetilde{\bfV}_I^{-0.5} \bR_q \overset{d}{=} \sqrt{\widetilde{\bfV}_{UI}^\top \widetilde{\bfV}_I^{-1} \widetilde{\bfV}_{UI}}\ D_1|\bD^\top \bD < t$. Defining
+\begin{align*}
+    \widetilde{R}^2 &= \frac{\widetilde{\bfV}_{UI}^\top \widetilde{\bfV}_I^{-1} \widetilde{\bfV}_{UI}}{\widetilde{V}}.
+\end{align*}
+we get the desired asymptotic distribution. 
+
+To consistently estimate $\widetilde{V}$ and $\widetilde{R}^2$, we define 
+$\widehat{p}_s= n^{-1}\sum_{i=1}^n I\{S_i=s\}$ and 
+$\widehat{IF}_i$ as the first element of $\left\{ \frac{1}{n}\sum_{i=1}^n \dot{\bpsi}(\bO_i; \widehat{\btheta}) \right\}^{-1} \bpsi(\bO_i; \widehat{\btheta})$. We define
+\begin{align}
+    \widehat{\widetilde{V}} &= \widehat{V} - \pi(1-\pi) \sum_{s \in \mathcal{S}} \widehat{p}_s \widehat{d}_s^2, \label{def: vv-hat}\\
+    \widehat{\widetilde{R}^2} &= \frac{1}{\widehat{\widetilde{V}}} \widehat{C}^\top \widehat{Var}(\widetilde{\bI})^{-1} \widehat{C}, \label{def: rr-hat}
+\end{align}
+where
+\begin{align*}
+    \widehat{V} & = \frac{1}{n} \sum_{i=1}^n\widehat{IF}_i^2, \\
+    \widehat{d}_s &= \frac{1}{n} \sum_{i=1}^n \frac{I\{S_i=s\}} {\widehat{p}_s} \frac{A_i-\pi}{\pi(1-\pi)}  \widehat{IF}_i, \\
+    \widehat{C} &=  \sum_{s \in \mathcal{S}} \widehat{p}_s \left[ \frac{1}{n}\sum_{i=1}^n \frac{I\{S_i=s\}}{\widehat{p}_s}  \frac{A_i-\pi}{\pi(1-\pi)}  \widehat{IF}_i \bX_i^r -\widehat{d}_s\overline{\bX}_s^r \right], \\
+    \overline{\bX}_s^r &= \frac{1}{n} \sum_{i=1}^n \frac{I\{S_i=s\}} {\widehat{p}_s}\bX_i^r. 
+\end{align*}
+Following a similar proof to the last part of the proof for Theorem 1 and using Lemma~\ref{lemma4} along with the continuous mapping theorem, we obtain $\widehat{V} \xrightarrow{p} V$, $\widehat{p}_s \xrightarrow{p} P(S=s)$, $\widehat{d}_s \xrightarrow{p} E[IF(\bO(1))-IF(\bO(0)|S]$, $\overline{\bX}_s^r \xrightarrow{p} E[\bX^r|S]$, $\widehat{C} \xrightarrow{p} E[Cov\{\bX^r, IF(\bO(1))-IF(\bO(0)|S\}]$. Combining these results with Lemma~\ref{lemma3}, we obtain $\widehat{\widetilde{V}} \xrightarrow{p} \widetilde{V}$ and $\widehat{\widetilde{R}^2} \xrightarrow{p} \widetilde{R}^2$.
+\end{proof}
+
+\subsubsection{Proof of Theorem 4}
+\begin{proof}[Proof of Theorem 4.]
+By Theorem 2 and 3, the influence function for the DR-WLS estimator is given in Equation~\eqref{IF_formula} and
+\begin{align*}
+    IF(\bO(1)) - IF(\bO(0)) &= \left(\frac{\dot{\underline{f}}_1}{\pi} - \boldsymbol{c}_1^\top \bZ(1) \right)\frac{R(1)\{Y(1)-h(\bZ(1))\}}{ e(\bZ(1))} - \boldsymbol{c}_2^\top \bZ(1)\{R(1)- e(\bZ(1))\} \\
+    & -  \left(\frac{\dot{\underline{f}}_0}{1-\pi} - \boldsymbol{c}_1^\top \bZ(0) \right)\frac{R(0)\{Y(0)-h(\bZ(0))\}}{ e(\bZ(0))} + \boldsymbol{c}_2^\top \bZ(0)\{R(0)- e(\bZ(0))\}.
+\end{align*}
+When the outcome missing model is correctly specified, we have $\boldsymbol{c}_1 = \bzero$, and $E[\boldsymbol{c}_2^\top \bZ(a)\{R(a)- e(\bZ(a)\}|\bX] = E[\boldsymbol{c}_2^\top \bZ(a)E[R(a)- e(\bZ(a))|\bZ(a)]|\bX] = \bzero$. When the outcome model is correctly specified, we have $\boldsymbol{c}_2 = \bzero$, and under MAR,
+\begin{align*}
+    E\left[\boldsymbol{c}_1^\top \bZ(a) \frac{R(a)\{Y(a)-h(\bZ(a))\}}{ e(\bZ(a))}\bigg| \bX \right] = E\left[\boldsymbol{c}_1^\top \bZ(a) \frac{E[R(a)|\bZ(a)]\{E[Y(a)|\bZ(a)]-h(\bZ(a))\}}{ e(\bZ(a))}\bigg|\bX\right] = 0.
+\end{align*}
+Therefore, when at least one of the two working models is correctly specified, we have
+\begin{equation}\label{eq: if1-if0}
+    E[IF(\bO(1)) - IF(\bO(0))|\bX] = E\left[\frac{\dot{\underline{f}}_1}{\pi} \frac{R(1)\{Y(1)-h(\bZ(1))\}}{ e(\bZ(1))} -  \frac{\dot{\underline{f}}_0}{1-\pi} \frac{R(0)\{Y(0)-h(\bZ(0))\}}{ e(\bZ(0))}\bigg|\bX\right].
+\end{equation}
+We next show $E[\{IF(\bO(1)) - IF(\bO(0))\}\widetilde{\bX}] =\bzero$ under each of the condition (1), (2), or (3), where $\widetilde{\bX} = (\bX^r, S)$. Under condition (1), we have $\pi = 0.5$ and $\dot{\underline{f}}_1 = - \dot{\underline{f}}_0 =1$, and so the definition of $\bpsi(\bO_i;\btheta)$ implies that
+\begin{align*}
+ E[\{IF(\bO(1)) - IF(\bO(0))\}\widetilde{\bX}] &= 4 E\left[\left\{\pi \frac{R(1)\{Y(1)-h(\bZ(1))\}}{ e(\bZ(1))} + (1-\pi) \frac{R(0)\{Y(0)-h(\bZ(0))\}}{ e(\bZ(0))}\right\}\widetilde{\bX}\right]\\
+     &= \bzero.
+\end{align*}
+Under condition (2), Equation~\eqref{eq: if1-if0} remains correct. Furthermore, the definition of $\bpsi(\bO_i;\btheta)$ now implies that $E\left[\frac{R(a)\{Y(a)-h(\bZ(a))\}}{ e(\bZ(a))}\widetilde{\bX}\right] = \bzero$. Therefore, we can get $E[\{IF(\bO(1)) - IF(\bO(0))\}\widetilde{\bX}] = \bzero$. Under condition (3) and MAR, we have $E[IF(\bO(1)) - IF(\bO(0))|\bX] = \bzero$, which also implies $E[\{IF(\bO(1)) - IF(\bO(0))\}\widetilde{\bX}] =\bzero$.
+
+Finally, since $E[\{IF(\bO(1)) - IF(\bO(0))\}\widetilde{\bX}] =\bzero$ and $S$ is a categorical variable, we get $E[\{IF(\bO(1)) - IF(\bO(0))\}\bX^r] = \bzero$ and $E[IF(\bO(1)) - IF(\bO(0))|S] = \bzero$, yielding 
+\begin{align*}
+    & E[Cov\{IF(\bO(1)) - IF(\bO(0)), \bX^r|S\}]\\
+    &= E[\{IF(\bO(1)) - IF(\bO(0))\}\bX^r] - E[E[IF(\bO(1)) - IF(\bO(0))|S]E[\bX^r|S]] \\
+    &= \bzero.
+\end{align*}
+As a result, $\widetilde{R}^2 = 0$ and $\widetilde{V} = V$.
+
+For the mixed-ANCOVA estimator, the proof is the same as the proof of Proposition~\ref{prop: mixed-ancova} with $\bX^r$ replaced by $(\bX^r, S)$, and we omitted the proof.
+\end{proof}
+
+\subsection{Efficient estimation with machine learning}
+\subsubsection{Proof of Theorem 5}
+% \begin{assumption}[Conditions for nuisance function estimators]\label{assp: machine-learning}
+%   For $a = 0,1$, we assume (1) $E[\left\{\widehat{\eta}_a(\bX;\mathcal{D}_n)-E[Y(a)|\bX]\right\}^2]^{1/2} = o(n^{-1/4})$ and $E[\left\{\widehat{\kappa}_a(\bX;\mathcal{D}_n)-E[R(a)|\bX]\right\}^2]^{1/2} = o(n^{-1/4})$ if $\mathcal{D}_n = \{R_i(a)Y_i(a), Y_i(a),\bX_i\}_{i=1}^n$; (2) $E[R(a)|\bX]^{-1}, \{\widehat{\kappa}_a(\bX;\mathcal{D})\}^{-1}, Y(a), \widehat{\eta}_a(\bX;\mathcal{D})$ are uniformly bounded.
+% \end{assumption}
+
+\begin{lemma}[Convergence with random indices]\label{lemma: random indices}
+Let $X_n$ and $Y_n$ be two independent random sequences defined in the same probability space. We assume $Y_n$ take values in positive integers, $E[X_n^2] = o(n^{-r})$ and $Y_n/n \xrightarrow{p} c$ for positive constants $r$ and $c$. Then $E[X_{Y_n}^2|Y_n] = o_p(n^{-r})$.
+\end{lemma}
+
+\begin{proof}
+Since  $E[X_n^2] = o(n^{-r})$, for any $\varepsilon >0$, there exists an integer $N_{\varepsilon}$ such that $E[n^r X_n^2] < \varepsilon$ for any $n \ge N_{\varepsilon}$. Then, when $n > 2N_{\varepsilon}/c$, we have
+\begin{align*}
+    P(E[n^rX_{Y_n}^2|Y_n] > \varepsilon) &= \sum_{i=1}^{\infty} P(E[n^rX_{Y_n}^2|Y_n] > \varepsilon, Y_n = i) \\
+    &= \sum_{i=1}^{\infty} P(E[n^rX_i^2|Y_n=i] > \varepsilon, Y_n = i) \\
+    &= \sum_{i=1}^{\infty} I\{E[n^rX_i^2] > \varepsilon\} P(Y_n = i) \\
+    &= \sum_{i < N_{\varepsilon}} I\{E[n^rX_i^2] > \varepsilon\} P(Y_n = i) \\
+    &\le P(Y_n < N_{\varepsilon}) \\
+    &\le P(Y_n < nc/2) \\
+    &\le P(|Y_n/n - c| > c/2) \\
+    &\rightarrow 0,
+\end{align*}
+where the last line results from $Y_n/n \xrightarrow{p} c$. This implies $E[X_{Y_n}^2|Y_n] = o_p(n^{-r})$.
+\end{proof}
+
+\begin{lemma}\label{lemma: O_a-k}
+Given Assumption 4 (1) and defining $\mathcal{O}_{a,-k}^* = \{(R_iY_i,Y_i,\bX_i): i = 1,\dots, n;i \notin \mathcal{I}_k; A_i^* =a\}$ for $A_i^*$ generated by simple randomization, we have
+\begin{align*}
+    E[\{\widehat{\kappa}_a(\bX_i;\mathcal{O}_{a,-k}^*) - E[R(a)|\bX_i]\}^2|\mathcal{O}^*_{a, -k}] &= o_p(n^{-1/2}),\\
+    E[\{\widehat{\eta}_a(\bX_i;\mathcal{O}_{a,-k}^*) - E[Y(a)|\bX_i]\}^2|\mathcal{O}^*_{a, -k}] &= o_p(n^{-1/2}).
+\end{align*}
+\end{lemma}
+
+\begin{proof}
+Denoting $N_{a,-k} = \sum_{i=1}^n I\{A_i^*=a, i \notin \mathcal{I}_k\}$ and $Z= E[\{\widehat{\kappa}_a(\bX_i;\mathcal{O}_{a,-k}^*) - E[R(a)|\bX_i]\}^2|\mathcal{O}^*_{a, -k}]$, we have $P(n^{1/2} Z > \varepsilon)=E[P(n^{1/2} Z > \varepsilon|N_{a,-k})]$. By the dominated convergence theorem, it suffices to show $P(n^{1/2} Z > \varepsilon|N_{a,-k}) = o_p(1)$. By the Markov's inequality, we have $P(n^{1/2} Z > \varepsilon|N_{a,-k}) \le \varepsilon^{-1} E[n^{1/2} Z|N_{a,-k}]$, and we only need to show $E[Z|N_{a,-k}] = o_p(n^{-1/2})$. Since $N_{a,-k}$ is a function of $\mathcal{O}_{a,-k}^*$, it is equivalent to show $E[\{\widehat{\kappa}_a(\bX_i;\mathcal{O}_{a,-k}^*) - E[R(a)|\bX_i]\}^2|N_{a, -k}]= o_p(n^{-1/2})$. We next apply Lemma~\ref{lemma: random indices} to prove this result.
+
+Define $X_n = \widehat{\kappa}_a(\bX_i; \{\bO_i(a)\}_{i=1}^n) - E[R(a)|\bX_i]$, where $\bO_i(a)= \{R_i(a)Y_i(a), R_i(a), \bX_i\}$,  and $Y_n = N_{a,-k}$. Since $\mathcal{O}_{a,-k}^* = \{\bO_i(a): i = 1,\dots, n;i \notin \mathcal{I}_k; A_i^* =a\}$ and the sample splitting and simple treatment assignment is independent of $\{\bO_i(a)\}_{i=1}^n$, we have $\mathcal{O}_{a,-k}^*|N_{a,-k} \overset{d}{=} \{\bO_i(a): i = 1,\dots, N_{a,-k}\}|N_{a,-k}$. This implies that $E[X_{Y_n}^2|Y_n] = E[\{\widehat{\kappa}_a(\bX_i;\mathcal{O}_{a,-k}^*) - E[R(a)|\bX_i]\}^2|N_{a, -k}]$, and our goal is to show $E[X_{Y_n}^2|Y_n] = o_p(1)$. To see this, we observe that (1) $Y_n/n \xrightarrow{p} \pi^a(1-\pi)^{1-a}(K-1)/K$, (2) $Y_n$ is independent of $\{\bO_i(a)\}_{i=1}^n$ and hence $X_n$, (3) $E[X_n^2] = o_p(n^{-1/2})$ by Assumption 4 (1). Therefore, Lemma~\ref{lemma: random indices} implies $E[X_{Y_n}^2|Y_n] = o_p(1)$. 
+
+For the second result about the convergence of $\widehat{\eta}_a$, we follow the same procedure above and can get the desired result.
+\end{proof}
+
+
+\begin{proof}[Proof of Theorem 5.]
+   Define $\pi_a = \pi^a(1-\pi)^{1-a}$, $\mu_a = E[Y(a)]$ and
+    \begin{align*}
+        D_i(a,\kappa_a,\eta_a) = \frac{I\{A_i=a\}}{\pi_a}\frac{R_i(a)}{\kappa_a(\bX_i)}\{Y_i(a)  - \eta_a(\bX_i)\} + \eta_a(\bX_i).
+    \end{align*}
+    We further define $\underline{\kappa}_a(\bX) = E[R(a)|\bX]$ and $\underline{\eta}_a(\bX) = E[Y(a)|\bX]$. Then the efficient influence function for $\Delta^*$ becomes
+    \begin{align*}
+      EIF(\bO_i) =  \sum_{a=0}^1 f'_a \{D_i(a,\underline{\kappa}_a,\underline{\eta}_a)-\mu_a\}.
+    \end{align*}
+    For the asymptotic linearity, then it suffices to prove $\sqrt{n}(\widehat{\mu}_a^{\textup{Eff}}-\mu_a) = n^{-1/2} \sum_{i=1}^n \{D_i(a, \underline{\kappa}_a,\underline{\eta}_a)-\mu_a\}$  for each $a = 0,1$. 
+    For brevity, we denote $\widehat{\kappa}_{a,-k}(\bX) = \widehat{\kappa}_{a}(\bX;\mathcal{O}_{a,-k})$ and $\widehat{\eta}_{a,-k}(\bX) = \widehat{\eta}_{a}(\bX;\mathcal{O}_{a, -k})$. Then we get $\widehat{\mu}_a^{\textup{Eff}} = K^{-1} \sum_{k=1}^K |\mathcal{I}_k|^{-1} \sum_{i \in \mathcal{I}_k} D_i(a, \widehat{\kappa}_{a,-k}, \widehat{\eta}_{a,-k})$ and
+    \begin{align*}
+        \sqrt{n}(\widehat{\mu}_a^{\textup{Eff}}-\mu_a) &= K^{-1/2} \sum_{k=1}^K |\mathcal{I}_k|^{-1/2} \sum_{i \in \mathcal{I}_k} \{D_i(a, \widehat{\kappa}_{a, -k}, \widehat{\eta}_{a, -k}) - \mu_a \} \\
+        &= K^{-1/2} \sum_{k=1}^K |\mathcal{I}_k|^{-1/2} \sum_{i \in \mathcal{I}_k} \{D_i(a, \underline{\kappa}_{a}, \underline{\eta}_{a}) - \mu_a \} \\
+        &\quad +  K^{-1/2} \sum_{k=1}^K  \underbrace{|\mathcal{I}_k|^{-1/2}\sum_{i \in \mathcal{I}_k} \{D_i(a, \widehat{\kappa}_{a, -k}, \widehat{\eta}_{a, -k}) - D_i(a, \underline{\kappa}_{a}, \underline{\eta}_{a})\}}_{{\textup{denoted as}\ U_k}}.
+    \end{align*}
+Since $K$ is fixed, it suffices to prove $U_k = o_p(1)$ for all $k$. To this end, we decompose
+\begin{align*}
+    U_k = U_{k1} + U_{k2} + U_{k3},
+\end{align*}
+where
+\begin{align*}
+    U_{k1} &= |\mathcal{I}_k|^{-1/2} \sum_{i \in \mathcal{I}_k} \frac{I\{A_i=a\}}{\pi_a} \frac{\underline{\kappa}_a(\bX_i) - \widehat{\kappa}_{a,-k}(\bX_i)}{\underline{\kappa}_a(\bX_i)\widehat{\kappa}_{a,-k}(\bX_i)}\{Y_i(a) - \underline{\eta}_a(\bX_i)\},\\
+    U_{k2} &= |\mathcal{I}_k|^{-1/2} \sum_{i \in \mathcal{I}_k} \left(\frac{I\{A_i=a\}}{\pi_a} \frac{R_i(a)}{\underline{\kappa}_a(\bX_i)}-1\right)  \{\underline{\eta}_a(\bX_i)-\widehat{\eta}_{a,-k}(\bX_i)\},\\
+    U_{k3} &= |\mathcal{I}_k|^{-1/2} \sum_{i \in \mathcal{I}_k} \frac{I\{A_i=a\}}{\pi_a} \frac{\underline{\kappa}_a(\bX_i) - \widehat{\kappa} _{a,-k}(\bX_i)}{\underline{\kappa}_a(\bX_i)\widehat{\kappa}_a(\bX_i)}\{\underline{\eta}_{a}(\bX_i)-\widehat{\eta}_{a,-k}(\bX_i)\},
+\end{align*}
+and aim to show $U_{kj} = o_p(1)$ for $j=1,2,3$.  For this purpose, we denote $\mathcal{F}_n$ is the sigma field generated by $\bW_1,\dots,\bW_n$. If we can show that, for any $\varepsilon>0$, $P(|U_{kj}|>\varepsilon|\mathcal{F}_n) \xrightarrow{p} 0$, then the dominated convergence theorem for convergence in probability \citep[Theorem 1.5.3]{durrett2019probability} implies $E[|U_{kj}|]\rightarrow 0$ and hence $U_{kj} = o_p(1)$.
+
+Under rerandomization, we define $Q^*=\bI^*{}^\top \widehat{Var}(\bI) \bI^*$, $\widehat{\kappa} _{a,-k}^*(\bX_i) = \widehat{\kappa} _a(\bX_i; \mathcal{O}^*_{a,-k})$, and $\widehat{\eta} _{a,-k}^*(\bX_i) = \widehat{\eta}_a(\bX_i; \mathcal{O}^*_{a, -k})$, where $\mathcal{O}_{a,-k}^* = \{(R_iY_i,Y_i,\bX_i): i = 1,\dots, n;i \notin \mathcal{I}_k; A_i^* =a\}$  is the same as $\mathcal{O}_{a,-k}$ except that $A_i$ is replaced by $A_i^*$, where $A_i^*$ is generated by simple randomization. 
+For $j= 1,2,3$, we further define 
+\begin{align*}
+    U_{k1}^* &= |\mathcal{I}_k|^{-1/2} \sum_{i \in \mathcal{I}_k} \frac{I\{A_i^*=a\}}{\pi_a} \frac{\underline{\kappa}_a(\bX_i) - \widehat{\kappa}_{a,-k}^*(\bX_i)}{\underline{\kappa}_a(\bX_i)\widehat{\kappa}_{a,-k}^*(\bX_i)}\{Y_i(a) - \underline{\eta}_a(\bX_i)\},\\
+    U_{k2}^* &= |\mathcal{I}_k|^{-1/2} \sum_{i \in \mathcal{I}_k} \left(\frac{I\{A_i^*=a\}}{\pi_a} \frac{R_i(a)}{\underline{\kappa}_a(\bX_i)}-1\right)  \{\underline{\eta}_a(\bX_i)-\widehat{\eta}_{a,-k}^*(\bX_i)\},\\
+    U_{k3}^* &= |\mathcal{I}_k|^{-1/2} \sum_{i \in \mathcal{I}_k} \frac{I\{A_i^*=a\}}{\pi_a} \frac{\underline{\kappa}_a(\bX_i) - \widehat{\kappa} _{a,-k}^*(\bX_i)}{\underline{\kappa}_a(\bX_i)\widehat{\kappa}_{a,-k}^*(\bX_i)}\{\underline{\eta}_{a}(\bX_i)-\widehat{\eta}_{a,-k}^*(\bX_i)\}, 
+\end{align*}
+i.e., $U^*_{kj}$ is the same as $U_{kj}$ except that $I\{A_i=a\}$ is replaced by $I\{A^*_i=a\}$ and $\{\widehat{\kappa}_{a,-k}(\bX_i), \widehat{\eta}_{a,-k}(\bX_i)\}$ are replaced by $\{\widehat{\kappa}_{a,-k}^*(\bX_i), \widehat{\eta}_{a,-k}^*(\bX_i)\}$. By the rerandomization scheme, we have $U_{kj}|\mathcal{F}_n\overset{d}{=} U^*_{kj}|( \mathcal{F}_n, Q^* < t)$ for $j=1,2,3$. 
+Then, we have
+\begin{align*}
+   P(|U_{kj}|> \varepsilon|\mathcal{F}_n) &= P(|U_{kj}^*|> \varepsilon|\mathcal{F}_n, Q^*<t)\\
+   &= P(Q^*<t|\mathcal{F}_n)^{-1} P(|U_{kj}^*|> \varepsilon, Q^*<t|\mathcal{F}_n) \\
+   &\le  P(Q^*<t|\mathcal{F}_n)^{-1} P(|U_{kj}^*|> \varepsilon|\mathcal{F}_n).
+\end{align*}
+Since Lemma~\ref{lem:condCLT} leads to $\lim_{n \rightarrow \infty}P(Q^*<t) = P(\mathcal{X}^2_q < t|\mathcal{F}_n) > 0$, the above derivation yields that $P(|U_{kj}^*|> \varepsilon|\mathcal{F}_n) = o_p(1)$ implies $P(|U_{kj}|> \varepsilon|\mathcal{F}_n) =o_p(1)$ and hence $U_{kj} = o_p(1)$. By Markov's inequality, it suffices to show $U_{kj}^* = o_p(1)$. For this purpose, we observe $P(|U_{kj}^*|> \varepsilon) = E[P(|U_{kj}^*|> \varepsilon|\mathcal{O}^*_{a,-k})]$. By the dominated convergence theorem, it suffices to show $P(|U_{k1}^*|> \varepsilon|\mathcal{O}^*_{a,-k}) = o_p(1)$. Since the Markov's inequality shows $P(|U_{kj}^*|> \varepsilon|\mathcal{O}^*_{a,-k}) \le \varepsilon^{-2} E[U_{kj}^*{}^2|\mathcal{O}^*_{a,-k}]$, it suffices to show $E[U_{kj}^*{}^2|\mathcal{O}^*_{a,-k}] = o_p(1)$ for $j=1,2,3$.
+
+For showing $E[U_{k1}^*{}^2|\mathcal{O}^*_{a,-k}] = o_p(1)$, since $\widehat{\kappa}_{a,-k}^*(\bX_i)$ is a deterministic function of $\bX_i$ given $\mathcal{O}_{a,-k}^*$, and $\{A_i^*,Y_i(a), R_i(a), \bX_i: i \in \mathcal{I}_k\}$ is independent of $\mathcal{O}_{a,-k}^*$, we have
+\begin{align*}
+    E[U_{k1}^*|\mathcal{O}_{a,-k}^*] &= |\mathcal{I}_k|^{-1/2} \sum_{i \in \mathcal{I}_k} E\left[\frac{I\{A_i^*=a\}}{\pi_a} \frac{\underline{\kappa}_a(\bX_i) - \widehat{\kappa}_{a,-k}^*(\bX_i)}{\underline{\kappa}_a(\bX_i)\widehat{\kappa}_{a,-k}^*(\bX_i)}\{Y_i(a) - \underline{\eta}_a(\bX_i)\}\bigg|\mathcal{O}_{a,-k}^*\right] \\
+    &= |\mathcal{I}_k|^{-1/2} \sum_{i \in \mathcal{I}_k} E\left[\frac{\underline{\kappa}_a(\bX_i) - \widehat{\kappa}_{a,-k}^*(\bX_i)}{\underline{\kappa}_a(\bX_i)\widehat{\kappa}_{a,-k}^*(\bX_i)}\{Y_i(a) - \underline{\eta}_a(\bX_i)\}\bigg|\mathcal{O}_{a,-k}^*\right] \\
+    &= |\mathcal{I}_k|^{-1/2} \sum_{i \in \mathcal{I}_k} E\left[\frac{\underline{\kappa}_a(\bX_i) - \widehat{\kappa}_{a,-k}^*(\bX_i)}{\underline{\kappa}_a(\bX_i)\widehat{\kappa}_{a,-k}^*(\bX_i)}\{E[Y_i(a)|\bX_i,\mathcal{\mathcal{O}}_{a,-k}^*] - \underline{\eta}_a(\bX_i)\}\bigg|\mathcal{O}_{a,-k}^*\right] \\
+    &= |\mathcal{I}_k|^{-1/2} \sum_{i \in \mathcal{I}_k} E\left[\frac{\underline{\kappa}_a(\bX_i) - \widehat{\kappa}_{a,-k}^*(\bX_i)}{\underline{\kappa}_a(\bX_i)\widehat{\kappa}_{a,-k}^*(\bX_i)}\{E[Y_i(a)|\bX_i] - \underline{\eta}_a(\bX_i)\}\bigg|\mathcal{O}_{-k}^*\right] \\    
+    &= 0.
+\end{align*}
+Since $\{(A_i^*, Y_i(a), \bX_i), i \in \mathcal{I}_k\}$ are independent and identically distributed and are independent of $\mathcal{O}^*_{a,-k}$,  then $\{(A_i^*, Y_i(a), \bX_i), i \in \mathcal{I}_k\}$ are independent and identically distributed given  $\mathcal{O}^*_{a,-k}$.
+Therefore, 
+\begin{align*}
+    E[U_{k1}^*{}^2|\mathcal{O}^*_{a, -k}] &= E[\{U_{k1}^* - E[U_{k1}^*|\mathcal{O}_{a,-k}^*]\}^2|\mathcal{O}^*_{a,-k}] \\
+    &= Var(U_{k1}^*|\mathcal{O}^*_{a,-k}) \\
+    &= Var\left\{\frac{I\{A_i^*=a\}}{\pi_a} \frac{\underline{\kappa}_a(\bX_i) - \widehat{\kappa}_{a,-k}^*(\bX_i)}{\underline{\kappa}_a(\bX_i)\widehat{\kappa}_{a,-k}^*(\bX_i)}\{Y_i(a) - \underline{\eta}_a(\bX_i)\}\bigg|\mathcal{O}^*_{a,-k}\right\} \\
+    &= E\left[\left[\frac{I\{A_i^*=a\}}{\pi_a} \frac{\underline{\kappa}_a(\bX_i) - \widehat{\kappa}_{a,-k}^*(\bX_i)}{\underline{\kappa}_a(\bX_i)\widehat{\kappa}_{a,-k}^*(\bX_i)}\{Y_i(a) - \underline{\eta}_a(\bX_i)\}\right]^2\bigg|\mathcal{O}^*_{a,-k}\right] \\
+    &\le C\times E[\{\underline{\kappa}_a(\bX_i) - \widehat{\kappa}_{a,-k}^*(\bX_i)\}^2|\mathcal{O}^*_{a,-k}],
+\end{align*}
+where $C$ is a constant and the last inequality comes from  Assumptions 2 and 4(2) that $\{\underline{\kappa}_a(\bX_i)\}^{-1}$, $\{\widehat{\kappa}_{a,-k}^*(\bX_i)\}^{-1}$, and $E[Y_i^2(a)|\bX_i]$ are all uniformly bounded. 
+By Lemma~\ref{lemma: O_a-k}, we have $E[\{\underline{\kappa}_a(\bX_i) - \widehat{\kappa}_{a,-k}^*(\bX_i)\}^2|\mathcal{O}^*_{a,-k}] = o_p(1)$, which implies $U_{k1} = o_p(1)$.
+% By Markov's inequality and Assumption 4 (1),  $P(E[\{\underline{\kappa}_a(\bX_i) - \widehat{\kappa}_{a,-k}^*(\bX_i)\}^2|\mathcal{O}^*_{-k}] > \varepsilon) \le \varepsilon^{-1}E[\{\underline{\kappa}_a(\bX_i) - \widehat{\kappa}_{a,-k}^*(\bX_i)\}^2] = o(1)$, we hence have $E[U_{k1}^*{}^2|\mathcal{O}^*_{-k}] = o_p(1)$, which implies $U_{k1} = o_p(1)$.
+
+For $U_{k2}^*$, following a similar proof to $U_{k1}^*$, we have $E[U_{k2}^*|\mathcal{O}_{a,-k}^*] = 0$ and
+\begin{align*}
+    E[U_{k2}^*{}^2|\mathcal{O}^*_{a,-k}] &= E[\{U_{k2}^* - E[U_{k2}^*|\mathcal{O}_{a,-k}^*]\}^2|\mathcal{O}^*_{a,-k}] \\
+    &= Var(U_{k2}^*|\mathcal{O}^*_{a,-k}) \\
+    &= Var\left[\left(\frac{I\{A_i^*=a\}}{\pi_a} \frac{R_i(a)}{\underline{\kappa}_a(\bX_i)}-1\right)  \{\underline{\eta}_a(\bX_i)-\widehat{\eta}_{a,-k}^*(\bX_i)\}\bigg|\mathcal{O}^*_{a,-k}\right] \\
+    &= E\left[\left(\frac{I\{A_i^*=a\}}{\pi_a} \frac{R_i(a)}{\underline{\kappa}_a(\bX_i)}-1\right)^2  \{\underline{\eta}_a(\bX_i)-\widehat{\eta}_{a,-k}^*(\bX_i)\}^2\bigg|\mathcal{O}^*_{a,-k}\right] \\
+    &\le C\times E[\{\underline{\eta}_a(\bX_i)-\widehat{\eta}_{a,-k}^*(\bX_i)\}^2|\mathcal{O}^*_{a,-k}],
+\end{align*}
+where $C$ is a constant and the last inequality comes from Assumption 2 that $\{\underline{\kappa}_a(\bX_i)\}^{-1}$ is uniformly bounded. 
+By Lemma~\ref{lemma: O_a-k}, we have $E[\{\underline{\eta}_a(\bX_i) - \widehat{\eta}_{a,-k}^*(\bX_i)\}^2|\mathcal{O}^*_{a,-k}] = o_p(1)$, which implies $U_{k2} = o_p(1)$.
+% By Markov's inequality and Assumption 4 (1),  $P(E[\{\underline{\eta}_a(\bX_i)-\widehat{\eta}_{a,-k}^*(\bX_i)\}^2|\mathcal{O}^*_{-k}] > \varepsilon) \le \varepsilon^{-1}E[\{\underline{\eta}_a(\bX_i)-\widehat{\eta}_{a,-k}^*(\bX_i)\}^2] = o(1)$, we hence have $E[U_{k2}^*{}^2|\mathcal{O}^*_{-k}] = o_p(1)$, which implies $U_{k2} = o_p(1)$.
+
+For showing $E[U_{k3}^*{}^2|\mathcal{O}^*_{a,-k}] = o_p(1)$, the proof is slightly different. Since $\{(A_i^*,\bX_i): i\in \mathcal{I}_k\}$ are independent and identically distributed given $\mathcal{O}_{a,-k}^*$ and $\widehat{\kappa}_{a,-k}, \widehat{\eta}_{a,-k}$ are fixed functions given $\mathcal{O}_{a,-k}^*$, we have
+\begin{align*}
+    E[U_{k3}^*|\mathcal{O}^*_{a,-k}] &= \sqrt{|\mathcal{I}_k|} E\left[\frac{\underline{\kappa}_a(\bX_i) - \widehat{\kappa} _{a,-k}^*(\bX_i)}{\underline{\kappa}_a(\bX_i)\widehat{\kappa}_{a,-k}^*(\bX_i)}\{\underline{\eta}_{a}(\bX_i)-\widehat{\eta}_{a,-k}^*(\bX_i)\}\bigg|\mathcal{O}^*_{a,-k}\right] \\
+    &\le C \sqrt{|\mathcal{I}_k|} E\left[\{\underline{\kappa}_a(\bX_i) - \widehat{\kappa} _{a,-k}^*(\bX_i)\}\{\underline{\eta}_{a}(\bX_i)-\widehat{\eta}_{a,-k}^*(\bX_i)\}\bigg|\mathcal{O}^*_{a,-k}\right] \\
+    &\le  C \sqrt{|\mathcal{I}_k|} E\left[\{\underline{\kappa}_a(\bX_i) - \widehat{\kappa} _{a,-k}^*(\bX_i)\}^2\bigg|\mathcal{O}^*_{a,-k}\right]^{1/2}E\left[\{\underline{\eta}_{a}(\bX_i)-\widehat{\eta}_{a,-k}^*(\bX_i)\}^2\bigg|\mathcal{O}^*_{a,-k}\right]^{1/2}\\
+    &=  C \sqrt{|\mathcal{I}_k|} o_p(|\mathcal{I}_k|^{-1/4})  o_p(|\mathcal{I}_k|^{-1/4})\\
+    &= o_p(1),
+\end{align*}
+where the first inequality results from the regularity condition that $\{\underline{\kappa}_a(\bX_i)\}^{-1}, \{\widehat{\kappa} _{a,-k}^*(\bX_i)\}^{-1}$ are uniformly bounded, the second inequality is implied by the Cauchy-Schwarz inequality, and the next equation comes from Lemma~\ref{lemma: O_a-k}. We then have
+\begin{align*}
+    E[U_{k3}^*{}^2|\mathcal{O}^*_{a,-k}] &= Var(U_{k3}^*|\mathcal{O}^*_{a,-k}) + E[U_{k3}^*|\mathcal{O}^*_{a,-k}]^2\\
+    &= Var\left[ \frac{I\{A_i^*=a\}}{\pi_a} \frac{\underline{\kappa}_a(\bX_i) - \widehat{\kappa} _{a,-k}^*(\bX_i)}{\underline{\kappa}_a(\bX_i)\widehat{\kappa}_{a,-k}^*(\bX_i)}\{\underline{\eta}_{a}(\bX_i)-\widehat{\eta}_{a,-k}^*(\bX_i)\}\bigg| \mathcal{O}_{a,-k}^*\right] +o_p(1)\\
+    &\le E\left[\left[\frac{I\{A_i^*=a\}}{\pi_a} \frac{\underline{\kappa}_a(\bX_i) - \widehat{\kappa} _{a,-k}^*(\bX_i)}{\underline{\kappa}_a(\bX_i)\widehat{\kappa}_{a,-k}^*(\bX_i)}\{\underline{\eta}_{a}(\bX_i)-\widehat{\eta}_{a,-k}^*(\bX_i)\}\right]^2\bigg| \mathcal{O}_{a,-k}^*\right] + o_p(1) \\
+    &\le C\times E[\{\underline{\eta}_{a}(\bX_i)-\widehat{\eta}_{a,-k}^*(\bX_i)\}^2|\mathcal{O}_{a,-k}^*] + o_p(1)\\
+    &= C\times o_p(1) + o_p(1)\\
+    &= o_p(1).
+\end{align*}
+Therefore, we have $U_{k3} = o_p(1)$. This completes the proof for showing the remainder term $U_k = o_p(1)$ and hence asymptotic linearity under rerandomization. 
+
+Then the asymptotic distribution is a direct result of Theorem 1, which also implies consistency. When $\bX$ includes $\bX^r$ for covariate adjustment, we can compute
+\begin{align*}
+    EIF(\bO(1)) - EIF(\bO(0)) = \sum_{a=0}^1 (-1)^{1-a} f_a'\left[ \frac{1}{\pi_a} \frac{R(a)}{E[R(a)|\bX]}\{Y(a) - E[Y(a)|\bX]\} \right],
+\end{align*}
+which implies
+\begin{align*}
+    E\left[EIF(\bO(1)) - EIF(\bO(0))|\bX\right] &= \sum_{a=0}^1 (-1)^{1-a} f_a' \frac{1}{\pi_a} E\left[\frac{R(a)}{E[R(a)|\bX]}\{Y(a) - E[Y(a)|\bX]\}\bigg|\bX\right] \\
+    &= 0
+\end{align*}
+by the missing at random assumption. Hence $Cov(EIF(\bO(1)) - EIF(\bO(0)), \bX) = 0$. If $\bX$ contains $\bX^r$ as a subset, then $Cov(EIF(\bO(1)) - EIF(\bO(0)), \bX^r) = 0$, implying $R^2=0$.
+
+
+Finally, for consistent variance estimation, we define
+\begin{align*}
+    \widehat{EIF}_i(a) = \frac{I\{A_i=a\}}{\pi^a(1-\pi)^{1-a}}\frac{R_i}{\widehat{\kappa}_a(\bX_i)}\{Y_i - \widehat{\eta}_a(\bX_i)\} + \widehat{\eta}_a(\bX_i)-\widehat{\mu}_a^{\textup{dml}},
+\end{align*}
+and $\widehat{EIF}_{i}= f_1' \widehat{EIF}_{i}(1)+ f_0'\widehat{EIF}_{i}(0)$. Under rerandomization, we construct
+\begin{align}
+    \widehat{V} &= \frac{1}{K}\sum_{k=1}^K \frac{1}{|\mathcal{I}_k|} \sum_{i \in \mathcal{I}_k} \widehat{EIF}_{i}^2, \label{Vhat: ml}\\
+    \widehat{R^2} &= \frac{1}{\widehat{V}} \widehat{C}^\top \{n \widehat{Var}(\bI)\}^{-1} \widehat{C},\label{R2hat: ml}
+\end{align}
+where $\widehat{C} = \frac{1}{K}\sum_{k=1}^K \frac{1}{|\mathcal{I}_k|} \sum_{i \in \mathcal{I}_k} \frac{A_i-\pi}{\pi(1-\pi)} \widehat{EIF}_{i} (\bX_i^r - \overline{\bX}^r)$.
+
+To show consistency of $\widehat{V}$ to $V = Var\{A^* EIF(\bO(1))+(1-A^*)EIF(\bO(0))\}$, we define $Q_k = \frac{1}{|\mathcal{I}_k|} \sum_{i \in \mathcal{I}_k} \widehat{EIF}_{i}^2 - EIF(\bO_i)^2$. Following a similar proof to showing $U_k = o_p(1)$, we can get $Q_k = o_p(1)$. Since Lemma~\ref{lemma1} implies that $\frac{1}{|\mathcal{I}_k|} \sum_{i \in \mathcal{I}_k} EIF(\bO_i)^2 \xrightarrow{p} V$, we have $\widehat{V} \xrightarrow{p} V$. The proof of $ \widehat{R^2} \xrightarrow{p} R^2$ is similar and hence omitted here.
+
+% We next consider the case with stratified rerandomization. We define $\widetilde{Q}=\widetilde{\bI}^\top \widehat{Var}(\widetilde{\bI}) \widetilde{\bI}$, $\widetilde{\kappa}_{a,-k}(\bX_i) = \widehat{\kappa}_a(\bX_i; \widetilde{\mathcal{O}}_{-k})$, and $\widetilde{\eta}_{a,-k}(\bX_i) = \widehat{\eta}_a(\bX_i; \widetilde{\mathcal{O}}_{-k})$, where $\widetilde{\mathcal{O}}_{-k}$ is the same as $\mathcal{O}_{-k}$ except that $A_i$ is replaced by $\tA_i$, where $\tA_i$ is generated by stratified randomization. 
+
+
+% For $j= 1,2,3$, we further define 
+% \begin{align*}
+%     \widetilde{U}_{k1} &= |\mathcal{I}_k|^{-1/2} \sum_{i \in \mathcal{I}_k} \frac{I\{\tA_i=a\}}{\pi_a} \frac{\underline{\kappa}_a(\bX_i) - \widetilde{\kappa}_{a,-k}^*(\bX_i)}{\underline{\kappa}_a(\bX_i)\widetilde{\kappa}_{a,-k}^*(\bX_i)}\{Y_i(a) - \underline{\eta}_a(\bX_i)\},\\
+%     \widetilde{U}_{k2} &= |\mathcal{I}_k|^{-1/2} \sum_{i \in \mathcal{I}_k} \left(\frac{I\{\tA_i=a\}}{\pi_a} \frac{R_i(a)}{\underline{\kappa}_a(\bX_i)}-1\right)  \{\underline{\eta}_a(\bX_i)-\widetilde{\eta}_{a,-k}(\bX_i)\},\\
+%     \widetilde{U}_{k3} &= |\mathcal{I}_k|^{-1/2} \sum_{i \in \mathcal{I}_k} \frac{I\{\tA_i=a\}}{\pi_a} \frac{\underline{\kappa}_a(\bX_i) - \widetilde{\kappa} _{a,-k}^*(\bX_i)}{\underline{\kappa}_a(\bX_i)\widetilde{\kappa}_{a,-k}^*(\bX_i)}\{\underline{\eta}_{a}(\bX_i)-\widetilde{\eta}_{a,-k}(\bX_i)\}, 
+% \end{align*}
+% i.e., $\widetilde{U}_{kj}$ is the same as $U_{kj}$ except that $I\{A_i=a\}$ is replaced by $I\{\tA_i=a\}$ and $\{\widehat{\kappa}_{a,-k}(\bX_i), \widehat{\eta}_{a,-k}(\bX_i)\}$ is replaced by $\{\widetilde{\kappa}_{a,-k}(\bX_i), \widetilde{\eta}_{a,-k}(\bX_i)\}$. By the stratified rerandomization scheme, we have $U_{kj} \overset{d}{=} \widetilde{U}_{kj}|( \widetilde{Q} < t)$ for $j=1,2,3$. 
+% Then, we have
+% \begin{align*}
+%    P(|U_{kj}|> \varepsilon) &= P(|\widetilde{U}_{kj}|> \varepsilon|\widetilde{Q}<t)\\
+%    &= P(\widetilde{Q}<t)^{-1} P(|\widetilde{U}_{kj}|> \varepsilon, \widetilde{Q}<t) \\
+%    &\le  P(\widetilde{Q}<t)^{-1} P(|\widetilde{U}_{kj}|> \varepsilon).
+% \end{align*}
+% Since $ \lim_{n \rightarrow \infty}P(\widetilde{Q}<t) = P(\mathcal{X}^2_q < t) > 0$, the above derivation shows that $\widetilde{U}_{kj}= o_p(1)$ implies $U_{kj} = o_p(1)$. To show $\widetilde{U}_{kj} = o_p(1)$, we observe $P(|\widetilde{U}_{-k}|> \varepsilon) = E[P(|\widetilde{U}_{kj}|> \varepsilon|\widetilde{\mathcal{O}}_{-k})]$. By the dominated convergence theorem for convergence in probability \citep[Theorem 1.5.3]{durrett2019probability}, it suffices to show $P(|\widetilde{U}_{kj}|> \varepsilon|\mathcal{\mathcal{O}}_{-k}) = o_p(1)$. Since Markov's inequality shows $P(|\widetilde{U}_{kj}|> \varepsilon|\widetilde{\mathcal{O}}_{-k}) \le \varepsilon^{-2} E[\widetilde{U}_{kj}^2|\widetilde{\mathcal{O}}_{-k}]$, we next show $E[\widetilde{U}_{kj}^2|\widetilde{\mathcal{O}}_{-k}] = o_p(1)$.
+
+% Then $U_{kj} = o_p(1)$ is equivalent to $U_{kj}^* = o_p(1)$ given $( Q^* < t)$. For the later result, Chebyshelv's inequality implies that $P(|U_{kj}^*| > \varepsilon |Q^* < t) \le \varepsilon^{-1} E[U_{kj}^*{}^2| Q^* < t] = \varepsilon^{-1} P(Q^* < t)^{-1}E[U_{kj}^*{}^2I\{Q^* < t\}]\le \varepsilon^{-1} P(Q^* < t)^{-1}E[U_{kj}^*{}^2]$. Then, the desired result reduces to showing $E[U_{kj}^*{}^2] = o_p(1)$. Observe that Assumption 4 (2) implies
+% \begin{align*}
+%     |U_{k1}^*| &\le  |\mathcal{I}_k|^{-1/2} \sum_{i \in \mathcal{I}_k} \frac{1}{\pi_a} \frac{2}{c} |Y_i(a) - \underline{\eta}_a(\bX_i)|,\\
+%     |U_{k2}^*| &\le  |\mathcal{I}_k|^{-1/2} \sum_{i \in \mathcal{I}_k} \left(\frac{1}{\pi_a}\frac{1}{c}+1\right) |\underline{\eta}_a(\bX_i)-\widehat{\eta}_{a,-k}^*(\bX_i)|,\\
+%     |U_{k3}^*| &\le  |\mathcal{I}_k|^{-1/2} \sum_{i \in \mathcal{I}_k} \frac{1}{\pi_a} \frac{2}{c} |\underline{\eta}_a(\bX_i)-\widehat{\eta}_{a,-k}^*(\bX_i)|,
+% \end{align*}
+
+\end{proof}
+
+
+
+\subsubsection{Proof of Theorem 6}
+\begin{proof}
+    We inherit all notation from the proof of Theorem 5. In addition, we define $T_i$ as the random variable encoding the fold that subject $i$ belongs to and define     
+    \begin{align*}
+        D_i(a,s,k,\kappa_a,\eta_a) = I\{S_i=s, T_i=k\} \left[\frac{I\{A_i=a\}}{\pi_a}\frac{R_i(a)}{\kappa_a(\bX_i)}\{Y_i(a)  - \eta_a(\bX_i)\} + \eta_a(\bX_i)\right],
+    \end{align*}
+    which satisfy $D_i(a,s,k,\kappa_a,\eta_a) = I\{S_i=s, T_i=k\} D(a, \kappa_a,\eta_a)$. 
+    For asymptotic linearity, we then need to show $\sqrt{n}(\widehat{\mu}_a^{\textup{Eff}} - \mu_a) = n^{-1/2} \sum_{k=1}^K \sum_{s \in \mathcal{S}}\sum_{i=1}^n \{D(a, s,k,\underline{\kappa}_a,\underline{\eta}_a) - \mu_a\} + o_p(1)$. 
+
+    Defining $\widehat{\kappa}_{as,-k}(\bX_i) = \widehat{\kappa}_a(\bX_i; \mathcal{O}_{as,-k})$ and $\widehat{\eta}_{as,-k}(\bX_i) = \widehat{\eta}_a(\bX_i; \mathcal{O}_{as,-k})$ with $ \mathcal{O}_{as,-k} = \{(R_iY_i, R_i, \bX_i): A_i = a, S_i=s, T_i\ne k\}$, we have $\widehat{\mu}_a^{\textup{Eff}} = n^{-1}\sum_{k=1}^K \sum_{s \in \mathcal{S}}\sum_{i=1}^n D_i(a, s,k,\widehat{\kappa}_{as,-k},\widehat{\eta}_{as,-k})$ and
+    \begin{align*}
+        \sqrt{n}(\widehat{\mu}_a^{\textup{Eff}} - \mu_a) &= n^{-1/2} \sum_{k=1}^K \sum_{s \in \mathcal{S}}\sum_{i=1}^n \{D_i(a, s,k,\widehat{\kappa}_{as,-k},\widehat{\eta}_{as,-k}) - \mu_a\} \\
+        &= n^{-1/2} \sum_{k=1}^K \sum_{s \in \mathcal{S}}\sum_{i=1}^n \{D(a, s,k,\underline{\kappa}_a,\underline{\eta}_a) - \mu_a\} \\
+        &\quad +\sum_{k=1}^K \sum_{s \in \mathcal{S}} \underbrace{n^{-1/2} \sum_{i=1}^n \{D(a, s,k,\widehat{\kappa}_{as,-k},\widehat{\eta}_{as,-k})-D(a, s,k,\underline{\kappa}_a,\underline{\eta}_a)\}}_{\textup{denoted as}\ U_{sk}}.
+    \end{align*}
+    Since $K$ and $\mathcal{S}$ are fixed, it suffices to prove $U_{sk}=o_p(1)$ for asymptotic linearity. For this goal, we decompose $U_{sk}$ as $U_{sk} = U_{sk1} + U_{sk2} + U_{sk3}$, where
+    \begin{align*}
+    U_{sk1} &= n^{-1/2} \sum_{i=1}^n \frac{I\{A_i=a,S_i=s, T_i=k\}}{\pi_a} \frac{\underline{\kappa}_{a}(\bX_i) - \widehat{\kappa}_{as,-k}(\bX_i)}{\underline{\kappa}_{a}(\bX_i)\widehat{\kappa}_{as,-k}(\bX_i)}\{Y_i(a) - \underline{\eta}_{a}(\bX_i)\},\\
+    U_{sk2} &= n^{-1/2} \sum_{i=1}^n I\{S_i=s, T_i=k\}\left(\frac{I\{A_i=a\}}{\pi_a} \frac{R_i(a)}{\underline{\kappa}_{a}(\bX_i)}-1\right)  \{\underline{\eta}_{a}(\bX_i)-\widehat{\eta}_{as,-k}(\bX_i)\},\\
+    U_{sk3} &= n^{-1/2} \sum_{i=1}^n \frac{I\{A_i=a,S_i=s, T_i=k\}}{\pi_a} \frac{\underline{\kappa}_a(\bX_i) - \widehat{\kappa} _{as,-k}(\bX_i)}{\underline{\kappa}_a(\bX_i)\widehat{\kappa} _{as,-k}(\bX_i)}\{\underline{\eta}_{a}(\bX_i)-\widehat{\eta}_{as,-k}(\bX_i)\}.
+\end{align*}
+This decomposition motivates us to show $U_{skj} = o_p(1)$ for $j=1,2,3$. If we can show that, for any $\varepsilon>0$, $P(|U_{skj}|>\varepsilon|\mathcal{F}_n) \xrightarrow{p} 0$, then the dominated convergence theorem for convergence in probability \citep[Theorem 1.5.3]{durrett2019probability} implies $E[|U_{skj}|]\rightarrow 0$ and hence $U_{skj} = o_p(1)$.
+
+ We define $\widetilde{Q}=\widetilde{\bI}^\top \widehat{Var}(\widetilde{\bI}) \widetilde{\bI}$, $\widetilde{\kappa}_{as,-k}(\bX_i) = \widehat{\kappa}_{a}(\bX_i; \widetilde{\mathcal{O}}_{as,-k})$, and $\widetilde{\eta}_{as,-k}(\bX_i) = \widehat{\eta}_a(\bX_i; \widetilde{\mathcal{O}}_{as,-k})$, where $\widetilde{\mathcal{O}}_{as, -k}=\{(R_i(a)Y_i(a), R_i(a), \bX_i): \tA_i = a, S_i=s, T_i\ne k\}$ is the same as $\mathcal{O}_{as, -k}$ except that $A_i$ is replaced by $\tA_i$, where $\tA_i$ is generated by stratified randomization. We further define
+     \begin{align*}
+    \widetilde{U}_{sk1} &= n^{-1/2} \sum_{i=1}^n \frac{I\{\tA_i=a,S_i=s, T_i=k\}}{\pi_a} \frac{\underline{\kappa}_{a}(\bX_i) - \widetilde{\kappa}_{as,-k}(\bX_i)}{\underline{\kappa}_{a}(\bX_i)\widetilde{\kappa}_{as,-k}(\bX_i)}\{Y_i(a) - \underline{\eta}_{a}(\bX_i)\},\\
+    \widetilde{U}_{sk2} &= n^{-1/2} \sum_{i=1}^n I\{S_i=s, T_i=k\}\left(\frac{I\{\tA_i=a\}}{\pi_a} \frac{R_i(a)}{\underline{\kappa}_{a}(\bX_i)}-1\right)  \{\underline{\eta}_{a}(\bX_i)-\widetilde{\eta}_{as,-k}(\bX_i)\},\\
+    \widetilde{U}_{sk3} &= n^{-1/2} \sum_{i=1}^n \frac{I\{\tA_i=a,S_i=s, T_i=k\}}{\pi_a} \frac{\underline{\kappa}_a(\bX_i) - \widetilde{\kappa} _{as,-k}(\bX_i)}{\underline{\kappa}_a(\bX_i)\widetilde{\kappa} _{as,-k}(\bX_i)}\{\underline{\eta}_{a}(\bX_i)-\widetilde{\eta}_{as,-k}(\bX_i)\}.
+\end{align*}
+By the stratified rerandomization scheme, we have $U_{skj}|\mathcal{F}_n \overset{d}{=} \widetilde{U}_{skj}|( \mathcal{F}_n, \widetilde{Q} < t)$ for $j=1,2,3$. 
+Then, we have
+\begin{align*}
+   P(|U_{skj}|> \varepsilon|\mathcal{F}_n) &= P(|\widetilde{U}_{skj}|> \varepsilon|\mathcal{F}_n, \widetilde{Q}<t)\\
+   &= P(\widetilde{Q}<t|\mathcal{F}_n)^{-1} P(|\widetilde{U}_{skj}|> \varepsilon, \widetilde{Q}<t|\mathcal{F}_n) \\
+   &\le  P(\widetilde{Q}<t|\mathcal{F}_n)^{-1} P(|\widetilde{U}_{skj}|> \varepsilon|\mathcal{F}_n).
+\end{align*}
+Since Lemma~\ref{lemma3} leads to $P(\widetilde{Q}<t|\mathcal{F}_n) \xrightarrow{p} P(\mathcal{X}^2_q < t) > 0$, the above derivation yields that $P(|\widetilde{U}_{skj}|> \varepsilon|\mathcal{F}_n) = o_p(1)$ implies $ P(|U_{skj}|> \varepsilon|\mathcal{F}_n) =o_p(1)$ and hence $U_{skj} = o_p(1)$. By Markov's inequality, it suffices to show $\widetilde{U}_{skj}= o_p(1)$. 
+This result implies that the question reduces to controlling the remainder terms under stratified randomization (without rerandomization).
+
+For showing $\widetilde{U}_{skj}= o_p(1)$, we next perform a series of transformations of $\widetilde{U}_{skj}$ such that the resulting quantities are easier to handle. These transforms are the same as those made in the proof of Theorem 4.1 of \cite{rafi2023efficient} and also resemble those made in \cite{wang2023model}, representing a standard yet complex method to deal with correlations introduced by stratified randomization. To start with, we define
+\begin{align*}
+    N_s &= \sum_{i=1}^n I\{S_i=s\}, \\
+    N_{sk} &= \sum_{i=1}^n I\{S_i=s, T_i =k\}, \\
+    N_{as} &= \sum_{i=1}^n I\{\tA_i =a, S_i=s\},\\
+    N_{ask} &= \sum_{i=1}^n I\{\tA_i=a,S_i=s, T_i=k\}, \\
+    N_{as,-k} &= \sum_{i=1}^n I\{\tA_i=a,S_i=s, T_i\ne k\}.
+\end{align*}
+Then, we independently generate $\{\bW_i(s)\}_{i=1}^n$ following definition~\ref{def: conditional-W} and define
+\begin{align*}
+    \widetilde{U}_{sk1}^\dagger &= n^{-1/2} \sum_{i=1}^n \frac{I\{\tA_i=a,S_i=s, T_i=k\}}{\pi_a} \frac{\underline{\kappa}_{as}(\bX_i(s)) - \widetilde{\kappa}_{as,-k}^\dagger(\bX_i(s))}{\underline{\kappa}_{as}(\bX_i(s))\widetilde{\kappa}_{as,-k}^\dagger(\bX_i(s))}\{Y_i(a,s) - \underline{\eta}_{as}(\bX_i(s))\},\\
+    \widetilde{U}_{sk2}^\dagger &= n^{-1/2} \sum_{i=1}^n I\{S_i=s, T_i=k\}\left(\frac{I\{\tA_i=a\}}{\pi_a} \frac{R_i(a,s)}{\underline{\kappa}_{as}(\bX_i(s))}-1\right)  \{\underline{\eta}_{as}(\bX_i(s))-\widetilde{\eta}_{as,-k}(\bX_i(s))\},\\
+    \widetilde{U}_{sk3}^\dagger &= n^{-1/2} \sum_{i=1}^n \frac{I\{\tA_i=a,S_i=s, T_i=k\}}{\pi_a} \frac{\underline{\kappa}_{as}(\bX_i(s)) - \widetilde{\kappa} _{as,-k}(\bX_i(s))}{\underline{\kappa}_{as}(\bX_i(s))\widetilde{\kappa} _{as,-k}(\bX_i(s))}\{\underline{\eta}_{as}(\bX_i(s))-\widetilde{\eta}_{as,-k}(\bX_i(s))\},
+\end{align*}
+where $\underline{\kappa}_{as}(\bX_i(s))= E[Y_i(a,s)|\bX_i(s)]$,  $\underline{\eta}_{as}(\bX_i(s))= E[R_i(a,s)|\bX_i(s)]$, $\widetilde{\kappa}_{as,-k}^\dagger(\bX_i(s)) = \widehat{\kappa}_{a}(\bX_i(s); \mathcal{O}^\dagger_{as,-k})$ and $\widetilde{\eta}_{as,-k}^\dagger(\bX_i(s)) = \widehat{\eta}_{a}(\bX_i(s); \mathcal{O}^\dagger_{as,-k})$ with $\mathcal{O}^\dagger_{as,-k} = \{R_i(a,s)Y_i(a,s), R_i(a,s), \bX_i(s): \tA_i = a, S_i=s, T_i\ne k\}$. Since $\bW_i(s)\overset{d}{=} \bW_i|(S_i=s)$ and $\{\bW_i(s)\}_{i=1}^n$  is independent of $\{\tA_i, S_i, T_i\}_{i=1}^n$, we have $\{W_i:S_i=s\}|\{\tA_i, S_i, T_i\}_{i=1}^n \overset{d}{=} \{W_i(s):S_i=s\}|\{\tA_i, S_i, T_i\}_{i=1}^n$. Since $ \widetilde{U}_{skj}$ is deterministic function of $\{W_i:S_i=s\}$ and $\{\tA_i, S_i, T_i\}_{i=1}^n$, we have $ \widetilde{U}_{skj}|\{\tA_i, S_i, T_i\}_{i=1}^n \overset{d}{=} \widetilde{U}_{skj}^\dagger|\{\tA_i, S_i, T_i\}_{i=1}^n$, which implies $\widetilde{U}_{skj} \overset{d}{=} \widetilde{U}_{skj}^\dagger$. Our goal is hence to prove $\widetilde{U}_{skj}^\dagger = o_p(1)$.
+
+Next, we observe that, if we permute the indices of $i=1,\dots,n$ based on $\{\tA_i, S_i, T_i\}_{i=1}^n$,  the distribution of $\widetilde{U}_{skj}^\dagger$ remains unchanged because  $\{\bW_i(s)\}_{i=1}^n$  is independent of $\{\tA_i, S_i, T_i\}_{i=1}^n$.
+Therefore, we apply a permutation such that $\{i:S_i=s\}$ are mapped to $\{1,\dots, N_s\}$, $\{i:S_i=s, T_i =k\}$ are mapped to $\{1,\dots, N_{sk}\}$, and  $\{i:\tA_i=a,S_i=s, T_i=k\}$ are mapped to $\{1,\dots, N_{ask}\}$. With such permutations, we have
+% \begin{align*}
+%     \widetilde{U}_{sk1} &= n^{-1/2} \sum_{i=1}^{N_{ask}} \frac{1}{\pi_a} \frac{\underline{\kappa}_{a}(\bX_i) - \widetilde{\kappa}_{as,-k}(\bX_i)}{\underline{\kappa}_{a}(\bX_i)\widetilde{\kappa}_{as,-k}(\bX_i)}\{Y_i(a) - \underline{\eta}_{a}(\bX_i)\},\\
+%     \widetilde{U}_{sk2} &= n^{-1/2}  \left(\sum_{i=1}^{N_{ask}}\frac{1}{\pi_a} \frac{R_i(a)}{\underline{\kappa}_{a}(\bX_i)}\{\underline{\eta}_{a}(\bX_i)-\widetilde{\eta}_{as,-k}(\bX_i)\}-\sum_{i=1}^{N_{sk}} \{\underline{\eta}_{a}(\bX_i)-\widetilde{\eta}_{as,-k}(\bX_i)\}\right)  ,\\
+%     \widetilde{U}_{sk3} &= n^{-1/2} \sum_{i=1}^{N_{ask}} \frac{1}{\pi_a} \frac{\underline{\kappa}_a(\bX_i) - \widetilde{\kappa} _{as,-k}(\bX_i)}{\underline{\kappa}_{a}(\bX_i)\widetilde{\kappa}_{as}(\bX_i)}\{\underline{\eta}_{a}(\bX_i)-\widetilde{\eta}_{as,-k}(\bX_i)\}
+% \end{align*}
+% and $\widetilde{\mathcal{O}}_{as, -k} = \{R_i(a)Y_i(a), R_i(a), \bX_i: i = N_{sk}+1,\dots, N_{s}; \tA_i= a\}$. Next, we independently generate $\{\bW_i(s)\}_{i=1}^n$ following definition~\ref{def: conditional-W} and define
+\begin{align*}
+    \widetilde{U}_{sk1}^\dagger &\overset{d}{=} n^{-1/2} \sum_{i=1}^{N_{ask}} \frac{1}{\pi_a} \frac{\underline{\kappa}_{as}(\bX_i(s)) - \widetilde{\kappa}_{as,-k}^\dagger(\bX_i(s))}{\underline{\kappa}_{as}(\bX_i(s))\widetilde{\kappa}_{as,-k}^\dagger(\bX_i(s))}\{Y_i(a,s) - \underline{\eta}_{as}(\bX_i(s))\},\\
+    \widetilde{U}_{sk2}^\dagger &\overset{d}{=} n^{-1/2}  \left(\sum_{i=1}^{N_{ask}}\frac{1}{\pi_a} \frac{R_i(a,s)}{\underline{\kappa}_{as}(\bX_i(s))}\{\underline{\eta}_{as}(\bX_i(s))-\widetilde{\eta}_{as,-k}^\dagger(\bX_i(s))\}-\sum_{i=1}^{N_{sk}} \{\underline{\eta}_{as}(\bX_i(s))-\widetilde{\eta}_{as,-k}^\dagger(\bX_i(s))\}\right)  ,\\
+    \widetilde{U}_{sk3}^\dagger &\overset{d}{=} n^{-1/2} \sum_{i=1}^{N_{ask}} \frac{1}{\pi_a} \frac{\underline{\kappa}_{as}(\bX_i(s)) - \widetilde{\kappa}^\dagger_{as,-k}(\bX_i(s))}{\underline{\kappa}_{as}(\bX_i(s))\widetilde{\kappa}^\dagger_{as,-k}(\bX_i(s))}\{\underline{\eta}_{as}(\bX_i(s))-\widetilde{\eta}_{as,-k}^\dagger(\bX_i(s))\},
+\end{align*}
+where 
+% $\underline{\kappa}_{as}(\bX_i(s))= E[Y_i(a,s)|\bX_i(s)]$,  $\underline{\eta}_{as}(\bX_i(s))= E[R_i(a,s)|\bX_i(s)]$, $\widetilde{\kappa}_{as,-k}^\dagger(\bX_i(s)) = \widehat{\kappa}_{a}(\bX_i(s); \mathcal{O}^\dagger_{as,-k})$ and $\widetilde{\eta}_{as,-k}^\dagger(\bX_i(s)) = \widehat{\eta}_{a}(\bX_i(s); \mathcal{O}^\dagger_{as,-k})$ with 
+$\mathcal{O}^\dagger_{as,-k} = \{R_i(a,s)Y_i(a,s), R_i(a,s), \bX_i(s): i = N_{sk}+1,\dots, N_{s}; \tA_i = a\}$. 
+% Since $\widetilde{U}_{skj}$ only takes summation over observations in stratum $s$ and $I\{S_i=s\}\bW_i \overset{d}{=} I\{S_i=s\}\bW_i(s)$ by definition~\ref{def: conditional-W}, we have $\widetilde{U}_{skj} \overset{d}{=} \widetilde{U}_{skj}^\dagger$, and hence it suffices show $\widetilde{U}_{skj}^\dagger = o_p(1)$. 
+To further simplify the indices among observations in $\mathcal{O}^\dagger_{as,-k}$, we independently generate $\{\bW_i^{\ddagger}(s)\}_{i=1}^n$ following definition~\ref{def: conditional-W} such that $\{\bW_i(s)^{\ddagger}\}_{i=1}^n$ is independent of $\{\bW_i(s)\}_{i=1}^n$ and $\{\tA_i,S_i,T_i\}_{i=1}^n$. We define $\mathcal{O}^\ddagger_{as,-k} = \{R_i^{\ddagger}(a,s)Y_i^{\ddagger}(a,s), R_i^{\ddagger}(a,s), \bX_i^{\ddagger}(s): i = 1,\dots, N_{as,-k}\}$ and $\bN = (N_{ask}, N_{as,-k}, N_{s},N_{sk})$. By definition, we have $\mathcal{O}^\ddagger_{as,-k}|\bN \overset{d}{=} \mathcal{O}^\dagger_{as,-k}|\bN$, and $\mathcal{O}^\ddagger_{as,-k}$ is independent of $\{\bW_i(s)\}_{i=1}^n$ given $\bN$. We next define $\widetilde{\kappa}_{as,-k}^\ddagger(\bX_i(s)) = \widehat{\kappa}_{a}(\bX_i(s); \mathcal{O}^\ddagger_{as,-k})$, $\widetilde{\eta}_{as,-k}^\ddagger(\bX_i) = \widehat{\eta}_{a}(\bX_i(s); \mathcal{O}^\ddagger_{as,-k})$, and
+\begin{align*}
+    \widetilde{U}_{sk1}^\ddagger &= n^{-1/2} \sum_{i=1}^{N_{ask}} \frac{1}{\pi_a} \frac{\underline{\kappa}_{as}(\bX_i(s)) - \widetilde{\kappa}_{as,-k}^\ddagger(\bX_i(s))}{\underline{\kappa}_{as}(\bX_i(s))\widetilde{\kappa}_{as,-k}^\ddagger(\bX_i(s))}\{Y_i(a,s) - \underline{\eta}_{as}(\bX_i(s))\},\\
+    \widetilde{U}_{sk2}^\ddagger &= n^{-1/2}  \left(\sum_{i=1}^{N_{ask}}\frac{1}{\pi_a} \frac{R_i(a,s)}{\underline{\kappa}_{as}(\bX_i(s))}\{\underline{\eta}_{as}(\bX_i(s))-\widetilde{\eta}_{as,-k}^\ddagger(\bX_i(s))\}-\sum_{i=1}^{N_{sk}} \{\underline{\eta}_{as}(\bX_i(s))-\widetilde{\eta}_{as,-k}^\ddagger(\bX_i(s))\}\right)  ,\\
+    \widetilde{U}_{sk3}^\ddagger &= n^{-1/2} \sum_{i=1}^{N_{ask}} \frac{1}{\pi_a} \frac{\underline{\kappa}_{as}(\bX_i(s)) - \widetilde{\kappa}^\ddagger_{as,-k}(\bX_i(s))}{\underline{\kappa}_{as}(\bX_i(s))\widetilde{\kappa}^\ddagger_{as,-k}(\bX_i(s))}\{\underline{\eta}_{as}(\bX_i(s))-\widetilde{\eta}_{as,-k}^\ddagger(\bX_i(s))\}
+\end{align*}
+Here, $\widetilde{U}_{skj}^\ddagger$ differs from $\widetilde{U}_{skj}^\dagger$ only in that $(\widetilde{\kappa}_{as,-k}^\ddagger, \widetilde{\eta}_{as,-k}^\ddagger)$ substitutes $(\widetilde{\kappa}_{as,-k}^\dagger, \widetilde{\eta}_{as,-k}^\dagger)$. Since $\mathcal{O}_{sk}^\dagger = \{R_i(a,s)Y_i(a,s), R_i(a,s): i=1,\dots, N_{sk}\}$ is independent of $\mathcal{O}_{as,-k}^\dagger$ given $\bN$, we have $P(\mathcal{O}_{sk}^\dagger, \mathcal{O}_{as,-k}^\dagger) = P(\mathcal{O}_{sk}^\dagger|\bN)P(\mathcal{O}_{as,-k}^\dagger|\bN)P(\bN) = P(\mathcal{O}_{sk}^\dagger|\bN)P(\mathcal{O}_{as,-k}^\ddagger|\bN)P(\bN) = P(\mathcal{O}_{sk}^\dagger, \mathcal{O}_{as,-k}^\ddagger)$. Since $\widetilde{U}_{skj}^\ddagger$ is a deterministic function of $(\mathcal{O}_{sk}^\dagger, \mathcal{O}_{as,-k}^\ddagger)$ and $\widetilde{U}_{skj}^\dagger$ is the same deterministic function of $(\mathcal{O}_{sk}^\dagger, \mathcal{O}_{as,-k}^\dagger)$, we have $\widetilde{U}_{skj}^\ddagger \overset{d}{=} \widetilde{U}_{skj}^\dagger$, which means we only need to show $\widetilde{U}_{skj}^\ddagger = o_p(1)$.
+Since $P(\widetilde{U}_{skj}^\ddagger > \varepsilon) = E[P(\widetilde{U}_{skj}^\ddagger > \varepsilon|\mathcal{O}_{as,-k}^\ddagger, \bN)]$, the dominated convergence theorem shows that it suffices to prove $P(\widetilde{U}_{skj}^\ddagger > \varepsilon|\mathcal{O}_{as,-k}^\ddagger, \bN) = o_p(1)$. Since Markov's inequality implies $P(\widetilde{U}_{skj}^\ddagger > \varepsilon|\mathcal{O}_{as,-k}^\ddagger, \bN) \le \varepsilon^{-2}E[\widetilde{U}_{skj}^\ddagger{}^2|\mathcal{O}_{as,-k}^\ddagger, \bN]$, we only need to show $E[\widetilde{U}_{skj}^\ddagger{}^2|\mathcal{O}_{as,-k}^\ddagger,\bN] = o_p(1)$. To this end, we deal with each $\widetilde{U}_{skj}^\ddagger$ separately, where we frequently apply a useful fact that $\bW_i(s), i=1,\dots, N_{sk}$ are independent and identically distributed given $(\mathcal{O}_{as,-k}^\ddagger,\bN)$, which is because $\{\bW_i(s)\}_{i=1}^n, \{\bW_i(s)^\ddagger\}_{i=1}^n, \bN$ are mutually independent. 
+
+For $\widetilde{U}_{sk1}^\ddagger$, since $\bW_i(s), i=1,\dots, N_{sk}$ are independent and identically distributed given $(\mathcal{O}_{as,-k}^\ddagger,\bN)$, we have
+\begin{align*}
+   & E[\widetilde{U}_{sk1}^\ddagger|\mathcal{O}_{as,-k}^\ddagger,\bN]\\
+   &= \frac{N_{ask}}{\pi_a\sqrt{n}} E\left[\frac{\underline{\kappa}_{as}(\bX_i(s)) - \widetilde{\kappa}_{as,-k}^\ddagger(\bX_i(s))}{\underline{\kappa}_{as}(\bX_i(s))\widetilde{\kappa}_{as,-k}^\ddagger(\bX_i(s))}\{Y_i(a,s) - \underline{\eta}_{as}(\bX_i(s))\}|\mathcal{O}_{as,-k}^\ddagger,\bN\right] \\
+    &=\frac{N_{ask}}{\pi_a\sqrt{n}} E\left[\frac{\underline{\kappa}_{as}(\bX_i(s)) - \widetilde{\kappa}_{as,-k}^\ddagger(\bX_i(s))}{\underline{\kappa}_{as}(\bX_i(s))\widetilde{\kappa}_{as,-k}^\ddagger(\bX_i(s))}\{E[Y_i(a,s)|\bX_i(s),\mathcal{O}_{as,-k}^\ddagger,\bN]  - \underline{\eta}_{as}(\bX_i(s))\}|\mathcal{O}_{as,-k}^\ddagger,\bN\right].
+\end{align*}
+Since $(Y_i(a,s), \bX_i(s))$ is independent of $(\mathcal{O}_{as,-k}^\ddagger,\bN)$, we have $E[Y_i(a,s)|\bX_i(s),\mathcal{O}_{as,-k}^\ddagger,\bN]=E[Y_i(a,s)|\bX_i(s)] = \underline{\eta}_{as}(\bX_i(s))$, implying $E[\widetilde{U}_{sk1}^\ddagger|\mathcal{O}_{as,-k}^\ddagger,\bN] = 0$. Then, 
+\begin{align*}
+    E[\widetilde{U}_{sk1}^\ddagger{}^2|\mathcal{O}_{as,-k}^\ddagger,\bN] &= Var(\widetilde{U}_{sk1}^\ddagger|\mathcal{O}_{as,-k}^\ddagger,\bN) \\
+    &= \frac{N_{ask}}{n\pi_a^2} Var\left[\frac{\underline{\kappa}_{as}(\bX_i(s)) - \widetilde{\kappa}_{as,-k}^\ddagger(\bX_i(s))}{\underline{\kappa}_{as}(\bX_i(s))\widetilde{\kappa}_{as,-k}^\ddagger(\bX_i(s))}\{Y_i(a,s) - \underline{\eta}_{as}(\bX_i(s))\}\bigg|\mathcal{O}_{as,-k}^\ddagger,\bN\right] \\
+    &\le \frac{N_{ask}}{n\pi_a^2} E\left[\left[\frac{\underline{\kappa}_{as}(\bX_i(s)) - \widetilde{\kappa}_{as,-k}^\ddagger(\bX_i(s))}{\underline{\kappa}_{as}(\bX_i(s))\widetilde{\kappa}_{as,-k}^\ddagger(\bX_i(s))}\{Y_i(a,s) - \underline{\eta}_{as}(\bX_i(s))\}\right]^2\bigg|\mathcal{O}_{as,-k}^\ddagger,\bN\right] \\
+    &\le  C\frac{1}{\pi_a^2} E\left[\{\underline{\kappa}_{as}(\bX_i(s)) - \widetilde{\kappa}_{as,-k}^\ddagger(\bX_i(s))\}^2\bigg|\mathcal{O}_{as,-k}^\ddagger,\bN\right] \numberthis\label{Eq: kappa-convergence-s}\\
+    &= o_p(1),
+\end{align*}
+where the second last line results from the fact that $N_{ask}<n$ and Assumptions 2 and 4 (2) that $E[Y^2(a)|\bX], \{\underline{\kappa}_{as}(\bX)\}^{-1}, \{\widehat{\kappa}_{as,-k}(\bX)\}^{-1}$ are uniformly bounded, and the last line result from Lemma~\ref{lemma: O_as-k}.
+
+For $\widetilde{U}_{sk2}^\ddagger$, since $\bW_i(s), i=1,\dots, N_{sk}$ are independent and identically distributed given $(\mathcal{O}_{as,-k}^\ddagger,\bN)$, we have
+\begin{align*}
+    E[\widetilde{U}_{sk2}^\ddagger|\mathcal{O}_{as,-k}^\ddagger,\bN] &=   \frac{N_{ask}}{\sqrt{n}\pi_a} E\left[\frac{R_i(a,s)}{\underline{\kappa}_{as}(\bX_i(s))}\{\underline{\eta}_{as}(\bX_i(s))-\widetilde{\eta}_{as,-k}^\ddagger(\bX_i(s))\}\bigg|\mathcal{O}_{as,-k}^\ddagger,\bN\right] \\
+    &\quad - \frac{N_{sk}}{\sqrt{n}}  E[\underline{\eta}_{as}(\bX_i(s))-\widetilde{\eta}_{as,-k}^\ddagger(\bX_i(s))|\mathcal{O}_{as,-k}^\ddagger,\bN] \\
+    &= \left(\frac{N_{ask}}{\sqrt{n}\pi_a} - \frac{N_{sk}}{\sqrt{n}}\right) E[\underline{\eta}_{as}(\bX_i(s))-\widetilde{\eta}_{as,-k}^\ddagger(\bX_i(s))|\mathcal{O}_{as,-k}^\ddagger,\bN],
+\end{align*}
+where the last line result from the fact that $E[R_i(a,s)|\bX_i(s), \mathcal{O}_{as,-k}^\ddagger,\bN] = E[R_i(a,s)|\bX_i(s)] = \underline{\kappa}_{as}(\bX_i(s))$. By stratified randomization and sample splitting scheme, $N_{ask}-\pi_a N_{sk}$ is zero (or at least bounded by a constant independent of $n$). In addition, Lemma~\ref{lemma: O_as-k} implies that $|E[\underline{\eta}_{as}(\bX_i(s))-\widetilde{\eta}_{as,-k}^\ddagger(\bX_i(s))|\mathcal{O}_{as,-k}^\ddagger,\bN]| = o_p(1)$, we have $E[\widetilde{U}_{sk2}^\ddagger|\mathcal{O}_{as,-k}^\ddagger,\bN] = O_p(1)o_p(1) =o_p(1)$. Moving forward, we have
+\begin{align*}
+    & E[\widetilde{U}_{sk2}^\ddagger{}^2|\mathcal{O}_{as,-k}^\ddagger,\bN]\\ &= Var(\widetilde{U}_{sk2}^\ddagger|\mathcal{O}_{as,-k}^\ddagger,\bN) + E[\widetilde{U}_{sk2}^\ddagger|\mathcal{O}_{as,-k}^\ddagger,\bN]^2 \\
+    &= \frac{N_{ask}}{n}Var\left[\left\{\frac{1}{\pi_a} \frac{R_i(a,s)}{\underline{\kappa}_{as}(\bX_i(s))}-1\right\}\{\underline{\eta}_{as}(\bX_i(s))-\widetilde{\eta}_{as,-k}^\ddagger(\bX_i(s))\}\bigg|\mathcal{O}_{as,-k}^\ddagger,\bN\right] \\
+    &\quad + \frac{N_{sk}-N_{ask}}{n}Var\left[\underline{\eta}_{as}(\bX_i(s))-\widetilde{\eta}_{as,-k}^\ddagger(\bX_i(s))\bigg|\mathcal{O}_{as,-k}^\ddagger,\bN\right] + o_p(1) \\
+    &\le E\left[\left(\left\{\frac{1}{\pi_a} \frac{R_i(a,s)}{\underline{\kappa}_{as}(\bX_i(s))}-1\right\}^2+1\right)\{\underline{\eta}_{as}(\bX_i(s))-\widetilde{\eta}_{as,-k}^\ddagger(\bX_i(s))\}^2\bigg|\mathcal{O}_{as,-k}^\ddagger,\bN\right] + o_p(1)\\
+    &\le C\times E\left[\{\underline{\eta}_{as}(\bX_i(s))-\widetilde{\eta}_{as,-k}^\ddagger(\bX_i(s))\}^2\bigg|\mathcal{O}_{as,-k}^\ddagger,\bN\right] + o_p(1),\numberthis\label{Eq: eta-convergence-s}.
+\end{align*}
+In the above derivations, the first inequality uses the fact that $N_{ask} < n$, $N_{sk}-N_{ask} < n$, and variance is smaller than the second moment. The last inequality results from the regularity condition that $\ \{\underline{\kappa}_{as}(\bX)\}^{-1}$ is uniformly bounded. Applying Lemma~\ref{lemma: O_as-k}, we obtain $ E[\widetilde{U}_{sk2}^\ddagger{}^2|\mathcal{O}_{as,-k}^\ddagger,\bN] = o_p(1)$.
+
+For $\widetilde{U}_{sk3}^\ddagger$,  since $\bW_i(s), i=1,\dots, N_{sk}$ are independent and identically distributed given $(\mathcal{O}_{as,-k}^\ddagger,\bN)$, we have
+\begin{align*}
+    & E[\widetilde{U}_{sk3}^\ddagger|\mathcal{O}_{as,-k}^\ddagger,\bN] \\
+    &= \frac{N_{ask}}{\sqrt{n}\pi_a} E\left[\frac{\underline{\kappa}_{as}(\bX_i(s)) - \widetilde{\kappa}^\ddagger_{as,-k}(\bX_i(s))}{\underline{\kappa}_{as}(\bX_i(s))\widetilde{\kappa}^\ddagger_{as,-k}(\bX_i(s))}\{\underline{\eta}_{as}(\bX_i(s))-\widetilde{\eta}_{as,-k}^\ddagger(\bX_i(s))\}\bigg|\mathcal{O}_{as,-k}^\ddagger,\bN\right]\\
+    &\le C \sqrt{n} E\left[\{\underline{\kappa}_{as}(\bX_i(s)) - \widetilde{\kappa}^\ddagger_{as,-k}(\bX_i(s))\}\{\underline{\eta}_{as}(\bX_i(s))-\widetilde{\eta}_{as,-k}^\ddagger(\bX_i(s))\}\bigg|\mathcal{O}_{as,-k}^\ddagger,\bN\right] \\
+    &\le C \sqrt{n} E\left[\{\underline{\kappa}_{as}(\bX_i(s)) - \widetilde{\kappa}^\ddagger_{as,-k}(\bX_i(s))\}^2\bigg|\mathcal{O}_{as,-k}^\ddagger,\bN\right]^{1/2}E\left[\{\underline{\eta}_{as}(\bX_i(s))-\widetilde{\eta}_{as,-k}^\ddagger(\bX_i(s))\}^2\bigg|\mathcal{O}_{as,-k}^\ddagger,\bN\right]^{1/2} \\
+    &= C \sqrt{n} o_p(n^{-1/4})o_p(n^{-1/4}) \\
+    &= o_p(1),
+\end{align*}
+where the third line comes from $N_{ask} < n$ and the regularity condition that $\underline{\kappa}_a, \widehat{\kappa}_a$ are uniformly bounded, the fourth line uses the Cauchy-Schwarz inequality, and the fifth line is implied by Lemma~\ref{lemma: O_as-k}. Then, we have
+\begin{align*}
+    & E[\widetilde{U}_{sk3}^\ddagger{}^2|\mathcal{O}_{as,-k}^\ddagger,\bN]\\ &= Var(\widetilde{U}_{sk3}^\ddagger|\mathcal{O}_{as,-k}^\ddagger,\bN) + E[\widetilde{U}_{sk3}^\ddagger|\mathcal{O}_{as,-k}^\ddagger,\bN]^2 \\
+    &= \frac{N_{ask}}{n}Var\left[\frac{1}{\pi_a} \frac{\underline{\kappa}_{as}(\bX_i(s)) - \widetilde{\kappa}^\ddagger_{as,-k}(\bX_i(s))}{\underline{\kappa}_{as}(\bX_i(s))\widetilde{\kappa}^\ddagger_{as,-k}(\bX_i(s))}\{\underline{\eta}_{as}(\bX_i(s))-\widetilde{\eta}_{as,-k}^\ddagger(\bX_i(s))\}\bigg|\mathcal{O}_{as,-k}^\ddagger,\bN\right] + o_p(1) \\
+    &\le E\left[\left[\frac{1}{\pi_a} \frac{\underline{\kappa}_{as}(\bX_i(s)) - \widetilde{\kappa}^\ddagger_{as,-k}(\bX_i(s))}{\underline{\kappa}_{as}(\bX_i(s))\widetilde{\kappa}^\ddagger_{as,-k}(\bX_i(s))}\{\underline{\eta}_{as}(\bX_i(s))-\widetilde{\eta}_{as,-k}^\ddagger(\bX_i(s))\}\right]^2\bigg|\mathcal{O}_{as,-k}^\ddagger,\bN\right] + o_p(1) \\
+    &\le C\times E\left[\{\underline{\eta}_{as}(\bX_i(s))-\widetilde{\eta}_{as,-k}^\ddagger(\bX_i(s))\}^2\bigg|\mathcal{O}_{as,-k}^\ddagger,\bN\right] + o_p(1),
+\end{align*}
+where the first inequality is because $N_{ask} < n$ and variance is smaller than the second moment, and the second inequality is because $ \{\underline{\kappa}_{as}(\bX)\}^{-1}, \{\widehat{\kappa}_{as,-k}(\bX)\}^{-1}$ are uniformly bounded. Applying Lemma~\ref{lemma: O_as-k},we get $E[\widetilde{U}_{sk3}^\ddagger{}^2|\mathcal{O}_{as,-k}^\ddagger,\bN] =o_p(1)$. Therefore, we complete the proof for $U_{sk} = o_p(1)$. This completes the proof for asymptotic linearity under stratified rerandomization. 
+
+Then the asymptotic distribution is a direct result of Theorem 3, which also implies consistency. Next, we can compute
+\begin{align*}
+    EIF(\bO(1)) - EIF(\bO(0)) = \sum_{a=0}^1 (-1)^{1-a} f_a'\left[ \frac{1}{\pi_a} \frac{R(a)}{E[R(a)|\bX]}\{Y(a) - E[Y(a)|\bX]\} \right],
+\end{align*}
+which implies
+\begin{align*}
+    E\left[EIF(\bO(1)) - EIF(\bO(0))|\bX\right] &= \sum_{a=0}^1 (-1)^{1-a} f_a' \frac{1}{\pi_a} E\left[\frac{R(a)}{E[R(a)|\bX]}\{Y(a) - E[Y(a)|\bX]\}\bigg|\bX\right] \\
+    &= 0
+\end{align*}
+If $\bX$ contains $\bX^r$ and $S$ as a subset, we have
+\begin{align*}
+    & E[Cov\{IF(\bO(1)) - IF(\bO(0)), \bX^r|S\}]\\
+    &= E[\{IF(\bO(1)) - IF(\bO(0))\}\bX^r] - E[E[IF(\bO(1)) - IF(\bO(0))|S]E[\bX^r|S]] \\
+    &= \bzero,
+\end{align*}
+which implies $R^2=0$.
+
+
+Finally, we construct consistent variance estimators as
+\begin{align}
+       \widehat{\widetilde{V}} &= \widehat{V} - \pi(1-\pi) \sum_{s \in \mathcal{S}} \widehat{p}_s \widehat{d}_s^2, \label{vhat: ml-st}\\
+    \widehat{\widetilde{R}^2} &= \frac{1}{\widehat{\widetilde{V}}} \widehat{C}^\top \widehat{Var}(\widetilde{\bI})^{-1} \widehat{C},\label{R2hat: ml-st}
+\end{align}
+where $\widehat{p}_s = n^{-1}\sum_{i=1}^n I\{S_i=s\}$ and
+\begin{align*}
+    \widehat{V} &= \frac{1}{K}\sum_{k=1}^K \sum_{s \in \mathcal{S}} \widehat{p}_s\frac{1}{|\mathcal{I}_{sk}|} \sum_{i \in \mathcal{I}_{sk}} \widehat{EIF}_{i}^2, \\
+    \widehat{d}_s &= \frac{1}{K}\sum_{k=1}^K \frac{1}{|\mathcal{I}_{sk}|}\sum_{i \in \mathcal{I}_{sk}}\frac{A_i-\pi}{\pi(1-\pi)}  \widehat{EIF}_i, \\
+    \widehat{C} &=  \sum_{s \in \mathcal{S}} \widehat{p}_s \left[ \frac{1}{K}\sum_{k=1}^K \frac{1}{|\mathcal{I}_{sk}|}\sum_{i \in \mathcal{I}_{sk}}\frac{A_i-\pi}{\pi(1-\pi)}  \widehat{EIF}_i\bX_i^r -\widehat{d}_s\overline{\bX}_s^r \right], \\
+    \widehat{EIF}_i &= f_1'\widehat{EIF}_i(1) + f_0'\widehat{EIF}_i(0), \\
+    \widehat{EIF}_i(a) &= \frac{I\{A_i=a\}}{\pi^a(1-\pi)^{1-a}}\frac{R_i}{\widehat{\kappa}_a(\bX_i)}\{Y_i - \widehat{\eta}_a(\bX_i)\} + \widehat{\eta}_a(\bX_i)-\widehat{\mu}_a^{\textup{dml}},\\
+    \overline{\bX}_s^r &= \frac{1}{n} \sum_{i=1}^n \frac{I\{S_i=s\}} {\widehat{p}_s}\bX_i^r. 
+\end{align*}
+Consistency of $\widehat{\widetilde{V}}$ and $\widehat{\widetilde{R}^2}$ can be proof similar to Theorem 5.
+\end{proof}
+
+
+\begin{definition}\label{def: conditional-W}
+    For each $s \in \mathcal{S}$, we define the conditional distribution in strautm $s$ as $\mathcal{P}^{\bW(s)} = \mathcal{P}^{\bW|(S=s)}$ on $\bW(s) = \{R(a,s), Y(a,s), \bX(s): a = 0,1\}$, where $\mathcal{P}^{\bW}$ is defined in Assumption 1. We further define $\{\bW_i(s)\}_{i=1}^n$ as $n$ independent samples from $\mathcal{P}^{\bW(s)}$, where $\{\bW_i(s)\}_{i=1}^n$ is also independent of $\{\bW_i\}_{i=1}^n$ and $\{\tA_i, T_i\}_{i=1}^n$, where $T_i$ is the random variable for sample splitting.
+\end{definition}
+
+\begin{lemma}\label{lemma: O_as-k}
+Under Assumptions 1-4, we have
+\begin{align*}
+    E\left[\{\underline{\kappa}_{as}(\bX_i(s)) - \widetilde{\kappa}_{as,-k}^\ddagger(\bX_i(s))\}^2\bigg|\mathcal{O}_{as,-k}^\ddagger,\bN\right] &= o_p(n^{-1/2}), \\
+    E\left[\{\underline{\eta}_{as}(\bX_i(s)) - \widetilde{\eta}_{as,-k}^\ddagger(\bX_i(s))\}^2\bigg|\mathcal{O}_{as,-k}^\ddagger,\bN\right] &= o_p(n^{-1/2})
+\end{align*}
+for the conditional expectations defined in Equation~\eqref{Eq: kappa-convergence-s}.
+\end{lemma}
+\begin{proof}
+Denoting $Z= E\left[\{\underline{\kappa}_{as}(\bX_i(s)) - \widetilde{\kappa}_{as,-k}^\ddagger(\bX_i(s))\}^2\bigg|\mathcal{O}_{as,-k}^\ddagger,\bN\right]$, we have\\ $P\{n^{1/2}Z>\varepsilon\} = E[P(n^{1/2}Z>\varepsilon|N_{as,-k})]$. By the dominated convergence theorem, it suffices to show $P(n^{1/2}Z>\varepsilon|N_{as,-k}) = o_p(1)$. By Markov's inequality, we have $P(n^{1/2}Z>\varepsilon|N_{as,-k}) \le\varepsilon^{-1} E[n^{1/2}Z|N_{as,-k}]$, and we only need to show $E[Z|N_{as,-k}] = o_p(n^{-1/2})$. We next apply Lemma~\ref{lemma: random indices} to prove this result.
+
+Defining $X_n = \underline{\kappa}_{as}(\bX_i(s)) - \widehat{\kappa}_{a}(\bX_i(s); \{\bO_i^\ddagger(a,s)\}_{i=1}^n)$ and $Y_n = N_{as,-k}$, where $\bO_i^\ddagger(a,s)=\{R_i^\ddagger(a,s) Y_i^\ddagger(a,s), R_i^\ddagger(a,s),\bX_i^\ddagger(s)\}$. We observe that $\widetilde{\kappa}_{as,-k}^\ddagger(\bX_i(s)) =  \widehat{\kappa}_{a}(\bX_i(s); \{\bO_i^\ddagger(a,s)\}_{i=1}^{N_{as,-k}})$, which implies $ E[Z|N_{as,-k}] = E[X_{Yn}|Y_n]$. To show $E[X_{Yn}^2|Y_n] = o_p(n^{-1/2})$, we verify the conditions of Lemma~\ref{lemma: random indices}. By definition, we have $N_{as,-k}$ is independent of $\bX_i(s)$ and $\{\bO_i^\ddagger(a,s)\}_{i=1}^n$. Furthermore, we have $N_{as,-k}/n \xrightarrow{p} \pi_a P(S=s)(K-1)/K$ under stratified randomization. Finally, Assumption 4 (1) implies that $E[X_n^2] = o_p(n^{-1/2})$. Therefore, Lemma~\ref{lemma: random indices} implies the desired result for $\kappa$. Following the same procedure, we can obtain the convergence result for $\eta$. 
+\end{proof}
+
+\subsubsection{Efficiency invariance to randomization schemes}
+
+
+Recall $\bW=(Y(0),Y(1),R(0),R(1), X)$. For brevity, let $\bT = (Y(0),Y(1),R(0),R(1))$ denote the vector of potential outcomes, and let $A_{1:n}, \bX_{1:n}, \bT_{1:n}$ denote $\{A_i\}_{i=1}^n, \{\bX_i\}_{i=1}^n, \{\bT_i\}_{i=1}^n$, respectively.  We further define a \emph{design} $D$ as a known, parameter-free conditional law
+$G^D(A_{1:n}\mid \bX_{1:n})$, e.g.\ simple randomization with fixed $\pi$ or rerandomization with $\pi(x)=P(A=1\mid X=x)$.  We assume conditional ignobility, i.e., $A\perp \bT |\bX$, which automatically holds under simple randomization. This is also true under rerandomization, because $A_{1:n}\perp \bT_{1:n} | \bX_{1:n}$ and hence, for any Borel set $B$,
+\begin{align*}
+    P(A_i \in B | \bX_i, \bT_i) &= E[P(A_i\in B |\bX_{1:n}, \bT_i)|\bX_{1:n}, \bT_i] \\
+    &= E[P(A_i\in B |\bX_{1:n})|\bX_i, \bT_i]\\
+    &= E[P(A_i\in B |\bX_{1:n})|\bX_i] \quad \textup{(by Assumption 1)} \\
+    &= P(A_i \in B | \bX_i).
+\end{align*}
+
+Below we give the formal statement that different randomization schemes provide the same semiparametric efficiency bound using the average treatment effect $\Delta = E[Y(1)-Y(0)]$ as an example; the proposition directly generalizes to other estimands.
+
+\begin{proposition}[Efficiency invariance to parameter-free designs with MAR]\label{prop:inv-paramfree-R}
+For the observed-data experiments $\bO_1,\dots, \bO_n$ induced by $(P,G^D)$ for any parameter-free design $D$ satisfying $A\perp \bT |\bX$, we have, under Assumptions 1-2,
+
+\noindent (i) The observed-data tangent space $\mathcal T$ for $\Delta$ is the same for all such $D$.
+
+\noindent (ii) The efficient influence function for $\Delta$ in this causal model is
+\begin{align*}
+\phi(\bO)&=
+\frac{A\,R}{\pi(\bX)\,E[R(1)|\bX]}\{Y-E[Y(1)|\bX]\}
+\;-\;\frac{(1-A)\,R}{(1-\pi(\bX))\,E[R(0)|\bX]}\{Y-E[Y(1)|\bX]\} \\
+&\quad + E[Y(1)|\bX]-E[Y(0)|\bX]-\Delta.
+\end{align*}
+
+\noindent (iii) Hence the semiparametric efficiency bound equals $Var\{\phi(\bO)\}$ and is identical across all parameter-free designs $D$.
+\end{proposition}
+
+\begin{proof}
+Under design $D$, the joint likelihood factors as
+\[
+L_n^D(P)\ =\
+\underbrace{G^D\!\big(A_{1:n}\mid X_{1:n}\big)}_{\text{known, parameter-free design}}
+\cdot \prod_{i=1}^n f_X(\bX_i)\cdot
+\prod_{i=1}^n f_{T\mid X}(\bT_i\mid \bX_i)
+\cdot \prod_{i=1}^n f_{O_i\mid X_i,A_i,T_i}
+\]
+where $f_{O_i\mid  X_i,A_i,T_i}$ is deterministic and enforces consistency:
+if $A_i=a$ and $R_i(a)=1$, then $R_i=1$ and $Y_i=Y_i(a)$; if $R_i(a)=0$, then $R_i=0$ and $Y_i$ is absent.
+Let $\{P_\varepsilon\}$ be any regular parametric submodel of $P$.
+Because $G^D$ is parameter-free, its derivative over $\varepsilon$ is zero. Thus, the observed-data score equals the sum of $n$ per-unit scores
+that live in the span of scores for $f_X$ and for the conditional law of $T$ given $X$ mapped through the observation mechanism.
+Therefore, the observed-data tangent space $\mathcal T$ does not depend on $D$, proving (i).
+
+With the same tangent space across designs, the estimand $\Delta(P)$ is pathwise differentiable, and its canonical gradient is the well-known augmented inverse-probability weighted form of $\phi(\bO)$. Finally, we have $Var(\sum_{i=1}^n \phi(\bO_i)) = \sum_{i=1}^n Var(\phi(\bO_i))$. This is because $T_i \perp A_{1:n}|\bX_{1:n}$ and Assumptions 1-2 imply that $\bT_1,\dots, \bT_n$ are conditional independent given $(\bX_{1:n}, A_{1:n})$ and hence, for $i\ne j$,
+\begin{align*}
+   E[\phi(\bO_i)\phi(\bO_j)] &= E[E[\phi(\bO_i)\phi(\bO_j)|A_{1:n}, 
+   \bX_{1:n}]] \\
+   &= E[E[\phi(\bO_i)|A_{1:n}, \bX_{1:n}]E[\phi(\bO_j)|A_{1:n}, \bX_{1:n}]] \\
+   &= E[\{E[Y(1)|\bX_i]-E[Y(0)|\bX_i]-\Delta\}\{E[Y(1)|\bX_j]-E[Y(0)|\bX_j]-\Delta\}]\\
+   &=0,
+\end{align*}
+thereby removing all interaction terms. Consequently, the Fisher information is still $n$ times the per-unit information, exactly as under simple randomization, and hence the semiparametric efficiency bound $Var\{\phi(\bO)\}$ is the same under every parameter-free design $D$, proving (iii).
+\end{proof}
+
+
+\subsection{Finite-sample results}
+
+
+
+{
+\bibliographystyle{apalike}
+\bibliography{references}
+}
+
+\end{document}

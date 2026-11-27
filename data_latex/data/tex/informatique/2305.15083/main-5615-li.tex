@@ -1,0 +1,182 @@
+% File tacl2021v1.tex
+% Dec. 15, 2021
+
+% The English content of this file was modified from various *ACL instructions
+% by Lillian Lee and Kristina Toutanova
+%
+% LaTeXery is mostly all adapted from acl2018.sty.
+
+\documentclass[11pt,a4paper]{article}
+\usepackage{times,latexsym}
+\usepackage{url}
+\usepackage[T1]{fontenc}
+
+\newcommand{\method}{mFTI\ }
+\newcommand{\methodend}{mFTI}
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage{multirow}
+\usepackage{amsmath}
+\usepackage{inconsolata}
+\usepackage{tabularray}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{float}
+\DeclareMathOperator*{\argmax}{argmax}
+\newcommand{\green}[1]{\colorbox{green!30}{#1}}
+
+% ZH command
+\usepackage{CJK}
+\usepackage{xcolor}
+\usepackage{ulem}
+\usepackage[utf8]{inputenc}
+\newcommand\ZH[1]{\textcolor{yellow}{\{ZH: \begin{CJK*}{UTF8}{gkai} #1 \end{CJK*} \}}}
+
+\newcommand\blfootnote[1]{%
+\begingroup
+\renewcommand\thefootnote{}\footnote{#1}%
+\addtocounter{footnote}{-1}%
+\endgroup
+}
+%% Package options:
+%% Short version: "hyperref" and "submission" are the defaults.
+%% More verbose version:
+%% Most compact command to produce a submission version with hyperref enabled
+%%    \usepackage[]{tacl2021v1}
+%% Most compact command to produce a "camera-ready" version
+%%    \usepackage[acceptedWithA]{tacl2021v1}
+%% Most compact command to produce a double-spaced copy-editor's version
+%%    \usepackage[acceptedWithA,copyedit]{tacl2021v1}
+%
+%% If you need to disable hyperref in any of the above settings (see Section
+%% "LaTeX files") in the TACL instructions), add ",nohyperref" in the square
+%% brackets. (The comma is a delimiter in case there are multiple options specified.)
+
+\usepackage[acceptedWithA]{tacl2021v1}
+% \setlength\titlebox{10cm} % <- for Option 2 below
+
+%%%% Material in this block is specific to generating TACL instructions
+\usepackage{xspace,mfirstuc,tabulary}
+\newcommand{\dateOfLastUpdate}{Dec. 15, 2021}
+\newcommand{\styleFileVersion}{tacl2021v1}
+
+\newcommand{\ex}[1]{{\sf #1}}
+
+\newif\iftaclinstructions
+\taclinstructionsfalse % AUTHORS: do NOT set this to true
+\iftaclinstructions
+\renewcommand{\confidential}{}
+\renewcommand{\anonsubtext}{(No author info supplied here, for consistency with
+TACL-submission anonymization requirements)}
+\newcommand{\instr}
+\fi
+
+%
+\iftaclpubformat % this "if" is set by the choice of options
+\newcommand{\taclpaper}{final version\xspace}
+\newcommand{\taclpapers}{final versions\xspace}
+\newcommand{\Taclpaper}{Final version\xspace}
+\newcommand{\Taclpapers}{Final versions\xspace}
+\newcommand{\TaclPapers}{Final Versions\xspace}
+\else
+\newcommand{\taclpaper}{submission\xspace}
+\newcommand{\taclpapers}{{\taclpaper}s\xspace}
+\newcommand{\Taclpaper}{Submission\xspace}
+\newcommand{\Taclpapers}{{\Taclpaper}s\xspace}
+\newcommand{\TaclPapers}{Submissions\xspace}
+\fi
+
+%%%% End TACL-instructions-specific macro block
+%%%%
+
+\title{Eliciting the Translation Ability of Large Language Models via Multilingual Finetuning with Translation Instructions}
+
+% Author information does not appear in the pdf unless the "acceptedWithA" option is given
+
+% The author block may be formatted in one of two ways:
+
+% Option 1. Author’s address is underneath each name, centered.
+
+% \author{
+%   Template Author1\Thanks{The {\em actual} contributors to this instruction
+%     document and corresponding template file are given in Section
+%     \ref{sec:contributors}.} 
+%   \\
+%   Template Affiliation1/Address Line 1
+%   \\
+%   Template Affiliation1/Address Line 2
+%   \\
+%   Template Affiliation1/Address Line 2
+%   \\
+%   \texttt{template.email1example.com}
+%   \And
+%   Template Author2 
+%   \\
+%   Template Affiliation2/Address Line 1
+%   \\
+%   Template Affiliation2/Address Line 2
+%   \\
+%   Template Affiliation2/Address Line 2
+%   \\
+%   \texttt{template.email2@example.com}
+% }
+
+% % Option 2.  Author’s address is linked with superscript
+% % characters to its name, author names are grouped, centered.
+
+\author{
+  Jiahuan Li$^{1*}$, Hao Zhou$^{1*}$, Shujian Huang$^{1\dagger}$, Shanbo Cheng$^2$ \and
+  Jiajun Chen$^1$
+  \\
+  \ \\
+  $^1$ National Key Laboratory for Novel Software Technology, Nanjing University, China
+\\
+  \texttt{\{lijh,zhouh\}@smail.nju.edu.cn, \{huangsj,chenjj\}@nju.edu.cn}
+  \\
+\\
+  $^2$ Bytedance Research
+\\
+  \texttt{chengshanbo@bytedance.com}
+}
+
+\date{}
+
+\begin{document}
+\maketitle
+\blfootnote{* Equal contribution.}
+\blfootnote{$\dagger$ Corresponding author.}
+\begin{abstract}
+Large-scale Pretrained Language Models~(LLMs), such as ChatGPT and GPT4, have shown strong abilities in multilingual translation, without being explicitly trained on parallel corpora. It is intriguing how the LLMs obtain their ability to carry out translation instructions for different languages. In this paper, we present a detailed analysis by finetuning a multilingual pretrained language model, XGLM-7.5B, to perform multilingual translation following given instructions. Firstly, we show that multilingual LLMs have stronger translation abilities than previously demonstrated. For a certain language, the translation performance depends on its similarity to English and the amount of data used in the pretraining phase. Secondly, we find that LLMs' ability to carry out translation instructions relies on the understanding of translation instructions and the alignment among different languages. With multilingual finetuning with translation instructions, LLMs could learn to perform the translation task well even for those language pairs unseen during the instruction tuning phase.
+\end{abstract}
+
+\input{1-introduction}
+\input{2-background}
+\input{3-experiments}
+\input{4-finetuning}
+\input{5-generalization}
+\input{6-related_work}
+\input{7-conclusion}
+
+\section*{Acknowledgement}
+We would like to thank the anonymous reviewers and the editor for their insightful comments. Shujian Huang is the corresponding author. This work is supported by National Science Foundation of China (No. 62376116, 62176120), the Liaoning Provincial Research Foundation for Basic Research (No. 2022-KF-26-02).
+
+\bibliography{anthology,tacl2021}
+\bibliographystyle{acl_natbib}
+
+% \iftaclpubformat
+
+
+\appendix
+
+\input{8-appendix}
+  
+
+  
+% \fi
+
+\end{document}
+
+
+
+
+

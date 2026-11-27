@@ -1,7 +1,7 @@
-import { ComingSoon } from "@/components/coming-soon";
+import { SourcesView } from "./sources-view";
 
 export const metadata = { title: "Project sources" };
 
 export default function Page() {
-  return <ComingSoon title="Project sources" icon="library" text="Import PDFs, web pages, figures, YouTube videos and personal documents, then follow their extraction and indexing." />;
+  return <SourcesView />;
 }

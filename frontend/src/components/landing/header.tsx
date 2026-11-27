@@ -14,6 +14,7 @@ const PAGES: [string, string][] = [
   ["/signup", "Sign up"],
   ["/projects", "My projects"],
   ["/sources", "Sources"],
+  ["/papers", "Library"],
   ["/assistant", "Research assistant"],
   ["/research-twin", "Research Twin"],
   ["/knowledge-graph", "Knowledge Graph"],
@@ -100,7 +101,7 @@ export function LandingHeader() {
               ))}
             </div>
           </details>
-          <ThemeButton variant="outline" />
+          <ThemeButton />
           <Link href="/signin" className="whitespace-nowrap text-[15px] font-medium text-gray-800 hover:text-primary-500 dark:text-gray-200 2xl:text-[17px]">
             Sign in
           </Link>

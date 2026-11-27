@@ -1,0 +1,116 @@
+\section{Additional Experiment Details}
+\label{sec:hpsearch}
+
+\subsection{CLUTTR and CFQ Dependency Parsing}
+\label{sec:cluttr_and_cfqdep_hpsearch}
+The experiments were performed using a cluster of 12 GPUs (2 24GB, 2
+12GB, 8 11GB). A single training run on CFQ or CLUTRR requires less
+than 30 minutes on a single GPU. Hyperparameters were selected using
+grid search. For both the Edge Transformer and (Relation-aware)
+Transformer models, hyperparameter search was the same. The number of units
+were varied between 200-400; batch size between 40 and 400 (for
+CLUTRR) and $5\cdot 10^3$ and $1 \cdot 10^4$ words (for CFQ).
+Learning rates varied between $1\cdot10^{-4}$ and $2 \cdot
+10^{-3}$, and the number of heads varied from
+between 4 and 8. For Transformer models, the number of layers varied from 5 to 8. For
+Edge Transformer models, the number of layers was varied from 6 to 8.%TJO: did I correct these correctl
+
+Hyperparameters for CLUTRR (for ET, baselines, and ablations) were optimized on the $k=2,3$ task, and fixed for the $k=2,3,4$ task. For CFQ dependency parsing, hyperparameters were optimized on a $1\%$ random subset of the official random split (Keysers et al., 2020), and fixed for the MCD splits. 
+
+\subsection{CFQ Semantic Parsing}
+\label{sec:cfqsem_hpsearch}
+When tuning the Universal Transformer baseline we varied the number of layers from 2 to 6, the learning rate from 0.0001 to 0.001, the batch size of 64 to 128 and the number of epochs on the 20K random split training examples from 200 to 400. The number of heads was fixed to 8. For training on MCD splits with $\sim$90K training examples each we divided the number of epochs by 4 to keep the total number of training steps approximately the same. We found that longer training gave better results, hence all results in the paper are obtained with 100 training epochs.
+
+\subsection{COGS Semantic Parsing}
+\label{sec:cogs_hpsearch}
+No hyperparameter search was performed for Edge Transformer on COGS. Architecture hyperparameters for Edge Transformer were matched to those of (Ontanón et al., 2021), who tuned the number of
+  layers, hidden dimension, feed-forward dimension, and number of
+  heads for their Transformer architectures. Their best Transformer model has two standard layers and a separate attention head for output, giving three QK attention layers total. We therefore use three layers for Edge Transformer. Default settings were used for optimizer hyperparameters. 
+
+
+% number of layers (2, 4, 6)
+% learning rate (0.0001 - 0.001)
+% batch size (64, 128)
+% number of epochs (50, 100) * 4
+
+%Optionally include extra information (complete proofs, additional experiments and plots) in the appendix. This section will often be part of the supplemental material.
+
+\section*{Checklist}
+
+%%% BEGIN INSTRUCTIONS %%%
+% The checklist follows the references.  Please
+% read the checklist guidelines carefully for information on how to answer these
+% questions.  For each question, change the default \answerTODO{} to \answerYes{},
+% \answerNo{}, or \answerNA{}.  You are strongly encouraged to include a {\bf
+% justification to your answer}, either by referencing the appropriate section of
+% your paper or providing a brief inline description.  For example:
+% \begin{itemize}
+%   \item Did you include the license to the code and datasets? \answerYes{See Section~\ref{gen_inst}.}
+%   \item Did you include the license to the code and datasets? \answerNo{The code and the data are proprietary.}
+%   \item Did you include the license to the code and datasets? \answerNA{}
+% \end{itemize}
+% Please do not modify the questions and only use the provided macros for your
+% answers.  Note that the Checklist section does not count towards the page
+% limit.  In your paper, please delete this instructions block and only keep the
+% Checklist section heading above along with the questions/answers below.
+%%% END INSTRUCTIONS %%%
+
+\begin{enumerate}
+
+\item For all authors...
+\begin{enumerate}
+  \item Do the main claims made in the abstract and introduction accurately reflect the paper's contributions and scope?
+    \answerYes{}
+  \item Did you describe the limitations of your work?
+    \answerYes{See Section 6.}
+  \item Did you discuss any potential negative societal impacts of your work?
+    \answerNo{}
+  \item Have you read the ethics review guidelines and ensured that your paper conforms to them?
+    \answerYes{}
+\end{enumerate}
+
+\item If you are including theoretical results...
+\begin{enumerate}
+  \item Did you state the full set of assumptions of all theoretical results?
+    \answerNA{}
+	\item Did you include complete proofs of all theoretical results?
+    \answerNA{}
+\end{enumerate}
+
+\item If you ran experiments...
+\begin{enumerate}
+  \item Did you include the code, data, and instructions needed to reproduce the main experimental results (either in the supplemental material or as a URL)?
+    \answerYes{}
+  \item Did you specify all the training details (e.g., data splits, hyperparameters, how they were chosen)?
+    \answerYes{}
+	\item Did you report error bars (e.g., with respect to the random seed after running experiments multiple times)?
+    \answerYes{}
+	\item Did you include the total amount of compute and the type of resources used (e.g., type of GPUs, internal cluster, or cloud provider)?
+    \answerYes{}
+\end{enumerate}
+
+\item If you are using existing assets (e.g., code, data, models) or curating/releasing new assets...
+\begin{enumerate}
+  \item If your work uses existing assets, did you cite the creators?
+    \answerYes{}
+  \item Did you mention the license of the assets?
+    \answerNo{}
+  \item Did you include any new assets either in the supplemental material or as a URL?
+    \answerNo{}
+  \item Did you discuss whether and how consent was obtained from people whose data you're using/curating?
+    \answerNA{}
+  \item Did you discuss whether the data you are using/curating contains personally identifiable information or offensive content?
+    \answerNA{}
+\end{enumerate}
+
+\item If you used crowdsourcing or conducted research with human subjects...
+\begin{enumerate}
+  \item Did you include the full text of instructions given to participants and screenshots, if applicable?
+    \answerNA{}
+  \item Did you describe any potential participant risks, with links to Institutional Review Board (IRB) approvals, if applicable?
+    \answerNA{}
+  \item Did you include the estimated hourly wage paid to participants and the total amount spent on participant compensation?
+    \answerNA{}
+\end{enumerate}
+
+\end{enumerate}

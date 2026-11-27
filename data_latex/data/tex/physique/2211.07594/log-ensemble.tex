@@ -1,0 +1,242 @@
+\documentclass[aps, notitlepage, floatfix, pre, twocolumn]{revtex4-2}
+\usepackage[colorlinks=true, allcolors=blue, bookmarks=false]{hyperref}
+\usepackage{amsfonts, amsmath, amssymb}
+\usepackage{graphicx}
+
+\setcitestyle{numbers,square,sort&compress}
+\bibliographystyle{apsrev4-2}
+
+\DeclareMathOperator{\Tr}{Tr}
+
+\begin{document}
+
+\title{Solvable random matrix ensemble with a logarithmic weakly confining potential}
+
+\author{Wouter Buijsman} 
+
+\email{buijsman@post.bgu.ac.il}
+
+\affiliation{Department of Physics, Ben-Gurion University of the Negev, Beer-Sheva 84105, Israel}
+
+\date{\today}
+
+\begin{abstract}
+This work identifies a solvable (in the sense that spectral correlation functions can be expressed in terms of orthogonal polynomials), rotationally invariant random matrix ensemble with a logarithmic weakly confining potential. The ensemble, which can be interpreted as a transformed Jacobi ensemble, is in the thermodynamic limit characterized by a Lorentzian eigenvalue density. It is shown that spectral correlation functions can be expressed in terms of the nonclassical Gegenbauer polynomials $C_n^{(-1/2)}(x)$ with $n \ge 2$, which have been proven to form a complete orthogonal set with respect to the proper weight function. A procedure to sample matrices from the ensemble is outlined and used to provide a numerical verification for some of the analytical results. This ensemble is pointed out to potentially have applications in quantum many-body physics.
+\end{abstract}
+
+\maketitle
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Introduction}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Random matrix theory plays a major role in the analysis of various types of complex quantum systems \cite{Guhr98, Mehta10} with applications, for example, in nuclear physics \cite{Weidemuller09, Borgonovi16}, mesoscopic physics \cite{Beenakker97, Beenakker15}, high-energy physics \cite{Maldacena16, Cotler18}, and quantum chaos \cite{DAlessio16, Deutsch18}. One of the main challenges in physically-motivated random matrix theory is to construct random matrix models that are on the one hand simple enough to be tractable analytically, and on the other hand, provide a reasonably good description of the system of interest. Notable progress in the search for such ensembles has been made in the last decade \cite{Kravtsov15, vonKeyserlingk18, Nahum18, Chan18}. 
+
+The central building blocks of random matrix theory are the three classical (Gaussian, Wishart-Laguerre, and Jacobi) random matrix ensembles (see, e.g., Refs. \cite{Forrester10, Livan18}). These ensembles are rotationally invariant (i.e., basis-independent) and solvable in the sense that spectral correlation functions can be expressed in terms of orthogonal polynomials. For these ensembles, the joint probability distribution for the eigenvalues is known explicitly. Expressing this distribution as the Boltzmann factor of a Coulomb gas trapped in a confining potential allows one to study the thermodynamic limit using tools from statistical mechanics.
+
+This work identifies a solvable, rotationally invariant random matrix ensemble with a logarithmic (weakly) confining potential. In the thermodynamic limit, the eigenvalue densities of the Gaussian, Wishart-Laguerre, and Jacobi ensembles are given by respectively the Wigner semicircle, Mar\v{c}enko-Pastur, and Wachter laws \cite{Wachter78}. Using the Coulomb gas technique, the eigenvalue density in the thermodynamic limit corresponding to the logarithmic potential is found to be given by a Lorentzian. Random matrices with a Lorentzian eigenvalue density appeared very recently in the context of ergodicity breaking in quantum many-body systems in Ref. \cite{Venturelli22}. 
+
+The orthogonal polynomials in terms of which spectral correlation functions can be expressed are identified as the nonclassical Gegenbauer polynomials $C_n^{(-1/2)}(x)$ with $n \ge 2$, which have been proven to form a complete orthogonal set with respect to the proper weight function \cite{Bruder14}. The Gegenbauer polynomials form a subset of the Jacobi polynomials. From this, it is deduced that the ensemble can be interpreted as a transformed Jacobi ensemble. A procedure to numerically sample eigenvalue spectra from the ensemble is outlined and demonstrated by verifying some of the analytical results.
+
+The outline of this work is as follows. Section \ref{sec: Coulomb} considers the Coulomb gas picture for the joint probability distribution of the eigenvalues. Here, it is discussed how the Lorentzian density of states emerges from the logarithmic potential. Section \ref{sec: polynomials} identifies the associated (nonclassical) orthogonal polynomials, and outlines how the spectral correlation functions can be obtained. Here, the relation with the Jacobi ensemble is also discussed. Section \ref{sec: matrix} outlines how the eigenvalue spectra can be obtained from the spectra of random matrices. Section \ref{sec: conclusions} provides a summary of the findings and proposes suggestions for further investigations.
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Coulomb gas picture} \label{sec: Coulomb}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+For the classical random matrix ensembles, the joint probability distribution $P(H)$ of the entries of sampled matrices $H$ can be written as
+\begin{equation}
+P(H) \varpropto \exp[ -\Tr V(H)],
+\end{equation} 
+where $V(x)$ is a function referred to as the potential (see, e.g., chapters 4 and 5 of Ref. \cite{Livan18}). Let $N$ denote the dimension of the matrices. As $P(H)$ depends only on (powers of) the trace of $H$, the ensembles are rotationally invariant. That is, the ensembles are invariant under transformations of the basis. The joint probability distribution $P(x_1, \dots, x_N)$ of the eigenvalues $x_n$ is in terms of the potential given by
+\begin{align}
+& P(x_1, \dots, x_N) = \frac{1}{\mathcal{Z}_{N \beta}} e^{- \beta \, \mathcal{V}(x_1, \dots, x_N)}, \label{eq: Px} \\
+& \mathcal{V} = \frac{1}{\beta} \sum_{n = 1}^N V(x_n) + \frac{1}{2} \sum_{n, m = 1}^N \ln | x_n - x_m|. \label{eq: pot}
+\end{align}
+Here, $\beta \in \{1, 2, 4\}$ is the Dyson index giving the number of degrees of freedom per (real, imaginary, or quaternionic) matrix element. Next, $\mathcal{Z}_{N \beta}$ is a normalization constant fixing the integrated probability to unity.
+
+Equation \eqref{eq: Px} can be thought of as the Boltzmann factor of a one-dimensional gas of particles interacting through a pairwise logarithmic potential, confined by the one-body potential. Such a gas is commonly referred to as a Coulomb gas \cite{Forrester10}. This interpretation allows one to use tools from statistical mechanics to study the thermodynamic limit. After making a continuum and saddle-point approximation (see, e.g., chapter 5 of Ref. \cite{Livan18}), the eigenvalue density $\rho_N(x)$ for a potential $V(x)$ can be shown to satisfy the integral equation
+\begin{equation}
+\Pr \int_{- \infty}^\infty \frac{\rho_N(y)}{x - y} dy = \frac{1}{\beta} \frac{dV}{dx},
+\label{eq: V-rho}
+\end{equation}
+where $\Pr$ denotes the prinipal value. This integral equation is subject to the constraint $\int \rho_N(x) \, dx = N$. Equation \eqref{eq: V-rho} is generically difficult to solve, and only for a limited number of potentials the corresponding eigenvalue density has been found (see, e.g., Sec. 3.2 of Ref. \cite{Sakhnovich15}). 
+
+In this work, the focus is on the random matrix ensemble associated with the logarithmic potential
+\begin{equation}
+V(x) = \frac{\beta N}{2} \ln(1 + x^2).
+\label{eq: V}
+\end{equation}
+For $|x| \gg 1$, this potential approximates $\beta N \ln(x)$. The prefactor $N$ ensures that the first and second terms in Eq. \eqref{eq: pot} are of the same order, namely $N^2$. In the absence of this prefactor, the first term in Eq. \eqref{eq: pot} would be vanishingly small compared to the second one, making the potential nonconfining. The term ``weakly confining'' appeared in the current context first in Ref. \cite{Hardy12}, which discusses the potential studied in this work in Example 1.3.
+
+At a technical level, the motivation to consider this particular potential is as follows. Substituting Eq. \eqref{eq: V} in Eq. \eqref{eq: V-rho} and dividing both sides by $N$ gives on the left-hand side the Hilbert transform (see, e.g., chapter 5 of Ref. \cite{Liflyand21}) $\mathcal{H}[f(y)]$ of some function $f(y)$,
+\begin{equation}
+\mathcal{H}[f(y)] = \frac{1}{\pi} \Pr \int_{- \infty}^\infty \frac{f(y)}{x - y} dy.
+\end{equation}
+By comparing the right-hand side $x / (1 + x^2)$ with known Hilbert transforms, one deduces that the eigenvalue density is given by
+\begin{equation}
+\lim_{N \to \infty} \rho_N(x) = \frac{N}{\pi (1 + x^2)},
+\end{equation}
+which is referred to as $\rho(x)$ below. An explicit derivation can be found, e.g,. in example 5.17 of the reference cited above. Indeed, this function can easily be shown to obey the normalization condition $\int \rho_N(x) \, dx = N$. This density sharply differs from, e.g., the semicircular eigenvalue density as observed for the Gaussian ensembles.
+
+It can be of interest to note that random matrix ensembles with logarithmic or squared-logarithmic potentials (although without prefactor $N$) have been proposed as models for the intermediate level spacing statistics and multifractality at the Anderson localization transition \cite{Akemann15} (chapter 12), \cite{Muttalib93, Evers08, Choi10, Vleeshouwers21}.
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Orthogonal polynomials} \label{sec: polynomials}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Spectral correlation functions for the classical random matrix ensembles at finite dimension can be expressed in terms of orthogonal polynomials (see, e.g., chapter 10 of Ref. \cite{Livan18}). In view of the discussion below, the main ideas are introduced using the Jacobi ensemble as an illustration. The Jacobi ensemble is known historically to be relevant in physics in the context of quantum conductance \cite{Forrester06}. In recent years, new applications appeared in the computation of eigenstate entanglement of random free fermionic models \cite{Liu18, Lydzba21, Bianchi21, Murciano22, Ulcakar22} and the spectral form factor of the self-dual kicked Ising model \cite{Flack20}.
+
+As before, let $N$ and $\beta$ denote the dimension of the matrices and the Dyson index, respectively. The eigenvalues $x_n \in [-1,1]$ of samples from the Jacobi ensemble are distributed according to
+\begin{equation}
+P(x_1, \dots, x_N) = \frac{1}{\mathcal{Z}_{a b N \beta}} \prod_{n = 1}^N w(x_n) \prod_{m < k} |x_m - x_k|^\beta
+\label{eq: P-Jacobi}
+\end{equation}
+with the weight function $w(x)$ characterized by parameters $a > -1$ and $b > -1$ here given by
+\begin{equation}
+w(x) = (1 - x)^{a \beta / 2} \, (1 + x)^{b \beta / 2}.
+\end{equation}
+Similar to the above, $\mathcal{Z}_{a b N \beta}$ is a normalization constant fixing the integrated probability to unity. For probability distributions of the form \eqref{eq: P-Jacobi}, spectral correlation functions can be expressed for $\beta = 2$ in terms of the kernel 
+\begin{equation}
+K_N(x_1, x_2) = e^{- \frac{1}{2} \big( V(x_1) + V(x_2) \big)} \sum_{n = 0}^{N-1} p_n (x_1) \, p_n (x_2),
+\label{eq: K}
+\end{equation}
+where, for notational convenience, the potential $V(x)$ satisfying $w(x) = e^{-V(x)}$ is reintroduced. The functions $p_n(x)$ are polynomials orthogonal with respect to the weight function. For the Jacobi ensemble, thus
+\begin{equation}
+\int_{-1}^1 (1 - x)^{a \beta / 2} (1 + x)^{b \beta / 2} \, p_n(x) \, p_m(x) \, dx = \delta_{nm}.
+\label{eq: Jacobi-orthogonality}
+\end{equation}
+For Eq. \eqref{eq: Jacobi-orthogonality}, the polynomials $p_n(x)$ are given by the Jacobi polynomials $P_n^{(a,b)}(x)$ (up to normalization) with the same parameters (see, e.g., Sec. 9.8 of Ref. \cite{Koekoek10} or chapter 4 of Ref. \cite{Szego75}). In terms of the kernel, the eigenvalue density $\rho_N (x)$ is given by
+\begin{equation}
+\rho_N(x) = K_N(x, x).
+\label{eq: rho1}
+\end{equation}
+Two-point eigenvalue correlation functions can be expressed in terms of the kernel as
+\begin{equation}
+\rho_N^{(2)}(x_1, x_2) = C_N \det
+\begin{pmatrix}
+K_N(x_1, x_1) & K_N(x_1, x_2) \\
+K_N(x_2, x_2) & K_N(x_2, x_2)
+\end{pmatrix}
+\label{eq: rho2}
+\end{equation}
+with $C_N = 1 / [N (N-1)]$.
+
+Eigenvalue correlation functions for the potential of Eq. \eqref{eq: V} can be studied by first making the change of variables $x \to y$ given by
+\begin{equation}
+y = \frac{x}{\sqrt{1 + x^2}}.
+\label{eq: transformation}
+\end{equation}
+From the inverse relation $x = y / \sqrt{1 - y^2}$, it follows that the orthogonality condition for the potential studied in this work is in terms of $y$ given by
+\begin{equation}
+\int_{-1}^1 \frac{1}{1 - y^2} \, p_n(y) \, p_m(y) = \delta_{nm}.
+\end{equation}
+One recognizes the orthogonality condition for the nonclassical Gegenbauer polynomials $C_n^{(\lambda)}(y)$, which are (up to a prefactor) Jacobi polynomials $P_n^{(a, b)}(y)$ with $a = b = \lambda - 1/2$ [Eq. \eqref{eq: Jacobi-orthogonality}], with $\lambda = -1/2$. See the Appendix for details.
+
+For $\lambda = -1/2$, the first two Gegenbauer polynomials ($n = 0$ and $n = 1$) are not normalizable (hence the classification ``nonclassical''). As mentioned above, the Gegenbauer polynomials $\{ C_n^{(-1/2)}(y) \}_{n=2}^\infty$ are known to form a complete orthogonal set with respect to the proper weight function \cite{Bruder14}. In the evaluation of the kernel [Eq. \eqref{eq: K}], the counting thus starts at $n=2$, due to which the summation runs up to $n = N+1$. 
+
+For the random matrix ensemble studied in this work, eigenvalue correlations can thus be obtained in terms of the variable $y$. The relation $x = y / \sqrt{1 - y^2}$ allows one to subsequently obtain correlations in terms of the original variable $x$. Having found the orthogonal polynomials, the ensemble proposed in this work can be considered as being ``solvable'' (see, e.g., Ref. \cite{Muttalib93} for details on this classification).
+
+Aiming to illustrate the above results, here some numerical evaluations of $\rho_N(x)$ [Eq. \eqref{eq: rho1}] and $\rho_N^{(2)}(0,x)$ [Eq. \eqref{eq: rho2}] are presented. Figure \ref{fig: rho1} shows the difference between the normalized (to unity) eigenvalue density for $N$ finite and $N \to \infty$ for $N = 10$, $N = 100$, and $N = 1000$. The difference becomes smaller with increasing $N$, scaling as $1/N$. The data for each of the figures presented in this work (except for the histograms in Fig. \ref{fig: hist}) can be generated in $\sim \hspace{-1.5mm} 10$ minutes of computational time on a midrange laptop.
+
+\begin{figure}[t]
+\includegraphics[scale=0.9]{fig-rho1}
+\caption{The difference between the normalized (to unity) eigenvalue density for $N$ finite and $N \to \infty$ for $N = 10$, $N = 100$, and $N = 1000$. One observes that the difference scales as $1/N$.}
+\label{fig: rho1}
+\end{figure}
+
+Figure \ref{fig: rho2} compares $\rho^{(2)}_N(0,x)$ for $N = 25$, $N = 100$, and $N = 1000$ with the evaluation for Wigner-Dyson level statistics at $N \to \infty$ for unfolded spectra with unit mean level spacing given by
+\begin{equation}
+\rho^2(0,x) = 1 - \bigg( \frac{\sin(\pi x)}{\pi x} \bigg)^2,
+\label{eq: RMT-rho2}
+\end{equation}
+see e.g. Ref. \cite{Mehta10}. The finite-$N$ results have been scaled and transformed such that the mean level spacing is unity at $x = 0$ for $N \to \infty$ (see the caption for details). The finite-$N$ curves approach the Wigner-Dyson result as $N$ increases. For $N = 25$, effects due to the non-uniform eigenvalue density (decaying with increasing $x$) are clearly visible. For $N = 1000$, the curves are visually indistinguishable.
+
+\begin{figure}[t]
+\includegraphics[scale=0.9]{fig-rho2}
+\caption{A comparison between $\rho_N^{(2)}(0,x)$ (solid lines) and the result for Wigner-Dyson level statistics at $N \to \infty$ of Eq. \eqref{eq: RMT-rho2} (dashed lines) for $N = 25$, $N = 100$, and $N = 1000$. The finite-$N$ results have been scaled by $1 / [\rho(0) / N]^2 = \pi^2$ and the linear transformation $x \to \pi x / N$ has been applied in order to set the mean level spacing at $x = 0$ to unity for $N \to \infty$. The finite-$N$ curves approach the Wigner-Dyson result as $N$ increases.}
+\label{fig: rho2}
+\end{figure}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Random matrix construction} \label{sec: matrix}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+In Sec. \ref{sec: polynomials}, it was found that the spectral correlation functions for the random matrix ensemble proposed in this work can be obtained from the spectral correlation functions for the Jacobi ensemble with parameters $a = b = -1$ through the transformation given in Eq. \eqref{eq: transformation}. This mapping of the spectral properties of a classical ensemble to the spectral properties of the ensemble of interest allows one to sample spectra by diagonalizing random matrices.
+
+Let $X_1$ and $X_2$ denote, respectively, $M_1 \times N$ and $M_2 \times N$ matrices with independent sampled Gaussian entries. The real ($\beta = 1$), imaginary ($\beta = 2$), or quaternionic-valued ($\beta = 4$) entries $x$, $z$, or $w$ are sampled from, respectively, the probability densities
+\begin{equation}
+\frac{1}{\sqrt{2 \pi}} e^{- \frac{1}{2} x^2}, \qquad \frac{1}{\pi} e^{-|z|^2}, \qquad \frac{2}{\pi} e^{-2 |w|^2},
+\end{equation}
+see, e.g., Sec. 6.3\ of Ref. \cite{Forrester10}. Next, let $W_1 = X_1^\dagger X_1$ and $W_2 = X_2^\dagger X_2$. A spectrum $\{ y_n \}$ from the Jacobi ensemble of dimension $N$ with parameters $a = N - M_1 + 1 - 2/\beta$ and $b = N - M_2 + 1 - 2/\beta$ is obtained by transforming the eigenvalues $\{ z_n \}$ of the double-Wishart matrix
+\begin{equation}
+W = W_1 (W_1 + W_2)^{-1},
+\label{eq: W-matrix}
+\end{equation}
+which obey $z_n \in [0,1]$, as $y_n = 1 - 2 z_n$. Notice that there are no issues with sampling for $a = b = -1$, which can be accomplished by choosing $M_1 = M_2 = N + 1$.
+
+Given an eigenvalue spectrum $\{ y_n \}$ sampled from the Jacobi ensemble, a spectrum $\{ x_n \}$ of the ensemble proposed in this work can be obtained by applying the inverse of the transformation $x_n \to y_n$ as given in Eq. \eqref{eq: transformation}, $x = y / \sqrt{1 - y^2}$. Figure \ref{fig: hist} compares the normalized (to unity) eigenvalue density $\rho_{N}(x) / N$ with a properly normalized histogram of the eigenvalues for $\beta = 2$ at $N = 10$, $N = 100$, and $N = 1000$ from the ensemble proposed in this work, obtained through diagonalizations of matrices $W$ as given in Eq. \eqref{eq: W-matrix}. One observes perfect agreement.
+
+\begin{figure}[t]
+\includegraphics[scale=0.9]{fig-hist}
+\caption{A plot of the normalized (to unity) eigenvalue densities $\rho_N(x) / N$ (``analytical'') compared with a normalized [to unity on $x \in (- \infty, \infty)$] histogram of the eigenvalues for the random matrix ensemble proposed in this work (``numerical'') for $\beta = 2$ at $N = 10$, $N = 100$, and $N =1000$. Perfect agreement can be observed.}
+\label{fig: hist}
+\end{figure}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Conclusions and outlook} \label{sec: conclusions}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+In this work, a solvable (in the sense that spectral correlation functions can be expressed in terms of orthogonal polynomials), rotationally invariant random matrix ensemble with a logarithmic weakly confining potential has been identified. This ensemble is found to be a transformed Jacobi ensemble. Using the Coulomb gas technique, the eigenvalue density in the thermodynamic limit is found to be given by a Lorentzian. A procedure to sample numerically from this random matrix ensemble has been outlined, and used to verify some of the analytical results.
+
+As the random matrix ensemble identified in this work can be interpreted as a transformed Jacobi ensemble, properties of the ensemble that have not been discussed here, such as extreme value statistics \cite{MorenoPozas19} or the extension to a continous $\beta$-ensemble \cite{Dumitriu02}, could in principle be established in a straightforward way. It would be of interest to see how the ensemble proposed in this work appears in physical settings. For example, in the spirit of Ref. \cite{Venturelli22} and other generalizations \cite{Khaymovich20, Biroli21, Khaymovich21, Buijsman22, DeTomasi22}, this ensemble could potentially serve as a building block for improved generalizations of the Rosenzweig-Porter ensemble \cite{Kravtsov15}.
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Acknowledgments
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{acknowledgments}
+Useful discussions with Vladimir Gritsev and Ward L. Vleeshouwers are gratefully acknowledged. This work is supported by the Kreitman School of Advanced Graduate Studies at Ben-Gurion University.
+\end{acknowledgments}
+
+
+
+\appendix*
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Gegenbauer polynomials} \label{app: Gegenbauer}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+The Gegenbauer polynomials $C_n^{(\lambda)}(x)$ are Jacobi polynomials $P_n^{(a, b)}(x)$ with $a = b = \lambda - 1/2$ for $\lambda > -1/2$ (see e.g. Sec. 9.8.1 of Ref. \cite{Koekoek10}). Following customary normalization (see, e.g., Sec. 4.7 of Ref. \cite{Szego75}), these are defined as
+\begin{equation}
+C_n^{(\lambda)}(x) = \frac{\Gamma(\lambda + 1/2)}{\Gamma(2 \lambda)} \frac{\Gamma(n + 2 \lambda)}{\Gamma(n + \lambda + 1/2)} P_n^{(\lambda - 1/2, \lambda - 1/2)}(x).
+\end{equation}
+The Gegenbauer polyonomals are orthogonal with respect to the weight function $(1+x^2)^{\lambda - 1/2}$ on $x \in [-1,1]$. They obey the recurrence relation
+\begin{equation}
+\begin{split}
+& 2 (n+\lambda) x \, C_n^{(\lambda)}(x) = (n+1) \, C_{n+1}^{(\lambda)}(x) \\
+& + (n + 2 \lambda - 1) \, C_{n-1}^{(\lambda)}(x) 
+\end{split}
+\end{equation}
+with $C_0^{(\lambda)}(x) = 1$ and $C_1^{(\lambda)}(x) = 2 \lambda x$. The normalization condition for the Gegenbauer polynomials reads
+\begin{equation}
+\int_{-1}^1 (1 - x^2)^{\lambda - 1/2} \big[ C_n^{(\lambda)}(x) \big]^2 dx = \mathcal{N}_n^{(\lambda)}
+\end{equation}
+with
+\begin{equation}
+ \mathcal{N}_n^{(\lambda)} = \frac{\pi \Gamma(n + 2 \lambda) 2^{1 - 2 \lambda}}{n! (n + \lambda) [ \Gamma(\lambda)]^2}.
+\end{equation}
+The polynomials satisfying the orthogonality condition of Eq. \eqref{eq: Jacobi-orthogonality} are given by $p_n(x) = C_n^{(\lambda)} (x) / \sqrt{ \mathcal{N}_n^{(\lambda)}}$. A recent generalization of the orthogonality condition to the complex plane has been obtained in Ref. \cite{Akemann21}.
+
+For $\lambda = -1/2$, $ \mathcal{N}_n^{(\lambda)}$ reduces to $1 / [n (n-1/2)(n-1)]$, meaning that the polynomials with indices $n = 0$ and $n = 1$ can not be properly normalized. The Gegenbauer polynomials $\{ C_n^{(-1/2)}(x) \}_{n=2}^\infty$ have been proven to form a complete orthogonal set with respect to the proper weight function, and are classified as ``nonclassical'' \cite{Bruder14}. Consequently, for $\lambda = -1/2$ the counting starts at $n = 2$.
+
+
+
+\nocite{apsrev42Control}
+\bibliography{references}
+
+\end{document}

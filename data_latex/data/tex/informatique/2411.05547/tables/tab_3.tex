@@ -1,0 +1,26 @@
+% Please add the following required packages to your document preamble:
+% \usepackage{multirow}
+%\begin{table*}[!t]
+\begin{table*}[!h]
+\centering
+\begin{tabular}{|cl|l|}
+\hline
+% \multicolumn{2}{|c|}{query} &
+%   Can you guide me through compressing my custom model, retraining it, and measuring its latency? \\ \hline
+\multicolumn{2}{|c|}{\begin{tabular}[c]{@{}l@{}}query\end{tabular}} &
+  \begin{tabular}[c]{@{}l@{}}Can you guide me through compressing my custom model, retraining it, \\and measuring its latency?\end{tabular} \\ \hline
+\multicolumn{1}{|c|}{\multirow{3}{*}{\begin{tabular}[c]{@{}c@{}}gold\\ APIs\end{tabular}}} &
+  1 &
+  Compressor.automatic\_compression(PARAMETERS): DESCRIPTION \\ \cline{2-3} 
+\multicolumn{1}{|c|}{} &
+  2 &
+  Trainer.train(PARAMETERS): DESCRIPTION \\ \cline{2-3} 
+\multicolumn{1}{|c|}{} &
+  3 &
+  Benchmarker.benchmark\_model(PARAMETERS): DESCRIPTION \\ \hline
+\multicolumn{2}{|l|}{\begin{tabular}[c]{@{}l@{}}canonical\\ solution\end{tabular}} &
+  \begin{tabular}[c]{@{}l@{}}from netspresso import NetsPresso \\ from netspresso.trainer.optimizers import AdamW \\ from netspresso.enums import DeviceName, SoftwareVersion\\ \\ netspresso = NetsPresso(email='YOUR\_EMAIL', password='YOUR\_PASSWORD')  \\ \\ \# Compress\\ compressor = netspresso.compressor()\\ compressed\_model = compressor.automatic\_compression(\\    \quad\quad input\_shapes={[}\{"batch": 1, "channel": 3, "dimension": {[}224, 224{]}\}{]},\\    \quad\quad input\_model\_path="./models/YOUR\_PYTORCH\_MODEL.pt",\\     \quad\quad output\_dir="./outputs/compressed", compression\_ratio=0.5,\\ )\\ \\ \# Retrain\\ trainer = netspresso.trainer(yaml\_path="hparams.yaml")\\ trainer.set\_fx\_model(fx\_model\_path="YOUR\_FX\_MODEL.pt") \\ trainer.set\_training\_config(epochs=100, batch\_size=128, optimizer=AdamW(lr=1e-4))\\ trainer.train(gpus="0, 1", project\_name="project\_retrain")\\ \\ \# Benchmark\\  benchmarker = netspresso.benchmarker()\\  benchmark\_result = benchmarker.benchmark\_model(\\     \quad\quad input\_model\_path="YOUR\_RETRAINED\_MODEL\_PATH", \\     \quad\quad target\_device\_name=DeviceName.JETSON\_AGX\_ORIN, \\     \quad\quad target\_software\_version=SoftwareVersion.JETPACK\_5\_0\_1,\\ )\end{tabular} \\ \hline
+\end{tabular}
+\caption{Example of NetsPressoEval dataset.}
+\label{tab:3}
+\end{table*}

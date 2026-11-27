@@ -1,0 +1,248 @@
+%%
+%% Copyright 2007, 2008, 2009 Elsevier Ltd
+%%
+%% This file is part of the 'Elsarticle Bundle'.
+%% ---------------------------------------------
+%%
+%% It may be distributed under the conditions of the LaTeX Project Public
+%% License, either version 1.2 of this license or (at your option) any
+%% later version.  The latest version of this license is in
+%%    http://www.latex-project.org/lppl.txt
+%% and version 1.2 or later is part of all distributions of LaTeX
+%% version 1999/12/01 or later.
+%%
+%% The list of all files belonging to the 'Elsarticle Bundle' is
+%% given in the file `manifest.txt'.
+%%
+
+%% Template article for Elsevier's document class `elsarticle'
+%% with numbered style bibliographic references
+%% SP 2008/03/01
+%%
+%%
+%%
+%% $Id: elsarticle-template-num.tex 4 2009-10-24 08:22:58Z rishi $
+%%
+%%
+%\documentclass[review, 12pt]{elsarticle}
+
+%% Use the option review to obtain double line spacing
+\documentclass[preprint, 12pt]{elsarticle}
+
+%% Use the options 1p,twocolumn; 3p; 3p,twocolumn; 5p; or 5p,twocolumn
+%% for a journal layout:
+%% \documentclass[final,1p,times]{elsarticle}
+%% \documentclass[final,1p,times,twocolumn]{elsarticle}
+%% \documentclass[final,3p,times]{elsarticle}
+%% \documentclass[final,3p,times,twocolumn]{elsarticle}
+% \documentclass[final,5p,times]{elsarticle}
+%% \documentclass[final,5p,times,twocolumn]{elsarticle}
+
+%% if you use PostScript figures in your article
+%% use the graphics package for simple commands
+%% \usepackage{graphics}
+%% or use the graphicx package for more complicated commands
+%% \usepackage{graphicx}
+%% or use the epsfig package if you prefer to use the old commands
+%% \usepackage{epsfig}
+
+%% The amssymb package provides various useful mathematical symbols
+
+\usepackage{amssymb}
+\usepackage{bm}
+\usepackage[colorlinks=true, linkcolor=blue, anchorcolor=blue,citecolor=blue]{hyperref}
+
+\usepackage{amsmath}
+\usepackage{caption}
+\usepackage{subcaption}
+
+\usepackage{cleveref}
+\usepackage{multirow}
+\usepackage{color,soul}
+\usepackage[table]{xcolor}
+\newcommand{\degree}{^\circ}
+\newcommand{\hlnew}[2]{\sethlcolor{#1}\hl{#2}}
+\newcommand{\hlmath}[2]{\colorbox{#1}{$\displaystyle #2$}}
+
+\usepackage[switch]{}
+%\usepackage{cite}
+%% The amsthm package provides extended theorem environments
+%% \usepackage{amsthm}
+
+%% The lineno packages adds line numbers. Start line numbering with
+%% \begin{linenumbers}, end it with \end{linenumbers}. Or switch it on
+%% for the whole article with \linenumbers after \end{frontmatter}.
+%\usepackage{lineno}
+
+%% natbib.sty is loaded by default. However, natbib options can be
+%% provided with \biboptions{...} command. Following options are
+%% valid:
+
+%%   round  -  round parentheses are used (default)
+%%   square -  square brackets are used   [option]
+%%   curly  -  curly braces are used      {option}
+%%   angle  -  angle brackets are used    <option>
+%%   semicolon  -  multiple citations separated by semi-colon
+%%   colon  - same as semicolon, an earlier confusion
+%%   comma  -  separated by comma
+%%   numbers-  selects numerical citations
+%%   super  -  numerical citations as superscripts
+%%   sort   -  sorts multiple citations according to order in ref. list
+%%   sort&compress   -  like sort, but also compresses numerical citations
+%%   compress - compresses without sorting
+%%
+%% \biboptions{comma,round}
+
+% \biboptions{}
+
+\input{macros}
+
+\begin{document}
+% \captionsetup[figure]{labelfont={bf},name={Fig.},labelsep=period}
+% \captionsetup[table]{labelfont={bf},name={Table.},labelsep=period}
+\sethlcolor{yellow}
+\setstcolor{red}
+\soulregister\cite7 % for \cite
+\soulregister\ref7
+%\UseRawInputEncoding
+
+\begin{frontmatter}
+
+\title{An Edge-based Interface Tracking (EBIT) Method for Multiphase-flow Simulation with Surface Tension}
+
+\author[a]{Jieyun Pan\corref{cor1}}
+\ead{yi.pan@sorbonne-universite.fr}
+
+\author[a,c]{Tian Long}
+\ead{tian.long@dalembert.upmc.fr}
+
+\author[a]{Leonardo Chirco}
+\ead{leonardo.chirco@framatome.com}
+
+\author[d]{Ruben Scardovelli}
+\ead{ruben.scardovelli@unibo.it}
+
+\author[a]{St\'{e}phane Popinet\footnote{}}
+\ead{popinet@basilisk.fr}
+
+\author[a,b]{St\'{e}phane Zaleski}
+\ead{stephane.zaleski@sorbonne-universite.fr}
+
+\cortext[cor1]{Corresponding author}
+\address[a]{Sorbonne Universit\'{e} and CNRS, Institut Jean Le Rond d'Alembert UMR 7190, F-75005 Paris, France}
+\address[b]{Institut Universitaire de France, Paris, France}
+\address[c]{School of Aeronautics, Northwestern Polytechnical University, Xi'an, 710072, PR China}
+\address[d]{ DIN - Lab. di Montecuccolino, Universit\`a di Bologna, I-40136 Bologna, Italy}
+
+\begin{abstract}
+
+We present a novel Front-Tracking method, the Edge-Based Interface Tracking (EBIT) method for multiphase flow simulations. In the EBIT method, the markers are located on the grid edges and the interface can be reconstructed without storing the connectivity of the markers. This feature makes the process of marker addition or removal easier than in the traditional Front-Tracking method. The EBIT method also allows almost automatic parallelization due to the lack of explicit connectivity. 
+
+In a previous journal article we have presented the kinematic part of the EBIT method, that includes the algorithms for piecewise linear reconstruction and advection of the interface. Here, we complete the presentation of the EBIT method and combine the kinematic algorithm with a Navier--Stokes solver. A circle fit is now implemented to improve the accuracy of mass conservation in the reconstruction phase. Furthermore, to identify the reference phase and to distinguish ambiguous topological configurations, we introduce a new feature: the Color Vertex. For the coupling with the Navier--Stokes equations, we first calculate volume fractions from the position of the markers and the Color Vertex, then viscosity and density fields from the computed volume fractions and finally surface tension stresses with the Height-Function method. In addition, an automatic topology change algorithm is implemented into the EBIT method, making it possible the simulation of more complex flows. The two-dimensional version of the EBIT method has been implemented in the free Basilisk platform, and 
+validated with seven standard test cases: stagnation flow, translation with uniform velocity, single vortex, Zalesak's disk, capillary wave, Rayleigh-Taylor instability and rising bubble. The results are compared with those obtained with the Volume-of-Fluid (VOF) method already implemented in Basilisk.
+\end{abstract}
+
+\begin{keyword}
+%% keywords here, in the form: keyword \sep keyword
+Two-phase flows \sep Front-Tracking \sep Volume-of-Fluid  
+%% MSC codes here, in the form: \MSC code \sep code
+%% or \MSC[2008] code \sep code (2000 is the default)
+\end{keyword}
+
+\end{frontmatter}
+%\linenumbers
+
+%%
+%% Start line numbering here if you want
+%%
+% \linenumbers
+
+% main text
+\section{Introduction}
+\input{introduction}
+
+
+\section{Numerical method} \label{Numerical method}
+\input{numerical_method}
+
+
+\section{Numerical results and discussion} \label{Numerical results and discussion}
+\input{numerical_results}
+
+\section{Conclusions}
+We present a novel Front-Tracking method, the Edge-Based Interface Tracking (EBIT) method, which is suitable for almost automatic parallelization due to the lack of explicit connectivity.
+Several new features have been introduced to improve the very first version of the EBIT method \cite{Chirco_2022_95}. First, a circle fit has been implemented to improve the accuracy of mass conservation in the reconstruction phase after the interface advection.
+Second, a Color Vertex feature has been introduced to distinguish between ambiguous topological configurations and to represent the connectivity implicitly. Third, an automatic topological change mechanism has been discussed.
+
+The new EBIT method has been implemented inside the free Basilisk platform in order to solve the Navier--Stokes equations for multiphase flow simulations with surface tension. Volume fractions are calculated based on the position of the markers and the Color Vertex, and are used to compute the physical properties and the surface tension force.
+
+Numerical results for various cases, including both kinematic and dynamical tests, have been considered and compared with those obtained with the VOF method. Good agreement is observed for all test cases.
+
+The extensions we foresee for EBIT are of two kinds: kinematic and dynamic. To give an example of a kinematic extension, if two markers per edge are allowed instead of one in the current method, dealing with thin strips of fluid will be possible. Two markers per edge would avoid reconnection as in VOF or evaporation as in Level-Sets, and would bring EBIT on a par with Front-Tracking in this respect. A dynamic extension would involve for example the direct computation of capillary forces or tensions from EBIT data instead of performing the detour through the VOF color fraction. There are other multiscale features, such as triple points, small droplets and bubbles and contact lines that could benefit from extensions of EBIT. To accurately represent the force balance near a triple point the direct computation of capillary forces would also be necessary. This improved treatment of surface tension could be done by implementing the momentum-conserving well-balanced method of Al-Saud et al. \cite{abu2018conservative}.
+
+There is thus hope that EBIT, provided it is extended in certain ways, will be able to bring progress on multiscale issues. One often-used multiscale feature in both VOF and level set codes is the conversion of small connected patches to Lagrangian Particles. This is made easier if the exact location of the interface is known and its topology is decided. In VOF and Level-Set methods one often remarks instead some mass diffusion or ``evaporation'' near small drops. We finally note that the use of quad/octree AMR is particularly beneficial when studying flows with a wide range of scales, especially when combined with high performance computing. One originality of the new EBIT method is that it is merged with the quad/octree structure of a code with proven scalability on high performance computers.
+
+
+\section{CRediT authorship contribution statement}
+
+\textbf{J. Pan}: Conceptualization, Formal analysis, Code development, Simulations, Writing
+
+\textbf{T. Long}: Formal analysis, Code development
+
+\textbf{L. Chirco}: Conceptualization, Code development
+
+\textbf{R. Scardovelli}: Formal analysis, Writing
+
+\textbf{S. Popinet}: Basilisk code development
+
+\textbf{S. Zaleski}: Conceptualization, Formal analysis, Supervision, Writing, Funding acquisition
+
+\section{Declaration of competing interest}
+The authors declare that they have no known competing financial interests or personal relationships that could have appeared to influence the work reported in this paper.
+
+
+\section{Acknowledgements}
+St\'{e}phane Zaleski and St\'{e}phane Popinet recall meeting Sergei Semushin in March 1995 and learning about his method. They thank him for the explanation of the method.
+This project has received funding from the European Research Council (ERC) under the European Union's Horizon 2020 research and innovation programme (grant agreement number 883849). We thank the European PRACE group, the Swiss supercomputing agency CSCS, the French national GENCI supercomputing agency and the relevant supercomputer centers for their grants of CPU time on massively parallel machines, and their teams for assistance and the use of Irene-Rome at TGCC.
+
+%% The Appendices part is started with the command \appendix;
+%% appendix sections are then done as normal sections
+%\appendix
+
+%\section{Section in Appendix}
+%\label{appendix-sec1}
+
+%Sample text. Sample text. Sample text. Sample text. Sample text. Sample text. 
+%Sample text. Sample text. Sample text. Sample text. Sample text. Sample text. 
+%Sample text. 
+
+%% References
+%%
+%% Following citation commands can be used in the body text:
+%% Usage of \cite is as follows:
+%%   \cite{key}         ==>>  [#]
+%%   \cite[chap. 2]{key} ==>> [#, chap. 2]
+%%
+
+%% References with bibTeX database:
+
+%\bibliographystyle{elsarticle-num}
+% \bibliographystyle{elsarticle-harv}
+% \bibliographystyle{elsarticle-num-names}
+% \bibliographystyle{model1a-num-names}
+% \bibliographystyle{model1b-num-names}
+% \bibliographystyle{model1c-num-names}
+ \bibliographystyle{model1-num-names}
+% \bibliographystyle{model2-names}
+% \bibliographystyle{model3a-num-names}
+% \bibliographystyle{model3-num-names}
+% \bibliographystyle{model4-names}
+% \bibliographystyle{model5-names}
+% \bibliographystyle{model6-num-names}
+
+%\bibliographystyle{unsrt}
+\bibliography{multiphase-jieyun,multiphase-stephane}
+\end{document}
+
+%%
+%% End of file `elsarticle-template-num.tex'.

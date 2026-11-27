@@ -1,0 +1,17 @@
+\section{Methods for Assessing Answerability}
+As discussed in the introduction, the challenge of determining whether a given query in RaCG can yield a correct answer has not yet been explored. To investigate this, in this section, we describe the models we used to assess the given queries and classify their answerability.
+
+\subsection{Zero-shot inference on instruction-following LLMs}
+The first method that we use involves directly querying instruction-tuned LLMs for the answerability of each sample. To perform this zero-shot inference, we borrowed the prompt template used in LLatrieval~\cite{li-etal-2024-llatrieval}. This template was used to verify whether a given query in an RAG scenario is answerable in a general domain. The template is described in Table~\ref{tab:4} of Appendix~\ref{appendix:b}.
+
+\subsection{Fine-tuning LLMs with automatically generated training datasets}
+If we can generate training datasets for our task, we can fine-tune the parameters of the LLMs to perform answerability assessment tasks effectively. In the following sections, we describe how to construct such training datasets (\textsection 3.2.1 and \textsection 3.2.2). 
+
+\subsubsection{Obtaining answerable samples}
+In order to generate answerable samples, we need sets of API descriptions and user queries related to those APIs. To this end, we use CoNaLa \cite{yin2018conala}, which includes frequently asked queries related to the use of the Python language and high-quality solutions (i.e., valid answer code) from the StackOverflow. Although we obtained queries and solutions, there were no gold API descriptions available, so we utilized the standard Python API documentation to address this issue. We extracted the class and method keywords present in the solutions corresponding to each query and used the API descriptions associated with those keywords as the gold APIs. The process of obtaining these answerable samples is illustrated in Figure~\ref{fig:6} of Appendix~\ref{appendix:c}.
+
+\subsubsection{Deriving partially answerable and unanswerable samples}
+Using the existing answerable training samples, unanswerable and partially answerable samples can be automatically generated using the three methods discussed in Section~\ref{sec:2_3}: substituting gold APIs, concatenating topically related queries, and Substituting the query with one from out-of-database.
+
+As a result, we were able to obtain a total of 2192 answerable, 2191 unanswerable, and 2185 partially answerable samples.
+

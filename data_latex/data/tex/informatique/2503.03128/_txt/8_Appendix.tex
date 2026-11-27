@@ -1,0 +1,656 @@
+
+
+\section{Rademacher Complexity of k-window Next Token Prediction}\label{appendix: rade}
+\begin{proof}
+We start by expressing the empirical Rademacher complexity for \( \mathcal{H}_k \):
+
+\[
+\hat{\mathcal{R}}_S(\mathcal{H}_k) = \mathbb{E}_{\sigma} \left[ \sup_{h \in \mathcal{H}_k} \frac{1}{m} \sum_{i=1}^m \sigma_i h(x^{(i)}) \right].
+\]
+
+Since each \( h \in \mathcal{H}_k \) is \( L_h \)-Lipschitz and \( \| x^{(i)} \| \leq R_x \sqrt{k} \), we can bound \( \hat{\mathcal{R}}_S(\mathcal{H}_k) \) using the Lipschitz property.
+
+
+By Talagrand's contraction lemma\citep{ledoux2013probability}, the standard results on Rademacher complexity of Lipschitz function over bounded domains, we have:
+
+\[
+\hat{\mathcal{R}}_S(\mathcal{H}_k) \leq \frac{L_h}{m} \mathbb{E}_{\sigma} \left[ \sup_{\| h \|_{\text{Lip}} \leq L_h} \sum_{i=1}^m \sigma_i h(x^{(i)}) \right].
+\]
+
+
+The supremum over \( h \) can be bounded using the dual norm:
+
+\[
+\sup_{\| h \|_{\text{Lip}} \leq L_h} \sum_{i=1}^m \sigma_i h(x^{(i)}) \leq L_h \left\| \sum_{i=1}^m \sigma_i x^{(i)} \right\|_*,
+\]
+
+where \( \| \cdot \|_* \) is the dual norm of \( \| \cdot \| \). For Euclidean norms, the dual norm is also the Euclidean norm. We compute:
+
+\[
+\mathbb{E}_{\sigma} \left\| \sum_{i=1}^m \sigma_i x^{(i)} \right\| \leq \sqrt{ \mathbb{E}_{\sigma} \left\| \sum_{i=1}^m \sigma_i x^{(i)} \right\|^2 }.
+\]
+
+Since \( \sigma_i \) are independent Rademacher variables and \( x^{(i)} \) are fixed, we have:
+
+\[
+\mathbb{E}_{\sigma} \left\| \sum_{i=1}^m \sigma_i x^{(i)} \right\|^2 = \sum_{i=1}^m \| x^{(i)} \|^2 \leq m (R_x \sqrt{k})^2 = m R_x^2 k.
+\]
+
+Therefore:
+
+\[
+\mathbb{E}_{\sigma} \left\| \sum_{i=1}^m \sigma_i x^{(i)} \right\| \leq \sqrt{m R_x^2 k} = R_x \sqrt{m k}.
+\]
+
+
+Substituting back into the Rademacher complexity expression:
+
+\[
+\hat{\mathcal{R}}_S(\mathcal{H}_k) \leq \frac{L_h}{m} \cdot R_x \sqrt{m k} = L_h R_x \sqrt{\frac{k}{m}}.
+\]
+
+Taking the expectation over \( S \):
+
+\[
+\mathcal{R}_m(\mathcal{H}_k) = \mathbb{E}_S \left[ \hat{\mathcal{R}}_S(\mathcal{H}_k) \right] \leq \frac{L_h R_x \sqrt{k}}{\sqrt{m}}.
+\]
+
+
+For a neural network with depth \( l_{\text{max}} \), activation functions with Lipschitz constant \( L_{\phi} \), and weight matrices with spectral norms bounded by \( B_d \), the Lipschitz constant \( L_h \) satisfies:
+
+\[
+L_h \leq B_{\text{spec}} L_{\phi}^{\l_{\text{max}}-1}, \quad \text{where} \quad B_{\text{spec}} = \prod_{l=1}^{l_{\text{max}}} B_l.
+\]
+
+Therefore, the Rademacher complexity of \( \mathcal{H}_k \) is bounded by:
+
+\[
+\mathcal{R}_m(\mathcal{H}_k) \leq \frac{L_h R_x \sqrt{k}}{\sqrt{m}} = \frac{B_{\text{spec}} L_{\phi}^{l_{\text{max}}-1} R_x \sqrt{k}}{\sqrt{m}}.
+\]
+\end{proof}
+\section{Proof of Theorem~\ref{theorem:learn}}\label{appendix:theorem5.6}
+
+\begin{proof}
+
+Using the standard generalization bound via Rademacher complexity, we have:
+
+\[
+L(h) \leq \hat{L}_S(h) + 2 \mathcal{R}_m(\mathcal{H}_k) + C \sqrt{\frac{\log(1/\delta)}{2m}},
+\]
+
+with probability at least \( 1 - \delta \), where \( \mathcal{R}_m(\mathcal{H}_k) \) is the Rademacher complexity of the hypothesis class \( \mathcal{H}_k \).
+
+
+By Lemma~\ref{lemmarad}, we have:
+
+\[
+\mathcal{R}_m(\mathcal{H}_k) \leq \frac{B_{\text{spec}} L_{\phi}^{l_{\text{max}}-1} R_x \sqrt{k}}{\sqrt{m}}.
+\]
+
+
+Substituting the Rademacher complexity into the generalization error bound:
+
+\[
+L(h) \leq \hat{L}_S(h) + 2 L \frac{B_{\text{spec}} L_{\phi}^{l_{\text{max}}-1} R_x \sqrt{k}}{\sqrt{m}} + C \sqrt{\frac{\log(1/\delta)}{2m}}.
+\]
+
+Assuming \( \hat{L}_S(h) \approx 0 \) (perfect empirical risk minimization), the inequality simplifies to:
+
+\[
+L(h) \leq \frac{2 L B_{\text{spec}} L_{\phi}^{l_{\text{max}}-1} R_x \sqrt{k}}{\sqrt{m}} + C \sqrt{\frac{\log(1/\delta)}{2m}}.
+\]
+
+
+To ensure \( L(h) \leq \epsilon \), we require:
+
+\[
+\frac{2 L B_{\text{spec}} L_{\phi}^{l_{\text{max}}-1} R_x \sqrt{k}}{\sqrt{m}} + C \sqrt{\frac{\log(1/\delta)}{2m}} \leq \epsilon.
+\]
+
+Let’s denote:
+
+ \[ A = 2 L B_{\text{spec}} L_{\phi}^{l_{\text{max}}-1} R_x \sqrt{k}, \]
+and \[ B = C \sqrt{\frac{\log(1/\delta)}{2}}. \]
+
+Then the inequality becomes:
+
+\[
+\frac{A}{\sqrt{m}} + \frac{B}{\sqrt{m}} \leq \epsilon \quad \implies \quad \frac{A + B}{\sqrt{m}} \leq \epsilon.
+\]
+
+Solving for \( m \):
+
+\[
+\sqrt{m} \geq \frac{A + B}{\epsilon} \quad \implies \quad m \geq \left( \frac{A + B}{\epsilon} \right)^2.
+\]
+
+Substituting back the expressions for \( A \) and \( B \):
+
+\[
+m \geq \left( \frac{2 L B_{\text{spec}} L_{\phi}^{l_{\text{max}}-1} R_x \sqrt{k} + C \sqrt{\frac{\log(1/\delta)}{2}} }{ \epsilon } \right)^2.
+\]
+
+
+By simplifying:
+\[
+m \geq \frac{1}{\epsilon^2} \left[ 4 L^2 B_{\text{spec}}^2 L_{\phi}^{2(l_{\text{max}}-1)} R_x^2 k + 4 L B_{\text{spec}} L_{\phi}^{l_{\text{max}}-1} R_x C \sqrt{k} \sqrt{\frac{\log(1/\delta)}{2}} + \frac{C^2 \log(1/\delta)}{2} \right].
+\]
+
+\end{proof}
+\section{Proof of Theorem~\ref{corollary1}}\label{appendix:theorem5.7}
+\begin{proof}
+
+At time step \( t \), the prediction error depends on the cumulative effect of previous errors:
+
+\[
+\epsilon_t \leq L_{\text{model}} \epsilon_{t-1} + \epsilon_{\text{single}},
+\]
+
+where
+\( L_{\text{model}} = B_{\text{spec}} L_{\phi}^{l_{\text{max}}-1} \) is the Lipschitz constant of the model with respect to its inputs, capturing how input errors affect the output.
+And \( \epsilon_{\text{single}} \) is the inherent error at each step due to model imperfections.
+We unroll the recursion to express \( \epsilon_t \) in terms of \( \epsilon_{\text{single}} \):
+
+\[
+\epsilon_t \leq L_{\text{model}}^{t-1} \epsilon_1 + \epsilon_{\text{single}} \sum_{i=0}^{t-2} L_{\text{model}}^i.
+\]
+
+Assuming \( \epsilon_1 = \epsilon_{\text{single}} \) (initial error), we get:
+
+\[
+\epsilon_t \leq \epsilon_{\text{single}} \left( L_{\text{model}}^{t-1} + \sum_{i=0}^{t-2} L_{\text{model}}^i \right) = \epsilon_{\text{single}} \left( L_{\text{model}}^{t-1} + \frac{L_{\text{model}}^{t-1} - 1}{L_{\text{model}} - 1} \right).
+\]
+
+Simplifying:
+
+\[
+\epsilon_t \leq \epsilon_{\text{single}} \cdot \frac{L_{\text{model}}^{t} - 1}{L_{\text{model}} - 1}.
+\]
+
+The cumulative error is the sum over all time steps:
+
+\[
+\epsilon_{\text{cumulative}} = \sum_{t=1}^{T} \epsilon_t \leq \epsilon_{\text{single}} \sum_{t=1}^{T} \frac{L_{\text{model}}^{t} - 1}{L_{\text{model}} - 1}.
+\]
+
+
+\[\Downarrow\]
+
+\[
+\epsilon_{\text{cumulative}} \leq \epsilon_{\text{single}} \cdot \frac{1}{L_{\text{model}} - 1} \left( \sum_{t=1}^{T} L_{\text{model}}^{t} - T \right),
+\]
+
+where
+
+\[
+\sum_{t=1}^{T} L_{\text{model}}^{t} = L_{\text{model}} \cdot \frac{L_{\text{model}}^{T} - 1}{L_{\text{model}} - 1}.
+\]
+
+Therefore:
+
+\[
+\epsilon_{\text{cumulative}} \leq \epsilon_{\text{single}} \cdot \frac{1}{L_{\text{model}} - 1} \left( L_{\text{model}} \cdot \frac{L_{\text{model}}^{T} - 1}{L_{\text{model}} - 1} - T \right).
+\]
+
+
+
+This expression captures the exponential growth of errors due to the recursive dependence in the model.
+To ensure \( \epsilon_{\text{cumulative}} \leq \epsilon \), we need:
+
+\[
+\epsilon_{\text{single}} \leq \epsilon \cdot \left( \frac{1}{L_{\text{model}} - 1} \left( L_{\text{model}} \cdot \frac{L_{\text{model}}^{T} - 1}{L_{\text{model}} - 1} - T \right) \right)^{-1}.
+\]
+
+
+From our Theorem~\ref{theorem:learn}, the required sample size to achieve \( \epsilon_{\text{single}} \) at each time step is:
+
+\[
+m \geq \frac{1}{\epsilon_{\text{single}}^2}\left[ 4 L^2 B_{\text{spec}}^2 L_{\phi}^{2(l_{\text{max}}-1)} R_x^2 k + \text{low order term} \right],
+\]
+
+Substituting the expression for \( \epsilon_{\text{single}} \) Theorem\ref{theorem:learn}:
+
+\[
+m \geq \left( \epsilon \cdot \left( \frac{1}{L_{\text{model}} - 1} \left( L_{\text{model}} \cdot \frac{L_{\text{model}}^{T} - 1}{L_{\text{model}} - 1} - T \right) \right)^{-1} \right)^{-2} \left[ 4 L^2 B_{\text{spec}}^2 L_{\phi}^{2(l_{\text{max}}-1)} R_x^2 k + \text{low order term} \right].
+\]
+
+This expression reflects the impact of error propagation on the required sample size.
+
+We can further simplify by recognizing that when \( L_{\text{model}} > 1 \), \( L_{\text{model}}^{T} \) grows exponentially, and the term involving \( T \) becomes negligible in comparison. Thus, the cumulative error is dominated by:
+
+\[
+\epsilon_{\text{cumulative}} \approx \epsilon_{\text{single}} \cdot \frac{L_{\text{model}}^{T}}{(L_{\text{model}} - 1)^2}.
+\]
+
+Therefore, to keep \( \epsilon_{\text{cumulative}} \leq \epsilon \), we require:
+
+\[
+\epsilon_{\text{single}} \leq \epsilon \cdot \frac{(L_{\text{model}} - 1)^2}{L_{\text{model}}^{T}}.
+\]
+
+
+
+
+Substituting back \(  L_{\text{model}} = B_{\text{spec}} L_{\phi}^{l_{\text{max}}-1} \), the required sample size becomes:
+
+\[
+m \geq \frac{\left( B_{\text{spec}} L_{\phi}^{l_{\text{max}}-1} \right)^{2T}}{\epsilon^{2} \left( B_{\text{spec}} L_{\phi}^{l_{\text{max}}-1} - 1 \right)^{4}} \left[ 4 L^2 B_{\text{spec}}^2 L_{\phi}^{2(l_{\text{max}}-1)} R_x^2 k + \text{low order term} \right].
+\]
+
+\end{proof}
+\section{Proof of Theorem~\ref{theorem5.9}}\label{appendix:theorem5.9}
+
+\begin{proof}
+Within a single round of length \( \tau = T/R \), the error at time step \( t \) depends on the errors in previous steps:
+
+\[
+\epsilon_t \leq L_{\text{model}} \epsilon_{t-1} + \epsilon_{\text{single}},
+\]
+
+
+
+Unrolling the recursion within a round, we have:
+
+\[
+\epsilon_t \leq \epsilon_{\text{single}} \sum_{i=0}^{t-1} L_{\text{model}}^i = \epsilon_{\text{single}} \cdot \frac{L_{\text{model}}^{t} - 1}{L_{\text{model}} - 1}.
+\]
+
+The cumulative error over \( \tau \) steps in a round is:
+
+\[
+\epsilon_{\text{round}} = \sum_{t=1}^{\tau} \epsilon_t \leq \epsilon_{\text{single}} \sum_{t=1}^{\tau} \frac{L_{\text{model}}^{t} - 1}{L_{\text{model}} - 1}.
+\]
+
+This sum can be simplified using geometric series, leading to:
+
+\[
+\epsilon_{\text{round}} \leq \epsilon_{\text{single}} \cdot \frac{L_{\text{model}}^{\tau+1} - (\tau L_{\text{model}}) - 1 + \tau}{(L_{\text{model}} - 1)^2}.
+\]
+
+
+The total cumulative error is the sum over all rounds:
+
+\[
+\epsilon_{\text{total}} = R \epsilon_{\text{round}}.
+\]
+
+To ensure \( \epsilon_{\text{total}} \leq \epsilon \), we require:
+
+\[
+R \epsilon_{\text{round}} \leq \epsilon.
+\]
+
+Substituting the expression for \( \epsilon_{\text{round}} \):
+
+\[
+\epsilon_{\text{single}} \leq \epsilon \cdot \left( R \cdot \frac{L_{\text{model}}^{\tau+1} - (\tau L_{\text{model}}) - 1 + \tau}{(L_{\text{model}} - 1)^2} \right)^{-1}.
+\]
+
+The required sample size to achieve \( \epsilon_{\text{single}} \) is:
+
+\[
+m \geq \frac{1}{\epsilon_{\text{single}}^2} \left[ 4 L^2 B_{\text{spec}}^2 L_{\phi}^{2(l_{\text{max}}-1)} R_x^2 k + \text{low order term} \right],
+\]
+
+
+Substituting the expression for \( \epsilon_{\text{single}} \):
+
+\[
+m \geq \left( \epsilon \cdot \left( R \cdot \frac{L_{\text{model}}^{\tau+1} - (\tau L_{\text{model}}) - 1 + \tau}{(L_{\text{model}} - 1)^2} \right)^{-1} \right)^{-2} \left[ A + B + C \right].
+\]
+
+When \( L_{\text{model}} > 1 \) and \( \tau \) is not too large, the dominant term in the numerator is \( L_{\text{model}}^{\tau+1} \), and we can approximate:
+
+\[
+\epsilon_{\text{round}} \approx \epsilon_{\text{single}} \cdot \frac{L_{\text{model}}^{\tau+1}}{(L_{\text{model}} - 1)^2}.
+\]
+
+Thus, the total cumulative error is:
+
+\[
+\epsilon_{\text{total}} \approx R \epsilon_{\text{single}} \cdot \frac{L_{\text{model}}^{\tau+1}}{(L_{\text{model}} - 1)^2}.
+\]
+
+
+To satisfy \( \epsilon_{\text{total}} \leq \epsilon \):
+
+\[
+\epsilon_{\text{single}} \leq \epsilon \cdot \frac{(L_{\text{model}} - 1)^2}{R L_{\text{model}}^{\tau+1}}.
+\]
+
+
+Substituting back into \( m \):
+
+\[
+m \geq \left( \epsilon \cdot \frac{(L_{\text{model}} - 1)^2}{R L_{\text{model}}^{\tau+1}} \right)^{-2} \left[ 4 L^2 B_{\text{spec}}^2 L_{\phi}^{2(l_{\text{max}}-1)} R_x^2 k + \text{low order term} \right] \] \[ = \left( \frac{R L_{\text{model}}^{\tau+1}}{\epsilon (L_{\text{model}} - 1)^2} \right)^{2} \left[ 4 L^2 B_{\text{spec}}^2 L_{\phi}^{2(l_{\text{max}}-1)} R_x^2 k + \text{low order term} \right].
+\]
+
+
+Recall that \( \tau = T / R \), so:
+
+\[
+L_{\text{model}}^{\tau+1} = L_{\text{model}}^{\frac{T}{R} + 1}.
+\]
+
+Therefore, the sample size becomes:
+
+\[
+m \geq \left( \frac{L_{\text{model}}^{\frac{T}{R}+1} \cdot R}{\epsilon (L_{\text{model}} - 1)^2} \right)^{2} \left[ 4 L^2 B_{\text{spec}}^2 L_{\phi}^{2(l_{\text{max}}-1)} R_x^2 k + \text{low order term} \right].
+\]
+
+Simplifying and substituting back:
+
+
+
+  \[
+m \geq  \frac{\left(B_{\text{spec}} L_{\phi}^{l_{\text{max}}-1}\right)^{\frac{2T}{R}+2} \cdot R^2 }{\epsilon^2 (B_{\text{spec}} L_{\phi}^{l_{\text{max}}-1} - 1)^4}  \left[ 4 L^2 B_{\text{spec}}^2 L_{\phi}^{2(l_{\text{max}}-1)} R_x^2 k + \text{low order term} \right].
+\]
+
+\end{proof}
+\section{Proof of Lemma~\ref{aggregate}}\label{appendix:aggragate}
+\begin{proof}
+For each \( r \), with probability at least \( 1 - \delta_r \):
+
+\[
+L^{(r)}(h^{(r)}) \leq \hat{L}_m^{(r)}(h^{(r)}) + \epsilon_r,
+\]
+
+where:
+
+\( \hat{L}_m^{(r)}(h^{(r)}) \) is the empirical loss on \( m \) samples at round \( r \), and \( \epsilon_r = O\left( \frac{(B^{(r)})^2 (L^{(r)})^2}{\sqrt{m}} \right) + \sqrt{ \frac{\log(1/\delta_r)}{2 m} } \).
+
+Assuming Lipschitz continuity and bounded loss functions, we can express:
+
+\[
+L^{(r)}(h^{(r)}) \leq \hat{L}_m^{(r)}(h^{(r)}) + \epsilon_r + \gamma_r L^{(r-1)}(h^{(r-1)}),
+\]
+
+where \( \gamma_r \) quantifies the impact of errors from round \( r-1 \) on round \( r \).
+
+Expand the error recursively:
+\[
+\begin{aligned}
+L^{(r}(h^{(r)}) &\leq \hat{L}_m^{(r)}(h^{(r)}) + \epsilon_r + \gamma_r L^{(r-1)}(h^{(r-1)}) \\
+&\leq \hat{L}_m^{(r)}(h^{(r)}) + \epsilon_r + \gamma_r \left( \hat{L}_m^{(r-1)}(h^{(r-1)}) + \epsilon_{r-1} + \gamma_{r-1} L^{(r-2)}(h^{(r-2)}) \right) \\
+&= \hat{L}_m^{(r)}(h^{(r)}) + \epsilon_r + \gamma_r \hat{L}_m^{(r-1)}(h^{(r-1)}) + \gamma_r \epsilon_{r-1} + \gamma_r \gamma_{r-1} L^{(r-2)}(h^{(r-2)}) \\
+&\vdots \\
+&= \sum_{k=1}^{r} \left( \left( \prod_{j=k+1}^{r} \gamma_j \right) \left( \hat{L}_m^{(k)}(h^{(k)}) + \epsilon_k \right) \right).
+\end{aligned}
+\]
+\end{proof}
+\section{Proof of Theorem~\ref{cumulative}}\label{appendix:cumulative}
+
+\begin{proof}
+The Cumulative Error:
+
+\[
+L(h) = \sum_{r=1}^R \lambda_r L^{(r)}(h^{(r)}) \leq \sum_{r=1}^R \lambda_r \sum_{k=1}^{r} \left( \left( \prod_{j=k+1}^{r} \gamma_j \right) \left( \hat{L}_m^{(k)}(h^{(k)}) + \epsilon_k \right) \right).
+\]
+
+Let \( G_{r,k} = \lambda_r \prod_{j=k+1}^{r} \gamma_j \). Then:
+
+\[
+L(h) \leq \sum_{k=1}^R \left( \left( \hat{L}_m^{(k)}(h^{(k)}) + \epsilon_k \right) \sum_{r=k}^R G_{r,k} \right).
+\]
+
+Let \( \Lambda_k = \sum_{r=k}^R G_{r,k} \). Then:
+
+\[
+L(h) \leq \sum_{k=1}^R \Lambda_k \left( \hat{L}_m^{(k)}(h^{(k)}) + \epsilon_k \right).
+\]
+
+\section{Proof of Theorem~\ref{divergence}}\label{appendix:divergence}
+
+Consider the assumption we made that the error impact factor \(\gamma = \gamma_r\) is uniform between each round, also a uniform influence factor \(\lambda_r = \lambda, \forall r \in \{1,\cdots, R\}\) and a uniform lower bound \(\eta \geq  \hat{L}_{m,i}(h_{i}) + \epsilon_i \) for simplification. Denote the upper bound of cumulative error \(L(h_R)\) as \( \bar L(h_R) = \sum_{i=1}^R \Lambda_i \left( \hat{L}_{m,i}(h_{i}) + \epsilon_i \right)\).
+
+In this case, we have:
+
+\[
+G_{r,i} = \lambda \prod_{j=i+1}^{r} \gamma_j = \lambda \gamma^{r - i}, \quad \text{since } \gamma_j = \gamma.
+\]
+
+\[
+\Lambda_i = \sum_{r=i}^R G_{r,i} = \lambda \sum_{r=i}^R \gamma^{r - i} = \lambda \sum_{s=0}^{R - i} \gamma^{s} = \lambda \frac{1 - \gamma^{R - i + 1}}{1 - \gamma}, \quad \text{for } \gamma \neq 1.
+\]
+
+From this, it can be easily obtained that, for \(\gamma \neq 1\): 
+
+\[
+\begin{aligned}
+    \lim_{R \to \infty} \bar L(h_R) =&\lim_{R \to \infty} \sum_{i=1}^R \Lambda_i \left( \hat{L}_{m,i}(h_{i}) + \epsilon_i \right).\\
+    =&\lim_{R \to \infty} \frac{\eta \lambda}{1 - \gamma} \sum_{i=1}^R \left( 1 - \gamma^{R - i + 1} \right) \to \infty.
+\end{aligned}
+\]
+\end{proof}
+\section{Proof of Theorem~\ref{intervention}}\label{appendix:intervention}
+
+\begin{proof}
+
+When all \( \gamma_j = \gamma \), \( \Lambda_i \) simplifies to:
+
+\[
+\Lambda_i = \sum_{r=i}^{R} \lambda_r \gamma^{r - i}
+\]
+
+This is because:
+
+\[
+\prod_{j=i+1}^{r} \gamma_j = \gamma^{r - i}
+\]
+
+
+Suppose we change \( \gamma_j \) to \( \gamma' \) at certain rounds \( j \in H \subset \{1, 2, \dots, R\} \).
+
+Then we define \(\Lambda_i^{\text{modified}}\):
+
+\[
+\Lambda_i^{\text{modified}} = \sum_{r=i}^{R} \lambda_r \left( \prod_{j=i+1}^{r} \gamma_j \right)
+\]
+
+where:
+
+\[
+\gamma_j =
+\begin{cases}
+\gamma & \text{if } j \notin H \\
+\gamma' & \text{if } j \in H
+\end{cases}
+\]
+
+
+We can write:
+
+\[
+\frac{\Lambda_i^{\text{modified}}}{\Lambda_i} = \frac{\sum_{r=i}^{R} \lambda_r \left( \prod_{j=i+1}^{r} \gamma_j \right)}{\sum_{r=i}^{R} \lambda_r \gamma^{r - i}}
+\]
+
+Let’s define:
+
+\[
+\delta_{i,r} = \frac{\prod_{j=i+1}^{r} \gamma_j}{\gamma^{r - i}}
+\]
+
+Then:
+
+\[
+\frac{\Lambda_i^{\text{modified}}}{\Lambda_i} = \frac{\sum_{r=i}^{R} \lambda_r \gamma^{r - i} \delta_{i,r}}{\sum_{r=i}^{R} \lambda_r \gamma^{r - i}} = \mathbb{E}_{r \sim \mu_i} [ \delta_{i,r} ]
+\]
+
+where \( \mu_i \) is a probability distribution over \( r \) defined by:
+
+\[
+\mu_i(r) = \frac{\lambda_r \gamma^{r - i}}{\Lambda_i}
+\]
+
+Since \( \gamma_j \in \{\gamma, \gamma'\} \), we have:
+
+\[
+\delta_{i,r} = \prod_{j=i+1}^{r} \frac{\gamma_j}{\gamma} = \left( \frac{\gamma'}{\gamma} \right)^{h_{i,r}}
+\]
+
+where \( h_{i,r} \) is the number of rounds between \( i+1 \) and \( r \) where \( \gamma_j = \gamma' \).
+
+
+Thus:
+
+\[
+\Lambda_i^{\text{modified}} = \Lambda_i \times \mathbb{E}_{r \sim \mu_i} \left[ \left( \frac{\gamma'}{\gamma} \right)^{h_{i,r}} \right]
+\]
+
+This shows that ,\( \Lambda_i^{\text{modified}} \leq \Lambda_i \), since \( 0 \leq \frac{\gamma'}{\gamma} \leq 1 \).
+
+
+The cumulative error with original \( \gamma \) is:
+
+\[
+L(h_R) \leq \sum_{i=1}^{R} \Lambda_i \left( \hat{L}_{m,i}(h_i) + \epsilon_i \right)
+\]
+
+
+With the modified \( \gamma_j \):
+
+\[
+L^{\text{modified}}(h_R) \leq \sum_{i=1}^{R} \Lambda_i^{\text{modified}} \left( \hat{L}_{m,i}(h_i) + \epsilon_i \right)
+\]
+
+
+
+\[
+\Delta L(h_R) = L(h_R) - L^{\text{modified}}(h_R) = \sum_{i=1}^{R} \left( \Lambda_i - \Lambda_i^{\text{modified}} \right) \left( \hat{L}_{m,i}(h_i) + \epsilon_i \right)
+\]
+
+
+Let:
+
+\[
+\kappa_i = \frac{\Lambda_i^{\text{modified}}}{\Lambda_i} = \mathbb{E}_{r \sim \mu_i} \left[ \left( \frac{\gamma'}{\gamma} \right)^{h_{i,r}} \right]
+\]
+
+Then:
+
+\[
+L^{\text{modified}}(h_R) = \sum_{i=1}^{R} \kappa_i \Lambda_i \left( \hat{L}_{m,i}(h_i) + \epsilon_i \right)
+\]
+
+
+The overall reduction is:
+
+\[
+\Delta L(h_R) = \sum_{i=1}^{R} \left( 1 - \kappa_i \right) \Lambda_i \left( \hat{L}_{m,i}(h_i) + \epsilon_i \right)
+\]
+
+\end{proof}
+
+
+{\color{black}
+\section{Lipschitz-Continuity of Cross-Entropy}
+\label{appendix:l}
+
+To show that the multi-class cross-entropy loss function is \( L \)-Lipschitz with respect to its first argument and bounded by some constant \( C > 0 \), we'll analyze its properties step by step.
+
+\subsection{Definition of Cross-Entropy}
+\begin{definition}
+    For a classification problem with \( K \) classes, the multi-class cross-entropy loss is defined as:
+\[
+\ell(\mathbf{p}, \mathbf{y}) = -\sum_{k=1}^{K} y_k \log(p_k)
+\]
+\end{definition}
+
+
+where \( \mathbf{y} = (y_1, y_2, \dots, y_K) \) is the one-hot encoded true label vector. So \( y_k \in \{0, 1\} \) and \( \sum_{k=1}^{K} y_k = 1 \).
+And \( \mathbf{p} = (p_1, p_2, \dots, p_K) \) is the predicted probability vector from the model, where each \( p_k \in (0, 1) \) and \( \sum_{k=1}^{K} p_k = 1 \).
+
+Because \( \mathbf{y} \) is one-hot encoded, only one term in the summation is non-zero:
+
+\[
+\ell(\mathbf{p}, \mathbf{y}) = -\log(p_{k^*})
+\]
+
+where \( k^* \) is the index of the true class.
+
+The loss \( \ell(\mathbf{p}, \mathbf{y}) = -\log(p_{k^*}) \) approaches infinity as \( p_{k^*} \) approaches zero. However, in practice, the predicted probabilities are never exactly zero due to numerical stability techniques (e.g., adding a small \( \varepsilon > 0 \) to predictions).
+We therefore restrict \( p_k \) to a closed interval \( [\varepsilon, 1 - (K - 1)\varepsilon] \) to ensure all probabilities are valid and sum to one. Since \( p_{k^*} \geq \varepsilon \):
+
+\[
+\ell_{\text{max}} = -\log(\varepsilon)
+\]
+
+Thus, the loss is bounded:
+
+\[
+\ell(\mathbf{p}, \mathbf{y}) \leq C = -\log(\varepsilon)
+\]
+
+
+\begin{definition}
+    A function \( f \) is \( L \)-Lipschitz continuous with respect to \( \mathbf{p} \) if:
+
+\[
+\left| f(\mathbf{p}_1) - f(\mathbf{p}_2) \right| \leq L \left\| \mathbf{p}_1 - \mathbf{p}_2 \right\|
+\]
+
+for all \( \mathbf{p}_1, \mathbf{p}_2 \) in the domain, and \( \left\| \cdot \right\| \) denotes a norm (e.g., Euclidean norm).
+\end{definition}
+
+\begin{theorem}
+    The cross-entropy loss function \(\ell(\mathbf{p}, \mathbf{y})\) is \( L \)-Lipschitz continuous with respect to \( \mathbf{p} \) with \( L = \frac{1}{\varepsilon} \).
+\end{theorem}
+
+\begin{proof}
+    The gradient of \( \ell \) with respect to \( \mathbf{p} \) is:
+
+\[
+\nabla_{\mathbf{p}} \ell(\mathbf{p}, \mathbf{y}) = \left( \frac{\partial \ell}{\partial p_1}, \frac{\partial \ell}{\partial p_2}, \dots, \frac{\partial \ell}{\partial p_K} \right)
+\]
+
+Since \( \ell(\mathbf{p}, \mathbf{y}) = -\log(p_{k^*}) \), the partial derivatives are:
+
+\[
+\frac{\partial \ell}{\partial p_k} = \begin{cases}
+-\frac{1}{p_k} & \text{if } k = k^* \\
+0 & \text{if } k \neq k^*
+\end{cases}
+\]
+
+
+Using the Euclidean norm:
+
+\[
+\left\| \nabla_{\mathbf{p}} \ell \right\| = \sqrt{\sum_{k=1}^{K} \left( \frac{\partial \ell}{\partial p_k} \right)^2} = \left| -\frac{1}{p_{k^*}} \right| = \frac{1}{p_{k^*}}
+\]
+
+Since \( p_{k^*} \geq \varepsilon \):
+
+\[
+\left\| \nabla_{\mathbf{p}} \ell \right\| \leq \frac{1}{\varepsilon}
+\]
+
+
+For any two probability vectors \( \mathbf{p}_1 \) and \( \mathbf{p}_2 \), there exists \( \xi \) between \( \mathbf{p}_1 \) and \( \mathbf{p}_2 \) such that:
+
+\[
+\ell(\mathbf{p}_1, \mathbf{y}) - \ell(\mathbf{p}_2, \mathbf{y}) = \nabla_{\mathbf{p}} \ell(\xi)^T (\mathbf{p}_1 - \mathbf{p}_2)
+\]
+
+Taking absolute values:
+
+\[
+\left| \ell(\mathbf{p}_1, \mathbf{y}) - \ell(\mathbf{p}_2, \mathbf{y}) \right| \leq \left\| \nabla_{\mathbf{p}} \ell(\xi) \right\| \left\| \mathbf{p}_1 - \mathbf{p}_2 \right\|
+\]
+
+Using the bound on the gradient norm:
+
+\[
+\left| \ell(\mathbf{p}_1, \mathbf{y}) - \ell(\mathbf{p}_2, \mathbf{y}) \right| \leq \frac{1}{\varepsilon} \left\| \mathbf{p}_1 - \mathbf{p}_2 \right\|
+\]
+
+Therefore, the Lipschitz constant is:
+
+\[
+L = \frac{1}{\varepsilon}
+\]
+
+\end{proof}
+
+
+}

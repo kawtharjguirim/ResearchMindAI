@@ -1,0 +1,43 @@
+
+\section{Preliminary}
+\label{section3}
+Let \( \Sigma \) be a finite alphabet, and let \( \Sigma^* \) denote the set of all finite sequences over \( \Sigma \). Consider a distribution \( \mathcal{D} \) over input-output sequence pairs \( (x, y) \in \Sigma^* \times \Sigma^* \). Let \( f: \Sigma^* \rightarrow \Sigma^* \) be a target sequence-to-sequence function belonging to a class \( \mathcal{F} \).
+
+\textbf{Limited Context Window.} An auto-regressive model with a limited context window of size \( k \) generates an output sequence \( y = (y_1, y_2, \dots, y_n) \) token by token. At each time step \( t \), the model predicts the next token \( y_t \) based solely on a context window \( c_t \) of at most \( k \) tokens. This context window \( c_t \) consists of a combination of:
+Up to the last \( k \) tokens from the input sequence \( x \), specifically \( x_{\max(1, t - k)}^{t - 1} \).
+and previously generated output tokens \( y_1^{t - 1} \), limited to the most recent \( k \) tokens.
+
+Formally, the context window at time \( t \) is defined as:
+\[
+c_t = \left( x_{\max(1, t - k)}^{t - 1}, \ y_{\max(1, t - k)}^{t - 1} \right),
+\]
+where \( x_a^b \) denotes the subsequence \( (x_a, x_{a+1}, \dots, x_b) \).
+
+\textbf{Sequencial PAC Learnability.} A class \(\mathcal{F}\) is efficiently Sequential PAC learnable if there exists an efficient algorithm that finds with high probability a sequence generator with low error. We formally capture this definition as follows:
+\begin{definition}[Sequencial PAC learnability]
+    A class \( \mathcal{F} \) of sequence-to-sequence functions is PAC-learnable with an auto-regressive model of context window size \( k \) if there exists a learning algorithm \( A \) and a polynomial function \( p(\cdot, \cdot, \cdot) \) such that for any \( \epsilon > 0 \), \( \delta > 0 \), and target function \( f \in \mathcal{F} \),
+given a sample of at least \( m \geq p(1/\epsilon, 1/\delta, k) \) i.i.d. examples \( \{ (x^{(i)}, y^{(i)}) \}_{i=1}^m \) drawn from \( \mathcal{D} \), the algorithm \( A \), operating under the context window limitation, outputs a hypothesis \( h \) such that with probability at least \( 1 - \delta \):
+\[
+\Pr_{(x, y) \sim \mathcal{D}} \left[ d(h(x), y) \neq 0 \right] \leq \epsilon,
+\]
+where \( d \) is distance measure of discrepancy between predicted sequence \( h(x) \) and true sequence \( y \).
+\end{definition}
+
+
+\textbf{Rademacher Complexity} is a measure to quantify the capacity of a class of functions based on its ability to fit random noise, which is formally represented in the following Definition~\ref {rademacher}. It helps to analyze how well a model class can learn from the data.
+
+
+\begin{definition}\label{rademacher}
+    
+[Rademacher Complexity~\citep{bartlett2002rademacher}]
+    Let \( \mathcal{F} \) be a class of real-valued functions on a domain \( \mathcal{X} \), and let \( \{x_1, x_2, ..., x_n\} \) be a set of \( n \) independent and identically distributed (i.i.d.) samples drawn from a distribution over \( \mathcal{X} \). The empirical Rademacher complexity of the class \( \mathcal{F} \) with respect to the sample \( \{x_1, x_2, ..., x_n\} \) is defined as:
+\[
+\hat{\mathcal{R}}_n(\mathcal{F}) = \mathbb{E}_{\sigma} \left[ \sup_{f \in \mathcal{F}} \frac{1}{n} \sum_{i=1}^n \sigma_i f(x_i) \right]
+\]
+\end{definition}
+
+
+where \( \sigma_1, \sigma_2, ..., \sigma_n \) are independent Rademacher random variables, which take values in \( \{-1, 1\} \) with equal probability \( \frac{1}{2} \).
+And \( \mathbb{E}_{\sigma} \) denotes the expectation over these random variables.
+
+

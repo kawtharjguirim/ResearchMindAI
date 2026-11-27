@@ -1,0 +1,2239 @@
+\documentclass{article}
+
+
+% if you need to pass options to natbib, use, e.g.:
+%     \PassOptionsToPackage{numbers, compress}{natbib}
+% before loading neurips_2025
+
+
+% ready for submission
+\usepackage[final]{neurips_2025}
+
+
+% to compile a preprint version, e.g., for submission to arXiv, add add the
+% [preprint] option:
+%     \usepackage[preprint]{neurips_2025}
+
+
+% to compile a camera-ready version, add the [final] option, e.g.:
+%     \usepackage[final]{neurips_2025}
+
+
+% to avoid loading the natbib package, add option nonatbib:
+%    \usepackage[nonatbib]{neurips_2025}
+
+
+\usepackage[utf8]{inputenc} % allow utf-8 input
+\usepackage[T1]{fontenc}    % use 8-bit T1 fonts
+\usepackage{hyperref}       % hyperlinks
+\usepackage{url}            % simple URL typesetting
+\usepackage{booktabs}       % professional-quality tables
+\usepackage{amsfonts}       % blackboard math symbols
+\usepackage{nicefrac}       % compact symbols for 1/2, etc.
+\usepackage{graphicx}
+\usepackage{microtype}      % microtypography
+\usepackage{xcolor}         % colors
+\usepackage{overpic}
+\usepackage{amsmath, amssymb, amsfonts}
+\usepackage{amsthm}
+\usepackage{multirow}
+\usepackage{colortbl}
+
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepackage{sansmath} % 保证字体和论文一致
+
+\usepackage{wrapfig}
+
+\graphicspath{{./figs/}}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{proposition}{Proposition}
+
+\title{InfiGFusion: Graph-on-Logits Distillation via Efficient Gromov-Wasserstein for Model Fusion}
+
+
+% The \author macro works with any number of authors. There are two commands
+% used to separate the names and addresses of multiple authors: \And and \AND.
+%
+% Using \And between authors leaves it to LaTeX to determine where to break the
+% lines. Using \AND forces a line break at that point. So, if LaTeX puts 3 of 4
+% authors names on the first line, and the last on the second line, try using
+% \AND instead of \And before the third author name.
+
+
+\author{%
+\textbf{Yuanyi Wang}$^{1}$,
+\textbf{Zhaoyi Yan}$^{2}$,
+\textbf{Yiming Zhang}$^{1}$,
+\textbf{Qi Zhou}$^{1}$,
+\textbf{Yanggan Gu}$^{1}$,\\
+\textbf{Fei Wu}$^{3}$,
+\textbf{Hongxia Yang}$^{1,2,4}$\thanks{Corresponding author.} \\
+$^{1}$The Hong Kong Polytechnic University,
+$^{2}$InfiX.ai, 
+$^{3}$Zhejiang University \\
+$^{4}$The Hong Kong Polytechnic University, \\Daya Bay Technology and Innovation Research Institute \\
+\texttt{yuan-yi.wang@connect.polyu.hk, hongxia.yang@polyu.edu.hk} \\
+}
+
+
+
+
+\begin{document}
+
+
+\maketitle
+
+
+\begin{abstract}
+Recent advances in large language models (LLMs) have intensified efforts to fuse heterogeneous open-source models into a unified system that inherits their complementary strengths. 
+%
+Existing logit-based fusion methods maintain inference efficiency but treat vocabulary dimensions independently, overlooking semantic dependencies encoded by cross-dimension interactions.
+%
+These dependencies reflect how token types interact under a model's internal reasoning and are essential for aligning models with diverse generation behaviors.
+%
+To explicitly model these dependencies, we propose \textbf{InfiGFusion}, the first structure-aware fusion framework with a novel \textit{Graph-on-Logits Distillation} (GLD) loss.
+%
+Specifically, we retain the top-$k$ logits per output and aggregate their outer products across sequence positions to form a global co-activation graph, where nodes represent vocabulary channels and edges quantify their joint activations.
+%
+To ensure scalability and efficiency, we design a sorting-based closed-form approximation that reduces the original $O(n^4)$ cost of Gromov-Wasserstein distance to $O(n \log n)$, with provable approximation guarantees. Experiments across multiple fusion settings show that GLD consistently improves fusion quality and stability.
+%
+InfiGFusion outperforms SOTA models and fusion baselines across 11 benchmarks spanning reasoning, coding, and mathematics. It shows particular strength in complex reasoning tasks, with +35.6 improvement on Multistep Arithmetic and +37.06 on Causal Judgement over SFT, demonstrating superior multi-step and relational inference.
+%
+% \textcolor{red}{add performance?}
+
+\end{abstract}
+
+
+\section{Introduction}
+Recent advances in LLMs have sparked growing interest in aggregating diverse model capabilities to build stronger, more general-purpose systems. Existing collective approaches span a broad design space. Prompt-based techniques \cite{schick2023toolformer, yang2023auto} dynamically chain or compose pretrained LLMs with tools or APIs to expand functional scope. Multi-agent systems \cite{wang2024mixture, dubois2024length} employ multiple LLMs to collaborate or debate, often outperforming single-agent models on complex reasoning tasks. Model ensembling \cite{jiang2023llm, fang2024llm} aggregates outputs from different models to boost accuracy and robustness, while Mixture-of-Experts (MoE) \cite{komatsuzakisparse, du2022glam, chen2022towards} architectures improve scalability by activating specialized subnetworks. Meanwhile, parameter-level merging models \cite{yadav2023ties, matena2022merging, wortsman2022model} aim to consolidate multiple fine-tuned checkpoints into a single model. Each of these paradigms explores a different trade-off between performance, efficiency, and compatibility.
+
+Among fusion strategies, model fusion via logit distillation~\cite{wanknowledge, shi2024profuser} has emerged as a flexible and efficient paradigm. It enables a single pivot model to absorb knowledge from multiple source models—often with diverse domains, sizes, or architectures—without increasing inference cost. A representative cross-tokenizer approach is ULD~\cite{boizardtowards}, which introduces a universal logit-distillation loss for aligning models with different tokenizers. Unlike traditional distillation, which transfers intermediate features or outputs, these methods align only the output logits using token-level objectives such as KL divergence or Wasserstein distance~\cite{yan2025infifusion}. 
+%
+However, token-level methods inherently treat each vocabulary dimension independently, overlooking \emph{semantic dependencies}—the co-activation patterns and relational structures among tokens that underlie a model’s reasoning process. This limits their ability to align models with divergent generation behaviors, particularly for tasks requiring multi-step reasoning or fine-grained relational inference.
+%
+Fig.~\ref{fig:overview-compare} illustrates this limitation. While token-level losses enforce dimension similarity, they fail to capture the structured dependencies among tokens. InfiGFusion addresses this by modeling logits as graphs, aligning not just distributions but also the interactions that reflect a model’s internal reasoning. 
+%
+% Specifically, the use of “internal reasoning” refers to the relational structure among semantic dimensions in the logit space. We align inter-logit relation graphs via Gromov–Wasserstein, providing a structural inductive bias for reasoning-heavy tasks, without explicitly modeling the reasoning steps.
+
+
+
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.98\textwidth]{GLDvsKL.pdf}
+\caption{
+\textbf{Token-level vs. Structure-aware Fusion.}
+Given pivot and source logits of shape $[L,3]$ (sequence length $L$, vocab size $3$), token-level methods (left) align dimensions independently, ignoring token interactions. GLD (right) aggregates outer products into $[3,3]$ co-activation graphs, capturing semantic dependencies via structure-aware graph alignment.
+}
+\label{fig:overview-compare}
+\vspace{-3mm}
+\end{figure}
+
+
+
+To address this challenge, we model semantic dependencies in the logit space using graph structures. Rather than treating token logits independently, we represent model outputs as feature-level graphs, where nodes correspond to token dimensions and edges capture their co-activation patterns across sequence positions. This representation reflects how a model internally organizes semantic relationships, beyond surface-level token probabilities, to support coherent reasoning and inference. Constructing such graphs from high-dimensional logits is nontrivial: vocabulary sizes are large, and most logits are near-zero~\cite{zhuang2024setwise, lu2024discovering}, making full pairwise modeling inefficient and noisy. To mitigate this, we apply top-$k$ sparsification to retain salient dimensions, followed by inner-product similarity to define edge weights. This yields interpretable graphs that faithfully reflect model reasoning behaviors.
+
+% To address this, we model semantic dependencies via logit graphs, where nodes represent token dimensions and edges capture co-activation patterns across sequence positions. Unlike independent token alignment, this captures internal semantic structures crucial for coherent reasoning. Given large vocabularies and sparse logits~\cite{zhuang2024setwise, lu2024discovering}, we apply top-$k$ sparsification to retain salient dimensions, using inner-product similarity to define edges. This yields compact graphs that faithfully reflect model reasoning behaviors.
+
+
+
+Building on this, we propose \textbf{InfiGFusion}, a semantic structure-aware fusion framework that distills knowledge from multiple source models by aligning their logit graphs. At its core is the \textit{Graph-on-Logits Distillation} (GLD) loss, which captures semantic dependencies by aligning structure-level information between source and pivot models. Specifically, we employ the Gromov-Wasserstein (GW) distance to match graph structures \cite{xu2019scalable, peyre2016gromov}. However, standard GW incurs $\mathcal{O}(n^4)$ complexity, making it impractical for large vocabularies. To address this, we design a closed-form approximation based on node aggregation and sorting-based matching, reducing the cost to $\mathcal{O}(n \log n)$. We further provide theoretical guarantees on the approximation error, ensuring alignment fidelity.
+
+We validate InfiGFusion across diverse fusion scenarios, demonstrating consistent improvements over state-of-the-art methods. By explicitly modeling semantic dependencies through logit graph alignment, InfiGFusion excels in tasks involving multi-step reasoning, relational inference, and fine-grained alignment—scenarios where token-level objectives fall short. Extensive experiments on 11 benchmarks, including reasoning, mathematics, and coding, confirm its effectiveness in producing more capable fusion models.
+%
+Overall, our contributions can be summarized as follows: 
+\begin{itemize}
+    \item InfiGFusion is the first structure-aware fusion framework that models semantic dependencies via feature-level logit graphs and aligns them via a novel Graph-on-Logits Distillation loss. 
+    \item We propose a novel approximation to Gromov-Wasserstein distance, reducing complexity from $\mathcal{O}(n^4)$ to $\mathcal{O}(n \log n)$, with provable error bounds and rigorous theoretical analysis.
+    \item Experiments on 11 benchmarks show that InfiGFusion consistently outperforms baselines, with significant gains on complex reasoning tasks (+35.6 on Multistep Arithmetic, +37.06 on Causal Judgement), demonstrating superior multi-step and relational inference.
+
+\end{itemize}
+% \vspace{-4mm}
+
+\section{Related Work}
+
+\textbf{Collective LLM:}
+To aggregate the capabilities of specialized LLMs, several strategies have been proposed. \textit{Prompt-based integration} methods, such as Toolformer~\cite{schick2023toolformer}, ReAct~\cite{yao2023react}, and HuggingGPT~\cite{shen2023hugginggpt}, guide LLMs to invoke tools or auxiliary models through natural language prompts. \textit{Multi-agent collaboration} frameworks like ChatArena~\cite{zheng2023judging} and AgentBench~\cite{liu2024agentbench} treat LLMs as interacting agents that debate or coordinate to improve reasoning. \textit{Model ensembling} aggregates outputs via voting~\cite{wangself} or reranking, but suffers from high inference cost. \textit{Mixture-of-Experts (MoE)} models~\cite{komatsuzakisparse, du2022glam, chen2022towards} activate sparse expert subsets per query, offering scalability but introducing routing complexity. \textit{Parameter merging} methods~\cite{yadav2023ties, matena2022merging, wortsman2022model} combine weights from fine-tuned models, but require architectural alignment. While these strategies explore different trade-offs between performance, efficiency, and flexibility, they generally assume the underlying models remain fixed. In contrast, we focus on \textit{knowledge fusion}, where a pivot model learns from multiple sources during training.
+
+
+\textbf{Model Fusion via Knowledge Distillation:}
+Traditional knowledge distillation (KD) transfers knowledge from a large teacher to a smaller student via features, logits, or output distributions~\cite{hinton2015distilling, jiao2020tinybert}, primarily for compression or acceleration. In contrast, model fusion via KD aims to integrate multiple source models—often with varying architectures, scales, and vocabularies—into a single target of similar size. Recent methods~\cite{wanknowledge, yan2025infifusion, shi2024profuser} fuse multiple LLMs by aligning token distributions using KL divergence or Wasserstein distance. These approaches typically require vocabulary alignment and assume semantic compatibility at the token level. However, they overlook \emph{semantic dependencies} among logit dimensions—i.e., how token probabilities interact under internal reasoning, which are crucial for preserving logical structure. Our work addresses this gap by introducing a structure-aware distillation objective that explicitly aligns semantic dependencies via graph alignment. Unlike prior methods, it avoids explicit vocabulary alignment by modeling logits as graphs, enabling robust, vocabulary-agnostic fusion across heterogeneous models while preserving reasoning structures.
+
+\textbf{Gromov-Wasserstein Distance:}
+The Gromov-Wasserstein (GW) distance~\cite{memoli2011gromov, peyre2016gromov} is a relational optimal transport metric for aligning distributions based on internal structural similarity. It has been widely used in graph comparison~\cite{xu2019scalable, vayer2020fused} and structure-aware representation learning~\cite{xu2021learning, wang2024interdependency}, especially when node correspondences are unknown. However, its standard formulation incurs $\mathcal{O}(n^4)$ complexity due to fourth-order interactions, rendering it impractical for large-scale logit graphs in LLMs. To mitigate this, prior works apply entropic regularization~\cite{peyre2016gromov, wang2024gradient}, Sinkhorn-based solvers~\cite{xu2019scalable, wang2024towards}, or low-rank projections~\cite{xu2020gromov}. While effective for small graphs, these methods lack closed-form solutions and suffer from convergence instability, making them less suited for distillation over vocabulary-sized graphs ($n > 10^5$). Our method takes a non-iterative, sorting-based approach: it compresses each similarity matrix into node-level features and aligns them via sorted-based matching, reducing complexity to $\mathcal{O}(n \log n)$. Unlike prior approximations, it yields a differentiable, training-friendly loss with a provable approximation bound. To our knowledge, this is the first closed-form, theoretically guaranteed GW approximation tailored for aligning logit graphs in LLM fusion.
+\vspace{-2mm}
+
+
+
+\section{Method}
+
+\textbf{InfiGFusion} fuses heterogeneous LLMs by distilling structured knowledge from multiple source models into a unified pivot model. Central to this process is the Graph-on-Logits Distillation (GLD) loss, which models logit vectors as feature-level graphs and aligns their structures across models.
+
+To capture semantic dependencies, we adopt Gromov-Wasserstein distance for structure-level alignment between logit graphs. However, the standard GW incurs $\mathcal{O}(n^4)$ complexity, prohibitive for LLM-scale vocabularies ($n > 10^5$). We propose a sorting-based approximation that reduces this to $\mathcal{O}(n \log n)$ by compressing graph structures into node-level features. Furthermore, we provide a provable error bound of $\frac{n - 1}{n^2} + \frac{m - 1}{m^2}$ (Proposition~\ref{proposition1}), ensuring faithful and efficient graph alignment.
+\vspace{-2mm}
+
+
+
+
+\begin{figure*}[!t]  
+\centering % 
+\begin{overpic}[scale=0.75,tics=3]{InfiGFusion.pdf}
+
+% left part
+\put(6.5, 25){\scalebox{1.0}{$x_i$}}
+\put(6.5, 37){\scalebox{1.0}{$y_i$}}
+\put(16, 43){\scalebox{0.6}{$M_0$}}
+\put(16, 34.5){\scalebox{0.6}{$M_1$}}
+\put(16, 23){\scalebox{0.6}{$M_S$}}
+\put(24, 53.5){\scalebox{0.7}{$(1-\lambda)\mathcal{L}_{\text{SFT}}$}}
+
+
+% lower part
+% \put(14, 9.5){\scalebox{0.6}{$\widetilde{\text{WD}}(\boldsymbol{f}_s, \boldsymbol{f}_t)$} }
+\put(5, 9.5){\scalebox{0.6}{$\widetilde{\text{WD}}(\mathbf{f}_t, \mathbf{f}_s) = \sum_{i=1}^{d'} \left| \mathbf{f}_t^{\downarrow}(i) - \mathbf{f}_s^{\downarrow}(i) \right|$} }
+
+
+
+% \put(53, 9){\scalebox{0.6}{$\widetilde{\text{GW}}(C_s, C_0)$}}
+\put(43, 9.5){\scalebox{0.6}{$\widetilde{\text{GW}}(C, D) = \sum_{i=1}^{k} \left| f_C^{\downarrow}(i) - f_D^{\downarrow}(i) \right|$}}
+
+
+\end{overpic}
+\caption{
+\textbf{InfiGFusion framework.} Given instruction-response pairs, source and pivot models produce logits, sparsified into feature-level graphs capturing semantic dependencies. We align graphs via an efficient Gromov-Wasserstein approximation (GLD), reducing complexity from $\mathcal{O}(n^4)$ to $\mathcal{O}(n \log n)$. The overall objective combines structure-aware distillation (GLD) with token-level distillation (ULD) and supervised signals (SFT) for robust fusion.
+}
+    \label{fig:infiGFusion}
+\vspace{-3mm}
+\end{figure*}
+
+
+% \subsection{Overview of InfiGFusion}
+
+% We consider a pivot model $M_0$ and a set of $S$ source models $\{M_1, \dots, M_S\}$, each trained on different domains or tasks. InfiGFusion aims to integrate its complementary capabilities into $M_0$ via structure-aware distillation. Given an instruction-response dataset $\mathcal{D}$, the pivot model is trained to align with both human supervision and the behaviors of the source models.
+
+% \textbf{Training Objective:}
+% The overall loss consists of two components: 1) Graph-on-Logits Distillation applied across all source models, which involves comparing the logits graph between the pivot model and each source model; and 2) a standard Supervised Fine-Tuning (SFT) objective.
+% \begin{equation}
+% \mathcal{L}_{\text{InfiGFusion}} = \lambda \cdot \sum_{s=1}^{S} \mathcal{L}_{\text{GLD},s} + (1 - \lambda) \cdot \mathcal{L}_{\text{SFT}},
+% \end{equation}
+% where $\lambda \in [0,1]$ balances structural alignment and task grounding.
+
+\subsection{Overview of InfiGFusion}
+
+InfiGFusion integrates knowledge from diverse source models $\{M_1, \dots, M_S\}$ into a unified pivot model $M_0$, enhancing reasoning capabilities without increasing inference cost.
+
+Given an instruction-response dataset $\mathcal{D}$, $M_0$ is trained to align with both human supervision and source model behaviors via two complementary objectives:
+(\romannumeral1) \textit{Universal Logit Distillation (ULD)}: a coarse token-level alignment combining supervised fine-tuning (SFT) and a sorting-based Wasserstein-1 approximation~\cite{boizardtowards};
+(\romannumeral2) \textit{Graph-on-Logits Distillation (GLD)}: a structure-aware objective aligning relational dependencies in logit space. 
+The overall loss is:
+\begin{equation}
+\mathcal{L}_{\text{InfiGFusion}} = \lambda_{\text{GLD}} \sum_{s=1}^{S} \mathcal{L}_{\text{GLD},s} + \lambda_{\text{ULD}} \sum_{s=1}^{S} \mathcal{L}_{\text{ULD},s} + \lambda_{\text{SFT}} \mathcal{L}_{\text{SFT}},
+\end{equation}
+where ULD ensures distributional alignment and GLD captures fine-grained reasoning structures.
+For token-level ULD, we adopt the linear-time Wasserstein-1 approximation ~\cite{boizardtowards}, which compare the logit distributions between pivot model $t$ and source models $s$:
+\begin{equation}
+\mathcal{L}_{\text{ULD},s} = \widetilde{\text{WD}}(\mathbf{f}_t, \mathbf{f}_s) = \sum_{i=1}^{d'} \left| \mathbf{f}_t^{\downarrow}(i) - \mathbf{f}_s^{\downarrow}(i) \right|,
+\end{equation}
+where $\mathbf{f}^{\downarrow}$ denotes sorting. This provides an efficient coarse alignment signal, complementing GLD's structural matching.
+
+
+
+
+
+\subsection{Dynamic Sparse Graph Construction}
+
+To capture structural dependencies among logit dimensions while avoiding the cost of full $d \times d$ modeling ($d$ is the vocabulary size for each model), we adopt a two-stage strategy: top-$k$ sparsification followed by dynamic graph construction.
+
+\paragraph{Top-$k$ Logit Sparsification.}
+Given a logit tensor $\mathbf{Z} \in \mathbb{R}^{B \times L \times d}$, we extract the top-$k$ logits for each position to obtain $\mathbf{Z}^{\text{top}} \in \mathbb{R}^{B \times L \times d'}$, with $d' \ll d$. 
+We then unify the top-$k$ dimensions across tokens to obtain a consistent $d'$-dimensional representation per sample.
+
+\paragraph{Dynamic Graph Construction.}
+To model the interdependencies among logit dimensions, graph construction can generally follow two paradigms: (i) token-wise similarity across the sequence, or (ii) feature-wise similarity among logit dimensions. The former focuses on token interactions, while the latter captures intrinsic correlations between semantic dimensions. In this work, we adopt the feature-wise approach, as it empirically yields better alignment performance and more effectively preserves structural information. Specifically, for each sample $b$, we construct a graph $G_h = (V, E)$ over the reduced logits $Z_b \in \mathbb{R}^{L \times d'}$, where each node corresponds to a selected logit dimension. The adjacency matrix $C_b \in \mathbb{R}^{d' \times d'}$ is defined via dot-product similarity across the sequence:
+\begin{equation}
+C_b(i,j) = \sum_{t=1}^{L} z_t(i) \cdot z_t(j), \quad
+C_b = \mathbf{Z}_b^{\text{top}^\top} \cdot \mathbf{Z}_b^{\text{top}}.
+\end{equation}
+This construction approximates cosine similarity after normalization and is applied to both pivot and source models at every training step, resulting in dynamic, data-dependent graphs that evolve with model predictions.
+
+\subsection{Efficient Approximation Algorithm}
+
+Directly applying \textit{Gromov-Wasserstein (GW)} distance for structure-level alignment incurs $\mathcal{O}(n^4)$ complexity, which is infeasible for LLM-scale graphs. We propose an efficient approximation by summarizing graph structures into node-level features and aligning them via sorting-based matching, reducing complexity to $\mathcal{O}(n \log n)$. This method maintains alignment fidelity with a provable error bound of $\frac{n - 1}{n^2} + \frac{m - 1}{m^2}$ (Proposition~\ref{proposition1}). Full derivations are provided in Appendix~\ref{Appendix - Proof of the Approximation}.
+
+
+
+% \subsubsection{Approximation for Wasserstein Distance} 
+
+% For node-level alignment, we use the Wasserstein-1 distance and adopt a sorting-based approximation~\cite{boizardtowards}. Let $\mathbf{f}_s, \mathbf{f}_t \in \mathbb{R}^{d'}$ denote node features from the pivot and source logits, treated as empirical distributions over top-$k$ dimensions. The exact objective is:
+% \begin{equation}
+% \text{WD}(\mathbf{f}_s, \mathbf{f}_t) = \min_{\gamma \in \Pi(\mu_s, \mu_t)} \sum_{i,j} |\mathbf{f}_s(i) - \mathbf{f}_t(j)| \cdot \gamma_{ij},
+% \end{equation}
+% where $\gamma$ is a doubly stochastic transport plan. We approximate this using a uniform matching over sorted feature vectors, following ULD \cite{boizardtowards}:
+% \begin{equation}
+% \widetilde{\text{WD}}(\mathbf{f}_s, \mathbf{f}_t) = \sum_{i=1}^{d'} \left| \mathbf{f}_s^{\downarrow}(i) - \mathbf{f}_t^{\downarrow}(i) \right|,
+% \end{equation}
+% which offers a linear-time approximation while preserving first-order alignment.
+
+
+Given intra-graph similarity matrices $C_s, C_t \in \mathbb{R}^{d' \times d'}$ from source and pivot models, the squared GW distance is defined as:
+\begin{equation}
+\text{GW}(C, D) = \min_{\gamma \in \Pi(\mu_s, \mu_t)} \sum_{i,j,k,l} |C(i,j) - D(k,l)|^2 \gamma_{ik} \gamma_{jl}.
+\end{equation}
+
+Despite its expressiveness, the GW objective requires $\mathcal{O}(n^2 m^2)$ complexity due to its fourth-order tensor form, making it impractical for large logits ($n,m$ are the vocabulary sizes). To address this, we derive a closed-form approximation by compressing the graph structure into scalar features.
+
+\textbf{Graph Feature Compression.}
+Our key insight is that the structure of each similarity matrix $C \in \mathbb{R}^{n \times n}$ and $D \in \mathbb{R}^{m \times m}$ can be summarized using scalar node-level features, where $n, m$ are vocabulary size. Specifically, we compute degree-style features:
+\begin{equation}
+f_C(i) = \frac{1}{n} \sum_{j=1}^{n} C(i, j), \quad
+f_D(k) = \frac{1}{m} \sum_{l=1}^{m} D(k, l),
+\end{equation}
+which captures the overall importance or connectivity of each logit dimension in the graph. This reduces the original $d' \times d'$ structure to two vectors in $\mathbb{R}^{d'}$.
+
+\textbf{Separable Relaxation.}
+Substituting these features into the original objective yields a simplified, separable form:
+\begin{equation}
+\widetilde{\text{GW}}(C, D) = \sum_{i,k} |f_C(i) - f_D(k)|^2 \gamma_{ik},
+\end{equation}
+where symmetry is assumed across $\gamma_{ik}$ and $\gamma_{jl}$. This relaxation significantly lowers computational cost. As analyzed in Appendix~\ref{Appendix - Proof of the Approximation} and the following proposition, the error is theoretically bounded:
+
+\begin{proposition}[Approximation Error Bound]
+\label{proposition1}
+Let $C \in \mathbb{R}^{n \times n}$ and $D \in \mathbb{R}^{m \times m}$ be the similarity matrices derived from logit self-inner products and row-normalized such that $\sum_{j} C_{ij} = 1$ and $\sum_{l} D_{kl} = 1$. Then the absolute error between the exact and approximated GW distances satisfies:
+\begin{equation}
+|\text{GW}(C, D) - \widetilde{\text{GW}}(C, D)| \leq \frac{n - 1}{n^2} + \frac{m - 1}{m^2}.
+\end{equation}
+\end{proposition}
+
+The proof is provided in Appendix~\ref{Step 3: Approximation of the Gromov-Wasserstein Distance}. In practice, the size of $n,m$ is more than $10^5$.
+This bound guarantees the error decays as $\mathcal{O}(1/n)$, enabling scalable use in large-vocabulary settings.
+
+\textbf{Sorting-Based Matching.}
+To avoid solving for the optimal transport plan $\gamma$ explicitly, we take a direct strategy like ULD \cite{boizardtowards} that adopts a deterministic transport strategy based on sorting. Let $f_C^{\downarrow}, f_D^{\downarrow}$ be the descending-sorted versions of $f_C$ and $f_D$. We construct a matching that aligns the $i$-th largest entry of $f_C$ to the $i$-th largest entry of $f_D$:
+\begin{equation}
+\widetilde{\text{GW}}(C, D) = \sum_{i=1}^{k} \left| f_C^{\downarrow}(i) - f_D^{\downarrow}(i) \right|, \quad k = \min(d'_s, d'_t).
+\end{equation}
+This effectively reduces the original optimization to an $\mathcal{O}(n \log n)$ sorting-based assignment.
+
+\textbf{Stability Analysis.}
+Beyond efficiency, our approximation improves training stability. We compare the Lipschitz constants of common alignment losses and the proof is provided in Appendix~\ref{sec:stability}:
+
+\begin{proposition}[Lipschitz Constants Comparison]
+\label{proposition2}
+We have the following relationship between the Lipschitz constants ($L$) for the Gromov-Wasserstein, Wasserstein, and KL losses:
+\begin{equation}
+L_{\text{GW}} = \mathcal{O}\left(\frac{R^3}{D}\right) < L_{\text{WD}} = \mathcal{O}(\sqrt{D}) < L_{\text{KL}} = \mathcal{O}(e^{RD}),
+\end{equation}
+for vocabulary size $D$ and logit range $R$, which means the GW-guided training models have tighter generalization bounds.
+\end{proposition}
+
+The logit range $R$ is usually smaller than 120 for 14B LLMs. For example, with vocabulary size $D = 150,000$, $R$ is observed in the range of $[40, 120]$ \cite{huggingfaceoutputs}. This suggests GW-based alignment yields the lowest sensitivity to perturbations, contributing to improved generalization and stable training.
+
+
+\subsection{Unified GLD Loss}
+
+To support multi-source fusion, we extend the GLD loss into a unified formulation. For each source model $M_s$, we compute a structure-aware alignment loss with respect to the pivot model $M_0$ and aggregate all source contributions:
+\begin{equation}
+\mathcal{L}_{\text{GLD}} = \sum_{s=1}^{S} \widetilde{\text{GW}}(C_s, C_0).
+\end{equation}
+where $C_s$ and $C_0$ denote the similarity matrices of the source and pivot graphs, respectively.
+
+This unified objective enables efficient and scalable distillation from multiple source models, while preserving both semantic and relational structures across models.
+
+\section{Experiments}
+\label{experimentssection}
+We evaluate InfiGFusion on large-scale LLM fusion, focusing on integrating models with diverse architectures and reasoning styles while maintaining inference efficiency. Our experiments verify that GLD enables faithful and effective fusion beyond token-level objectives. InfiGFusion outperforms state-of-the-art fusion methods and strong open-source baselines, with significant improvements in multi-step reasoning and relational inference. Additional results are provided in the Appendix.
+
+
+\subsection{Experimental Setup}
+\label{Experimental Setup}
+
+\begin{wraptable}{r}{0.482\textwidth}
+\renewcommand\arraystretch{1.2}
+\setlength{\tabcolsep}{4pt}
+\begin{center}
+\huge
+\vspace{-2em}
+\resizebox{1.0 \linewidth}{!}{
+\begin{tabular}{l c c c}
+\toprule
+\bf Types & \bf General & \bf Math & \bf Code \\
+\midrule
+Dataset & Infinity-Instruct & NuminaMath-1.5 & KodCode-V1-SFT-R1 \\
+Original Size & 1.4M & 1.4M & 268k \\
+Filtered Size & 52K & 39K & 39K \\
+\bottomrule
+\end{tabular}}
+\vspace{-0.5em}
+\caption{\small Statistics of the novel datasets.}
+\label{tab:dataset-stats}
+\end{center}
+\vspace{-1.5em}
+\end{wraptable}
+
+\textbf{Datasets.}
+We construct a novel multi-task training dataset comprising 130k examples across general reasoning, mathematics, and coding. (\romannumeral1) The 52K general data are sourced from Infinity-Instruct \cite{li2024superfiltering}.
+(\romannumeral2) Our mathematical dataset comprises 39k pairs of math questions and corresponding answers. The questions are sourced from the $NuminaMath\_1.5$\footnote{\href{https://huggingface.co/datasets/AI-MO/NuminaMath-1.5}{https://huggingface.co/datasets/AI-MO/NuminaMath-1.5}} dataset, while the answers are distilled from the DeepSeek-R1-671B model by the AM team\footnote{\href{https://huggingface.co/datasets/a-m-team/AM-DeepSeek-R1-Distilled-1.4M}{https://huggingface.co/datasets/a-m-team/AM-DeepSeek-R1-Distilled-1.4M}}. $NuminaMath\_1.5$ represents the second iteration of the widely acclaimed NuminaMath\cite{li2024numinamath} dataset. It offers high-quality data for competition-level mathematical problems across various domains, including Algebra, Geometry, Combinatorics, Calculus, Inequalities, Logic and Puzzles, and Number Theory. (\romannumeral3) In the code generation domain, we utilized the KodCode-V1-SFT-R1 dataset~\cite{xu2025kodcode}, which contains approximately 268k samples. Each sample was fed into our pivot model, which was prompted to generate 5 random responses per input. The generated outputs were then passed through a sandbox-based evaluation system. For each sample, if at least one of the five responses failed, the sample was flagged for further consideration. From these flagged samples, we filtered and selected 39k high-quality examples for further distillation.
+
+\textbf{Models and Baselines.}
+We fuse three source models: Qwen2.5-14B~\cite{yang2024qwen2}, Qwen2.5-Coder-14B~\cite{yang2024qwen2}, and Mistral-24B \cite{Mistral24B}, into a Phi-4~\cite{abdin2024phi} pivot model. Fusion baselines include MiniLogit \cite{guo2020online}, InfiFusion~\cite{yan2025infifusion}, FuseLLM~\cite{wanknowledge}, and FuseChat \cite{wan2024fusechat}. Full configurations are provided in Table~\ref{tab:main_res}.
+
+\textbf{Evaluation.}
+We assess fusion performance on 11 benchmarks spanning \textit{reasoning} (BBH~\cite{suzgun2023challenging}, ARC-C~\cite{yadav2019quick}, MMLU~\cite{hendrycksmeasuring}), \textit{mathematics} (GSM8K~\cite{cobbe2021training}, Math~\cite{hendrycks2measuring}, TheoremQA~\cite{chen2023theoremqa}), \textit{coding} (MBPP~\cite{austin2021program}, HumanEval~\cite{chen2021evaluating}), \textit{text reasoning} (DROP~\cite{dua2019drop}, HellaSwag~\cite{zellers2019hellaswag}), and \textit{instruction following} (IFEval~\cite{zhou2023instruction}).
+%
+Additional training details and results are provided in Appendix~\ref{app:setup}.
+
+
+
+\subsection{Main Results}
+
+
+
+\begin{table*}[t]
+\renewcommand\arraystretch{1.1}
+\setlength{\tabcolsep}{5pt}
+\centering
+\huge
+\resizebox{\textwidth}{!}{
+\begin{tabular}{l ccc cc ccc c cc c cc}
+\toprule
+\textbf{Models} & \multicolumn{3}{c}{\textbf{Math}} & \multicolumn{2}{c}{\textbf{Coding}} & \multicolumn{3}{c}{\textbf{General Reasoning}} & \textbf{Instruct.} & \multicolumn{2}{c}{\textbf{Text Reasoning}} & \multirow{2}{*}{\textbf{Avg}} & \multirow{2}{*}{\begin{tabular}[c]{@{}l@{}}\textbf{Model}\\ \textbf{Size} \end{tabular}} & \multirow{2}{*}{\begin{tabular}[c]{@{}l@{}}\textbf{GPU}\\ \textbf{Hour} \end{tabular}} \\
+\cmidrule(lr){2-4} \cmidrule(lr){5-6} \cmidrule(lr){7-9} \cmidrule(lr){10-10} \cmidrule(lr){11-12}
+ & GSM8K & MATH & ThQA & MBPP & HEval & BBH & ARC & MMLU & IFEval & DROP & HS &  & &  \\
+\midrule
+\multicolumn{15}{l}{\textbf{Pivot Model}} \\
+Phi-4 & 87.41 & 80.04 & 51.12 & 70.8 & 83.54 & 68.84 & 93.9 & 85.62 & 77.34 & 88.67 & 87.62 & 79.54 & 14B & $\sim$1.0M \\
+\midrule
+\multicolumn{15}{l}{\textbf{Source Models}} \\
+Qwen2.5-Instruct & 91.13 & 78.16 & 47.25 & 81.70 & 83.54 & 77.59 & 92.20 & 80.22 & \textbf{85.01} & 85.56 & 88.28 & 80.97 & 14B & $\sim$1.8M\\
+Mistral-Small & \textbf{92.42} & 69.84 & 48.50 & 68.80 & 84.15 & 81.59 & 91.86 & 81.69 & 82.25 & 86.52 & \textbf{91.84} & 79.95 & 24B & $\sim$1.6M\\
+Qwen2.5-Coder & 89.16 & 74.18 & 38.88 & \textbf{85.40} & \textbf{90.90} & 75.40 & 89.49 & 75.08 & 74.70 & 84.34 & 79.83 & 77.94 & 14B & $\sim$1.8M\\
+\midrule
+\multicolumn{15}{l}{\textbf{SFT}} \\
+Pivot-SFT & 89.99 & \textbf{82.96} & 54.50 & 77.86 & 87.80 & 67.23 & 93.56 & \textbf{86.21} & 77.70 & 89.44 & 87.76 & 81.36 & 14B & 120\\
+\midrule
+\multicolumn{15}{l}{\textbf{Model Fusion via Distillation}} \\
+MiniLogit &89.80 	&79.78 & 46.36 	&78.49 	&85.44 	&82.68 	&92.19 	&84.58 	&79.36 	&88.56 	&88.25 	&81.43 & 14B & 220\\
+FuseLLM &90.24 	&80.25 	&53.52 	&79.28 	&84.00 	&77.62 	&92.08 	&83.92 	&78.56 	&88.74 	&87.81 	&81.46 & 14B & 225\\
+FuseChat & 91.21	&77.52	&51.88	&81.80	&84.15	&83.37	&93.56	&84.23	&78.90	&89.23	&87.42	&82.12 & 14B & 650\\
+InfiFusion & 90.07 & 80.94 & 54.62 & 79.63 & 84.72 & 80.94 & {94.24} & 85.81 & 76.02 & 89.27 & 87.91 & 82.20 & 14B & 160\\
+\midrule
+\rowcolor{blue!10}
+\textbf{InfiGFusion} & 90.45 & 81.92 & \textbf{55.38}	& 85.2	& 86.00	& \textbf{85.62}	& \textbf{94.58}	& 85.24	& 80.22	& \textbf{89.62}	& 88.22	& \textbf{83.85}  & 14B & 195\\
+\bottomrule
+\end{tabular}}
+\caption{\small Main results on various benchmarks.}
+\label{tab:main_res}
+\vspace{-3mm}
+\end{table*}
+
+% ================================= Reasoning ==================
+
+\begin{table*}[t]
+\renewcommand\arraystretch{1}
+\setlength{\tabcolsep}{5pt}
+\centering
+\large
+\resizebox{\textwidth}{!}{
+\begin{tabular}{lcccc>{\columncolor{blue!10}}c>{\columncolor{blue!10}}c}
+\toprule
+Reasoning Models                         & Qwen2.5-Instruct & Mistral    & DeepSeek-R1-Distill-Qwen & Phi4       & Phi4 (SFT)  & InfiGFusion \\
+Models Size                         & 14B &24B    & 14B & 14B       & 14B  & 14B \\
+\midrule
+Abstract Algebra & 73 & 65 & 85 & 82 & 86 {\color{blue}(+4.0↑)} & \textbf{88} {\color{blue}(+6.0↑)} \\
+Marketing & 90.17 & 92.31 & 89.32 & 92.74 & 92.74 {\color{blue}(+0.0)} & \textbf{95.3} {\color{blue}(+2.56↑)} \\
+International Law & 81.82 & 81.82 & 82.64 & 91.74 & 90.91 {\color{red}(-0.83↓)} & 90.91 {\color{red}(-0.83↓)} \\
+Moral Scenarios & 71.96 & 68.6 & 73.41 & 75.75 & 74.75 {\color{red}(-1.0↓)} & 73.97 {\color{red}(-1.78↓)} \\
+Virology & 52.41 & 49.4 & \textbf{54.22} & 53.01 & 53.61 {\color{blue}(+0.6↑)} & \textbf{54.22} {\color{blue}(+1.21↑)} \\
+Formal Logic & 68.25 & 66.67 & \textbf{91.27} & 77.78 & 78.57 {\color{blue}(+0.79↑)} & 74.6 {\color{red}(-3.18↓)} \\
+Security Studies & 77.96 & 78.78 & 78.37 & 77.14 & 79.59 {\color{blue}(+2.45↑)} & \textbf{81.22} {\color{blue}(+4.08↑)} \\
+logical\_fallacies & 85.28 & 84.66 & 85.28 & 86.5 & 87.73 {\color{blue}(+1.23↑)} & \textbf{87.73} {\color{blue}(+1.23↑)} \\
+Ruin Names & 82.8 & 76.8 & 39.6 & \textbf{88.8} & 88.0 {\color{red}(-0.8↓)} & 88.4 {\color{red}(-0.4↓)} \\
+Tracking 7 Objects & 80.4 & 96.4 & 80.8 & 94.4 & 90.0 {\color{red}(-4.4↓)} & \textbf{96.8} {\color{blue}(+2.4↑)} \\
+Tracking 5 Objects & 79.2 & \textbf{99.2} & 82.8 & 96.8 & 95.6 {\color{red}(-1.2↓)} & 96.8 {\color{blue}(+0.0)} \\
+Logical Deduction 3 & 97.6 & \textbf{98.8} & 83.2 & 98.4 & 96.4 {\color{red}(-2.0↓)} & 97.6 {\color{red}(-0.8↓)} \\
+Logical Deduction 5 & 80.4 & 82 & 86 & 85.6 & 92.4 {\color{blue}(+6.8↑)} & \textbf{94} {\color{blue}(+8.4↑)} \\
+Logical Deduction 7 & 68.8 & 62.8 & 83.2 & 88.4 & 88.8 {\color{blue}(+0.4↑)} & \textbf{89.2} {\color{blue}(+0.8↑)} \\
+Colored Objects & 93.6 & 90 & 87.6 & \textbf{96.4} & 96.8 {\color{blue}(+0.4↑)} & \textbf{96.4} {\color{blue}(+0.0)} \\
+Multistep Arithmetic & 96.4 & 93.2 & 81.6 & 64 & 62 {\color{red}(-2.0↓)} & \textbf{99.6} {\color{blue}(+35.6↑)} \\
+Dyck Languages & 35.6 & 37.2 & 9.6 & 11.2 & 13.2 {\color{blue}(+2.0↑)} & \textbf{40.0} {\color{blue}(+28.8↑)} \\
+Causal Judgement & 43.85 & 68.98 & 45.35 & 32.99 & 35.83 {\color{blue}(+2.84↑)} & \textbf{70.05} {\color{blue}(+37.06↑)} \\
+\midrule
+Avg. 18 Tasks & 75.53 & 77.37 & 73.29 & 77.43 & 77.94 {\color{blue}(+0.51↑)} & \textbf{84.16} {\color{blue}(+6.73↑)} \\
+\bottomrule
+\end{tabular}}
+\caption{
+\small Performance on complex reasoning tasks. These datasets involve multi-step logic, causal inference, event tracking, and semantic analysis. InfiGFusion consistently improves over SFT, especially in complex reasoning. More results (84 tasks) are provided in Appendix \ref{Appendix - Comprehensive Reasoning Performance}.
+}
+\label{tab:res2}
+\vspace{-3mm}
+\end{table*}
+
+
+Table~\ref{tab:main_res} summarizes the performance of \textbf{InfiGFusion} across eleven benchmarks, compared with the pivot model, source models, and representative model fusion methods.
+
+\textbf{Comparison with Pivot and Source Models.}
+InfiGFusion consistently outperforms both the pivot model and source models in overall performance. Compared to the pivot model, it achieves a significant improvement (+2.53 avg), particularly on complex reasoning benchmarks such as BBH, ARC, and MMLU, where semantic richness and multi-step inference are crucial. For instance, InfiGFusion surpasses the pivot by +16.7 on BBH, demonstrating its ability to aggregate diverse reasoning styles beyond single-source capabilities.
+Compared to source models, InfiGFusion effectively integrates complementary strengths. While individual source models excel in isolated tasks (e.g., Mistral-Small on BBH, Qwen2.5-Coder on HEval), they struggle with generalization across domains. InfiGFusion surpasses these models with a more balanced performance, avoiding their trade-offs and consolidating knowledge into a unified pivot.
+
+\textbf{Comparison with Model Fusion Baselines.}
+Against existing fusion methods (MiniLogit, FuseLLM, FuseChat), InfiGFusion exhibits superior fusion quality. Notably, while other distillation methods provide moderate improvements over the pivot, they often suffer from degraded performance in high-dependency tasks (e.g., logical reasoning, multi-condition alignment). InfiGFusion consistently delivers better results on structurally challenging tasks, indicating its advantage in preserving inter-token dependencies during fusion. Furthermore, compared to simpler fusion objectives, the structure-aware GLD loss of InfiGFusion yields better alignment without sacrificing robustness.
+
+\textbf{Efficiency and Resource Usage.}
+In terms of computational cost, InfiGFusion maintains competitive efficiency. Despite introducing structure-aware alignment, its GPU hours remain modest (195 GPU hours), substantially lower than multi-step fusion pipelines like FuseChat (650 GPU hours). Model size remains identical to the pivot (14B), ensuring no additional inference overhead.
+
+\vspace{-3mm}
+
+
+\subsection{Complex Reasoning Performance}
+
+We evaluate InfiGFusion on 18 reasoning datasets spanning BBH and MMLU, covering multi-step logic, structural dependencies, and fine-grained semantic alignment, as shown in Table.\ref{tab:res2}. These tasks are known to challenge token-level fusion methods due to their complex reasoning path. Comprehensive results can be found in Appendix \ref{Appendix - Comprehensive Reasoning Performance}.
+
+\textbf{Improved Reasoning over SFT.}
+Compared to Phi4-14B after supervised fine-tuning (SFT), InfiGFusion delivers consistent gains, boosting the average accuracy from 77.94\% to 83.79\%. Notable improvements are observed in tasks demanding complex relational reasoning: \textit{Multistep Arithmetic} (+34.8\%) and \textit{Causal Judgement} (+34.39\%). This demonstrates InfiGFusion’s ability to enhance multi-hop inference and causal understanding by explicitly modeling semantic dependencies.
+
+\textbf{Structural Alignment Benefits.}
+InfiGFusion excels in \textit{Tracking Shuffled Objects} and \textit{Logical Deduction} tasks, where aligning token relations is critical. For instance, it surpasses Phi4-14B SFT on \textit{Logical Deduction Five Objects} (+1.6\%) and \textit{Seven Objects} (+0.4\%), showcasing robust structure-level fusion beyond token alignment.
+
+\textbf{Preserving Pivot Strength.}
+InfiGFusion maintains competitive performance in knowledge-centric tasks like \textit{International Law} and \textit{Ruin Names}, matching or slightly improving upon SFT baselines. This indicates that InfiGFusion not only integrates external model knowledge but also preserves the pivot model’s original strengths. These results confirm that InfiGFusion’s structure-aware fusion consistently enhances reasoning capabilities compared to token-level methods.
+
+
+
+\subsection{Ablation Study}
+
+\begin{wraptable}{r}{0.5\textwidth}
+\renewcommand\arraystretch{1.2}
+\setlength{\tabcolsep}{4.5pt}
+\begin{center}
+\Huge
+\vspace{-2em}
+\resizebox{1.0 \linewidth}{!}{
+\begin{tabular}{l c c c c}
+\toprule
+\textbf{Model} & \textbf{Reasoning} & \textbf{Math} & \textbf{Coding} & \textbf{Avg} \\
+\midrule
+Pivot: Phi4 & 81.43 & 72.86 & 77.17 & 79.54 \\
+\midrule
+Qc         & 84.39 (\textcolor{blue}{+2.96}) & 74.18 (\textcolor{blue}{+1.32}) & 86.1 (\textcolor{blue}{+8.63}) & 83.20 (\textcolor{blue}{+3.66}) \\
+Qi         & 86.03 (\textcolor{blue}{+4.60}) & 74.08 (\textcolor{blue}{+1.22}) & 84.89 (\textcolor{blue}{+7.72}) & 83.52 (\textcolor{blue}{+3.98}) \\
+M          & 84.50 (\textcolor{blue}{+3.07}) & 75.77 (\textcolor{blue}{+2.91}) & 85.8 (\textcolor{blue}{+8.63}) & 83.62 (\textcolor{blue}{+4.08}) \\
+Qc-M       & 84.89 (\textcolor{blue}{+3.46}) & 74.18 (\textcolor{blue}{+1.32}) & 86.09 (\textcolor{blue}{+8.92}) & 83.54 (\textcolor{blue}{+4.00}) \\
+Qi-M       & 85.00 (\textcolor{blue}{+3.57}) & 75.92 (\textcolor{blue}{+3.06}) & 85.39 (\textcolor{blue}{+8.22}) & 83.72 (\textcolor{blue}{+4.18}) \\
+\midrule
+\rowcolor{blue!10}
+InfiGFusion       & 87.06 (\textcolor{blue}{+5.63})  &74.74 (\textcolor{blue}{+1.88}) &85.6 (\textcolor{blue}{+8.43}) & 83.85 (\textcolor{blue}{+2.53}) \\
+\bottomrule
+\end{tabular}}
+\vspace{-0.3em}
+\caption{\footnotesize Ablation study on model diversity. Qc, Qi, and M mean Qwen-Coder, Qwen-Instruct, and Mistral.}
+\label{tab:diversity}
+\end{center}
+\vspace{-1.5em}
+\end{wraptable}
+% ================== Ablation on Numbers ===============
+\textbf{Effect of Source Model Diversity.}
+Table~\ref{tab:diversity} evaluates the effect of fusing different source models. Individually, Qwen-Coder (Qc), Qwen-Instruct (Qi), and Mistral (M) each provide moderate gains, reflecting their domain-specific strengths. Notably, combinations such as Qi-M further amplify reasoning (+3.57), math (+3.06), and coding (+8.22) performance, demonstrating that complementary inductive biases from different models enhance the pivot model. InfiGFusion achieves the best results (+2.53 avg), confirming that our framework effectively consolidates diverse reasoning behaviors into a unified model.
+
+
+\begin{wraptable}{tr}{0.48\textwidth}
+\renewcommand\arraystretch{1.2}
+\setlength{\tabcolsep}{4.5pt}
+\begin{center}
+\Huge
+\vspace{-1em}
+\resizebox{1.0 \linewidth}{!}{
+\begin{tabular}{l c c c c}
+\toprule
+\textbf{Component} & \textbf{Reasoning} & \textbf{Math} & \textbf{Coding} & \textbf{Avg} \\
+\midrule
+GLD + ULD & 87.06     & 74.74 & 85.6  & 83.85 \\
+w/o ULD   & 85.26 (\textcolor{red}{-1.8})     & 73.28 (\textcolor{red}{-1.46}) & 85.28 (\textcolor{red}{-0.32})  & 82.33 (\textcolor{red}{-1.52})\\
+w/o GLD   & 85.70  (\textcolor{red}{-1.36})   & 75.21 (\textcolor{blue}{+0.47}) & 85.18 (\textcolor{red}{-0.42}) & 83.16 (\textcolor{red}{-0.69}) \\
+\bottomrule
+\end{tabular}}
+\vspace{-0.3em}
+\caption{\footnotesize Ablation study on loss components.}
+\label{tab:dataset-stats}
+\end{center}
+\vspace{-1.5em}
+\end{wraptable}
+% ================== Ablation on Loss ===============
+
+\textbf{Effect of Loss Components.}
+Table~\ref{tab:dataset-stats} analyzes our loss design. Removing ULD (w/o ULD) leads to a significant drop (-1.52 avg), particularly in reasoning (-1.8), indicating that coarse-grained token-level alignment is crucial for providing a reliable starting point. ULD narrows large distribution mismatches, effectively preparing the model for the finer-grained structural alignment performed by GLD. Excluding GLD (w/o GLD), on the other hand, yields a smaller overall decline (-0.69 avg), but reasoning performance still drops notably (-1.36). This highlights that while ULD handles first-order token matching, it lacks the capacity to capture higher-order semantic dependencies. When combined, ULD and GLD form a synergistic alignment mechanism: ULD aligns distributions coarsely and stabilizes optimization, while GLD refines alignment by enforcing consistency in the relational structure of logits. The empirical results validate this design, with the full loss achieving the best performance. All ablation studies are tested in the Top-$k=10$ setting.
+\vspace{-3mm}
+
+\subsection{Effect of Top-$k$}
+
+% \begin{sansmath}
+
+\begin{wrapfigure}{r}{0.38\textwidth}
+    \centering
+    \vspace{-10pt}
+    \begin{tikzpicture}
+    \begin{axis}[
+        width=0.38\textwidth, height=4.5cm, % 缩小 TikZ 区域避免裁边
+        grid=major,
+        grid style={white, dashed, line width=0.2pt},
+        axis line style={black, thick},
+        tick style={black, thick},
+        tick label style={font=\bfseries\tiny, black},
+        xlabel={\textbf{Top-k}},
+        ylabel={\textbf{Accuracy (\%)}},
+        xlabel style={font=\bfseries\tiny, black},
+        ylabel style={font=\bfseries\tiny, black},
+        legend style={
+            font=\scriptsize, draw=none, fill=none,
+            at={(axis description cs:0.5,1.12)}, anchor=south,
+            legend columns=4, column sep=1pt
+        },
+        xtick={5,10,15,20,25,30},
+        ymin=73, ymax=89,
+        ytick distance=2,
+        axis background/.style={fill=gray!20},
+        enlargelimits=0.05
+    ]
+
+    \addplot+[smooth, thick, mark=o, color={rgb:red,2;green,2;blue,8}] coordinates {
+        (5,87.03) (10,87.55) (15,87.37) (20,87.22) (25,87.12) (30,87.06)
+    };
+    \addlegendentry{Reasoning}
+
+    \addplot+[smooth, thick, mark=square*, color={rgb:red,9;green,3;blue,0}] coordinates {
+        (5,74.38) (10,75.92) (15,75.47) (20,75.03) (25,74.58) (30,74.74)
+    };
+    \addlegendentry{Math}
+
+    \addplot+[smooth, thick, mark=triangle*, color={rgb:red,0;green,7;blue,3}] coordinates {
+        (5,84.42) (10,85.39) (15,85.35) (20,85.48) (25,85.71) (30,85.6)
+    };
+    \addlegendentry{Coding}
+
+    \addplot+[smooth, thick, mark=diamond*, color={rgb:red,8;green,1;blue,5}] coordinates {
+        (5,82.08) (10,82.62) (15,82.49) (20,82.41) (25,82.20) (30,82.07)
+    };
+    \addlegendentry{Avg}
+
+    \end{axis}
+    \end{tikzpicture}
+    \caption{Top-k analysis.}
+    \vspace{-10pt}
+    \label{tab:topk}
+\end{wrapfigure}
+
+InfiGFusion sparsifies logits by retaining top-$k$ token dimensions before graph construction, selecting the most salient indices per sequence position. This inductive bias suppresses noisy activations and emphasizes meaningful token dependencies, serving as the foundation for graph-based semantic alignment. We evaluate Top-$k \in \{5, 10, 15, 20, 25, 30\}$ and report the results in Fig.~\ref{tab:topk}. Increasing $k$ from 5 to 10 brings notable gains across all tasks (Avg +0.54), as larger $k$ captures richer token interactions essential for semantic graph construction. However, further increasing $k$ beyond 10 yields diminishing returns and even slight degradations, particularly in reasoning (-0.49 from Top10 to Top30). This suggests that excessive low-confidence tokens introduce spurious edges, diluting graph discriminability. The observed trend aligns with the heavy-tailed nature of LLM logits~\cite{zhuang2024setwise}, where only a small subset of token dimensions are informative. Overall, Top-10 achieves the best trade-off, balancing informative graph structure and computational efficiency.
+%\vspace{-3mm}
+
+% \end{sansmath}
+
+
+\subsection{Case study}
+% \subsection{Case Study: Multi-Step and Relational Inference}
+
+To illustrate InfiGFusion's strengths beyond token-level alignment, we analyze representative cases, comparing outputs from a standard SFT-tuned model (Phi4) and our InfiGFusion model. The selected examples highlight InfiGFusion's superior reasoning in multi-step causality and relational inference.
+
+\begin{wrapfigure}{r}{0.46\textwidth}
+    \centering
+    \vspace{-11pt}
+    \includegraphics[width=0.45\textwidth]{case_study.pdf}
+    \caption{Case study.}
+    \vspace{-6mm}
+\end{wrapfigure}
+
+\textbf{Case 1: Frank T. Shooting Incident.} While both models predict “No,” InfiGFusion performs a deeper step-by-step causality analysis. It explicitly identifies the causal chain's disruption—distinguishing between “intent,” “misfire,” and “accidental result”—showcasing robust \emph{multi-step causality disambiguation} capabilities.
+
+\textbf{Case 2: Wallace's Dual Cause of Death.} Unlike Phi4's surface-level judgment, InfiGFusion reasons through the latent causal structure, identifying “organized crime” as a distal cause. This reflects its strength in \emph{relational and indirect causality inference}, where it effectively models complex event chains and upstream dependencies.
+
+These cases demonstrate that InfiGFusion excels at: (\romannumeral1) \textit{Multi-step inference:} Decomposing complex causal chains into interpretable reasoning steps.
+(\romannumeral2) \textit{Relational causality reasoning:} Capturing indirect and upstream causal factors often missed by SFT models.
+(\romannumeral3) \textit{Fine-grained disambiguation:} Distinguishing intent, action, and outcome with structured alignment of reasoning behaviors.
+% This aligns with our empirical findings that InfiGFusion consistently outperforms SFT and baselines on tasks demanding intricate reasoning, such as Multistep Arithmetic (+35.6) and Causal Judgement (+37.06).
+%\vspace{-3mm}
+
+
+\subsection{Analysis of the GW approximation}
+\label{sec:Analysis of the GW approximation}
+In addition to the main results, we also conducted some experiments to analyze our proposed Gromov-Wasserstein approximation. It compares the quality of GW estimation in a simple simulated scenario. For example, by obtaining samples from two Gaussian distributions, and comparing the value of exact GW, sinkhorn-based approximation, and our proposed approximation. While our experiments demonstrate that the approximation is suitable as a training objective, it would be interesting to also understand its behavior as GW estimator.
+
+\textbf{Experiment setup:} For each $n\in\{50,100,200,500,1000,1500,2000,2500,3000\}$, we sample $n$ points from $\mathcal{N}(0,I)$ and $\mathcal{N}(1,I)$, build their $n\times n$ Euclidean distance matrices, and compute:
+(i) \textit{Exact GW} and \textit{Sinkhorn GW} via \texttt{ot.gromov.gromov\_wasserstein2(\dots, loss='square\_loss')};
+(ii) \textit{Approx GW} via our sorting-based closed-form.
+Each configuration is repeated $3\times$ to report mean$\pm$std.
+\textit{Approx RE} quantifies the approximation accuracy relative to the exact GW:
+$\mathrm{RE}=\frac{|\widehat{GW}_{\text{approx}}-GW_{\text{exact}}|}{GW_{\text{exact}}}$ (mean$\pm$std over 5 seeds). 
+In this symmetric Gaussian setting, Exact and Sinkhorn GW coincide to our reported precision (even with $\varepsilon=10^{-1}$), evidencing the high accuracy of the Sinkhorn estimator here.
+
+\begin{table}[t]
+\renewcommand\arraystretch{1}
+\setlength{\tabcolsep}{4pt}
+\centering
+\large
+\resizebox{\textwidth}{!}{
+\begin{tabular}{c| c c >{\columncolor{blue!10}}c | c c >{\columncolor{blue!10}}c}
+\hline
+$n$ & Exact\&\&Sinkhorn GW & Approx GW & \cellcolor{blue!10}Approx RE ($\pm$std) & Time Exact (s) & Time Sink (s) & \cellcolor{blue!10}Time Approx (s) \\
+\hline
+  50  & 0.4815 $\pm$ 0.0452 & 0.1978 $\pm$ 0.0207 & 0.5888 $\pm$ 0.0242 & 0.0171 $\pm$ 0.0207 & 0.0027 $\pm$ 0.0005 & 0.0004 $\pm$ 0.0004 \\
+ 100  & 0.3247 $\pm$ 0.0297 & 0.1261 $\pm$ 0.0217 & 0.6048 $\pm$ 0.0907 & 0.0072 $\pm$ 0.0008 & 0.0070 $\pm$ 0.0005 & 0.0001 $\pm$ 0.0000 \\
+ 200  & 0.2033 $\pm$ 0.0088 & 0.0973 $\pm$ 0.0125 & 0.5230 $\pm$ 0.0426 & 0.1390 $\pm$ 0.0377 & 0.0983 $\pm$ 0.0033 & 0.0359 $\pm$ 0.0305 \\
+ 500  & 0.1131 $\pm$ 0.0050 & 0.0587 $\pm$ 0.0143 & 0.4850 $\pm$ 0.1121 & 0.4405 $\pm$ 0.1337 & 0.4815 $\pm$ 0.0904 & 0.0607 $\pm$ 0.0353 \\
+1000  & 0.0764 $\pm$ 0.0011 & 0.0387 $\pm$ 0.0133 & 0.4921 $\pm$ 0.1785 & 2.3631 $\pm$ 0.4981 & 2.2456 $\pm$ 0.4085 & 0.1238 $\pm$ 0.0399 \\
+1500  & 0.0621 $\pm$ 0.0028 & 0.0308 $\pm$ 0.0016 & 0.5031 $\pm$ 0.0398 & 12.7151 $\pm$ 4.1182 & 9.1998 $\pm$ 2.1952 & 0.0982 $\pm$ 0.0015 \\
+2000  & 0.0496 $\pm$ 0.0028 & 0.0294 $\pm$ 0.0058 & 0.3995 $\pm$ 0.1453 & 20.1236 $\pm$ 5.0250 & 19.8941 $\pm$ 8.1827 & 0.0411 $\pm$ 0.0424 \\
+2500  & 0.0455 $\pm$ 0.0008 & 0.0305 $\pm$ 0.0075 & 0.3285 $\pm$ 0.1712 & 20.9198 $\pm$ 5.6782 & 30.1367 $\pm$ 3.1038 & 0.0026 $\pm$ 0.0014 \\
+3000  & 0.0404 $\pm$ 0.0002 & 0.0324 $\pm$ 0.0141 & 0.3941 $\pm$ 0.0767 & 52.8898 $\pm$ 9.2735 & 53.5049 $\pm$ 12.4434 & 0.2408 $\pm$ 0.2562 \\
+\hline
+\end{tabular}}
+\vspace{0.1em}
+\caption{GW estimation on synthetic Gaussians. In our runs, \emph{Exact GW} and \emph{Sinkhorn GW} are numerically indistinguishable, so we report them in a single column labeled \emph{Exact\&\&Sinkhorn GW}. 
+}
+\vspace{-1em}
+\label{tab:gw-sim}
+\end{table}
+
+\textbf{Results and analysis:}
+Each setting is repeated $5$ times with different seeds; we report mean$\pm$std.
+Across all sizes, \emph{Sinkhorn GW} matches \emph{Exact GW} to our reported precision (RE$\approx 0$), hence we merge them into a single column in Table~\ref{tab:gw-sim}.
+Our \emph{Approx GW} exhibits decreasing relative error as $n$ grows (from $\approx 0.59$ at $n=50$ down to $\approx 0.39$ at $n=3000$), consistent with the $O(1/n)$ behavior.
+In terms of runtime, \emph{Exact/Sinkhorn} scale poorly and rapidly become impractical beyond a few hundred points (already seconds at $n\!=\!1000$ and tens of seconds by $n\!\ge\!1500$ on our machine), whereas \emph{Approx GW} remains below $\sim 0.3$\,s even at $n\!=\!3000$, demonstrating its $O(n\log n)$ scalability.
+
+
+
+\section{Conclusion}
+In this work, we propose InfiGFusion, a structure-aware fusion framework that explicitly models semantic dependencies among logits through a novel Graph-on-Logits Distillation (GLD) loss. By leveraging logit graph representations and an efficient Gromov-Wasserstein approximation, InfiGFusion enables the integration of heterogeneous LLMs without increasing inference cost. Extensive experiments on 11 benchmarks demonstrate that InfiGFusion consistently outperforms state-of-the-art fusion methods and baselines. In particular, it achieves notable gains in multi-step and relational reasoning tasks, such as +35.6 on Multistep Arithmetic and +37.06 on Causal Judgement over SFT models. It highlights the importance of structure-preserving alignment for effective model fusion in complex reasoning tasks, which is a promising direction for advancing collective LLM.
+
+% \textbf{Limitations.}
+\section*{Limitations}
+\label{limitation}
+While InfiGFusion demonstrates clear advantages in tasks involving multi-step reasoning, causal inference, and relational alignment, its performance shows limitations in scenarios dominated by literal token matching or factual recall. For tasks where the correct answer is encoded by a few dominant logit dimensions (e.g., factoid QA), the added structural alignment of GLD brings marginal benefits and may even introduce noise from irrelevant dependencies. Moreover, when source models present conflicting factual knowledge, InfiGFusion focuses on preserving relational consistency but lacks explicit mechanisms for factual conflict resolution, sometimes amplifying semantic ambiguities. These limitations reflect inherent trade-offs in structure-aware fusion and motivate future work on adaptive dependency modeling and source reliability estimation.
+
+% Our model is available at  \href{https://anonymous.4open.science/r/InfiGFusion-57F1}{https://anonymous.4open.science/r/InfiGFusion-57F1}.
+Our model is available at  \href{https://huggingface.co/InfiX-ai/InfiGFusion-14B}{https://huggingface.co/InfiX-ai/InfiGFusion-14B}.
+
+
+%%
+%% The next two lines define the bibliography style to be used, and
+%% the bibliography file.
+\newpage
+\bibliographystyle{unsrt}
+\bibliography{ref}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+% \newpage
+\section*{NeurIPS Paper Checklist}
+
+%%% BEGIN INSTRUCTIONS %%%
+% The checklist is designed to encourage best practices for responsible machine learning research, addressing issues of reproducibility, transparency, research ethics, and societal impact. Do not remove the checklist: {\bf The papers not including the checklist will be desk rejected.} The checklist should follow the references and follow the (optional) supplemental material.  The checklist does NOT count towards the page
+% limit. 
+
+% Please read the checklist guidelines carefully for information on how to answer these questions. For each question in the checklist:
+% \begin{itemize}
+%     \item You should answer \answerYes{}, \answerNo{}, or \answerNA{}.
+%     \item \answerNA{} means either that the question is Not Applicable for that particular paper or the relevant information is Not Available.
+%     \item Please provide a short (1–2 sentence) justification right after your answer (even for NA). 
+%    % \item {\bf The papers not including the checklist will be desk rejected.}
+% \end{itemize}
+
+% {\bf The checklist answers are an integral part of your paper submission.} They are visible to the reviewers, area chairs, senior area chairs, and ethics reviewers. You will be asked to also include it (after eventual revisions) with the final version of your paper, and its final version will be published with the paper.
+
+% The reviewers of your paper will be asked to use the checklist as one of the factors in their evaluation. While "\answerYes{}" is generally preferable to "\answerNo{}", it is perfectly acceptable to answer "\answerNo{}" provided a proper justification is given (e.g., "error bars are not reported because it would be too computationally expensive" or "we were unable to find the license for the dataset we used"). In general, answering "\answerNo{}" or "\answerNA{}" is not grounds for rejection. While the questions are phrased in a binary way, we acknowledge that the true answer is often more nuanced, so please just use your best judgment and write a justification to elaborate. All supporting evidence can appear either in the main paper or the supplemental material, provided in appendix. If you answer \answerYes{} to a question, in the justification please point to the section(s) where related material for the question can be found.
+
+% IMPORTANT, please:
+% \begin{itemize}
+%     \item {\bf Delete this instruction block, but keep the section heading ``NeurIPS Paper Checklist"},
+%     \item  {\bf Keep the checklist subsection headings, questions/answers and guidelines below.}
+%     \item {\bf Do not modify the questions and only use the provided macros for your answers}.
+% \end{itemize} 
+ 
+
+%%% END INSTRUCTIONS %%%
+
+
+\begin{enumerate}
+
+\item {\bf Claims}
+    \item[] Question: Do the main claims made in the abstract and introduction accurately reflect the paper's contributions and scope?
+    \item[] Answer: \answerYes{} % Replace by \answerYes{}, \answerNo{}, or \answerNA{}.
+    \item[] Justification: The main claims in the abstract and introduction align with the paper's contributions and scope, providing a clear and accurate overview.
+    \item[] Guidelines: 
+    \begin{itemize}
+        \item The answer NA means that the abstract and introduction do not include the claims made in the paper.
+        \item The abstract and/or introduction should clearly state the claims made, including the contributions made in the paper and important assumptions and limitations. A No or NA answer to this question will not be perceived well by the reviewers. 
+        \item The claims made should match theoretical and experimental results, and reflect how much the results can be expected to generalize to other settings. 
+        \item It is fine to include aspirational goals as motivation as long as it is clear that these goals are not attained by the paper. 
+    \end{itemize}
+
+\item {\bf Limitations}
+    \item[] Question: Does the paper discuss the limitations of the work performed by the authors?
+    \item[] Answer: \answerYes{} % Replace by \answerYes{}, \answerNo{}, or \answerNA{}.
+    \item[] Justification: We discuss the limitations of our work in Appendix~\ref{limitation}.
+    \item[] Guidelines:
+    \begin{itemize}
+        \item The answer NA means that the paper has no limitation while the answer No means that the paper has limitations, but those are not discussed in the paper. 
+        \item The authors are encouraged to create a separate "Limitations" section in their paper.
+        \item The paper should point out any strong assumptions and how robust the results are to violations of these assumptions (e.g., independence assumptions, noiseless settings, model well-specification, asymptotic approximations only holding locally). The authors should reflect on how these assumptions might be violated in practice and what the implications would be.
+        \item The authors should reflect on the scope of the claims made, e.g., if the approach was only tested on a few datasets or with a few runs. In general, empirical results often depend on implicit assumptions, which should be articulated.
+        \item The authors should reflect on the factors that influence the performance of the approach. For example, a facial recognition algorithm may perform poorly when image resolution is low or images are taken in low lighting. Or a speech-to-text system might not be used reliably to provide closed captions for online lectures because it fails to handle technical jargon.
+        \item The authors should discuss the computational efficiency of the proposed algorithms and how they scale with dataset size.
+        \item If applicable, the authors should discuss possible limitations of their approach to address problems of privacy and fairness.
+        \item While the authors might fear that complete honesty about limitations might be used by reviewers as grounds for rejection, a worse outcome might be that reviewers discover limitations that aren't acknowledged in the paper. The authors should use their best judgment and recognize that individual actions in favor of transparency play an important role in developing norms that preserve the integrity of the community. Reviewers will be specifically instructed to not penalize honesty concerning limitations.
+    \end{itemize}
+
+\item {\bf Theory assumptions and proofs}
+    \item[] Question: For each theoretical result, does the paper provide the full set of assumptions and a complete (and correct) proof?
+    \item[] Answer: \answerYes{} % Replace by \answerYes{}, \answerNo{}, or \answerNA{}.
+    \item[] Justification: The complete mathematical derivation can be found in Appendix~\ref{Appendix - Proof of the Approximation}, \ref{Appendix - Error Analysis of the Closed-Form}, and \ref{sec:stability}.
+    \item[] Guidelines:
+    \begin{itemize}
+        \item The answer NA means that the paper does not include theoretical results. 
+        \item All the theorems, formulas, and proofs in the paper should be numbered and cross-referenced.
+        \item All assumptions should be clearly stated or referenced in the statement of any theorems.
+        \item The proofs can either appear in the main paper or the supplemental material, but if they appear in the supplemental material, the authors are encouraged to provide a short proof sketch to provide intuition. 
+        \item Inversely, any informal proof provided in the core of the paper should be complemented by formal proofs provided in appendix or supplemental material.
+        \item Theorems and Lemmas that the proof relies upon should be properly referenced. 
+    \end{itemize}
+
+    \item {\bf Experimental result reproducibility}
+    \item[] Question: Does the paper fully disclose all the information needed to reproduce the main experimental results of the paper to the extent that it affects the main claims and/or conclusions of the paper (regardless of whether the code and data are provided or not)?
+    \item[] Answer: \answerYes{} % Replace by \answerYes{}, \answerNo{}, or \answerNA{}.
+    \item[] Justification: We have provided implementation details in section~\ref{Experimental Setup} and Appendix \ref{app:setup}, and included a reproducible anonymous code repository URL in the Appendix.
+    \item[] Guidelines:
+    \begin{itemize}
+        \item The answer NA means that the paper does not include experiments.
+        \item If the paper includes experiments, a No answer to this question will not be perceived well by the reviewers: Making the paper reproducible is important, regardless of whether the code and data are provided or not.
+        \item If the contribution is a dataset and/or model, the authors should describe the steps taken to make their results reproducible or verifiable. 
+        \item Depending on the contribution, reproducibility can be accomplished in various ways. For example, if the contribution is a novel architecture, describing the architecture fully might suffice, or if the contribution is a specific model and empirical evaluation, it may be necessary to either make it possible for others to replicate the model with the same dataset, or provide access to the model. In general. releasing code and data is often one good way to accomplish this, but reproducibility can also be provided via detailed instructions for how to replicate the results, access to a hosted model (e.g., in the case of a large language model), releasing of a model checkpoint, or other means that are appropriate to the research performed.
+        \item While NeurIPS does not require releasing code, the conference does require all submissions to provide some reasonable avenue for reproducibility, which may depend on the nature of the contribution. For example
+        \begin{enumerate}
+            \item If the contribution is primarily a new algorithm, the paper should make it clear how to reproduce that algorithm.
+            \item If the contribution is primarily a new model architecture, the paper should describe the architecture clearly and fully.
+            \item If the contribution is a new model (e.g., a large language model), then there should either be a way to access this model for reproducing the results or a way to reproduce the model (e.g., with an open-source dataset or instructions for how to construct the dataset).
+            \item We recognize that reproducibility may be tricky in some cases, in which case authors are welcome to describe the particular way they provide for reproducibility. In the case of closed-source models, it may be that access to the model is limited in some way (e.g., to registered users), but it should be possible for other researchers to have some path to reproducing or verifying the results.
+        \end{enumerate}
+    \end{itemize}
+
+
+\item {\bf Open access to data and code}
+    \item[] Question: Does the paper provide open access to the data and code, with sufficient instructions to faithfully reproduce the main experimental results, as described in supplemental material?
+    \item[] Answer: \answerYes{} % Replace by \answerYes{}, \answerNo{}, or \answerNA{}.
+    \item[] Justification: In section~\ref{Experimental Setup}, we provide the data sources, and in the beginning of Appendix, we include an anonymous code repository URL for reproducibility.
+    \item[] Guidelines:
+    \begin{itemize}
+        \item The answer NA means that paper does not include experiments requiring code.
+        \item Please see the NeurIPS code and data submission guidelines (\url{https://nips.cc/public/guides/CodeSubmissionPolicy}) for more details.
+        \item While we encourage the release of code and data, we understand that this might not be possible, so “No” is an acceptable answer. Papers cannot be rejected simply for not including code, unless this is central to the contribution (e.g., for a new open-source benchmark).
+        \item The instructions should contain the exact command and environment needed to run to reproduce the results. See the NeurIPS code and data submission guidelines (\url{https://nips.cc/public/guides/CodeSubmissionPolicy}) for more details.
+        \item The authors should provide instructions on data access and preparation, including how to access the raw data, preprocessed data, intermediate data, and generated data, etc.
+        \item The authors should provide scripts to reproduce all experimental results for the new proposed method and baselines. If only a subset of experiments are reproducible, they should state which ones are omitted from the script and why.
+        \item At submission time, to preserve anonymity, the authors should release anonymized versions (if applicable).
+        \item Providing as much information as possible in supplemental material (appended to the paper) is recommended, but including URLs to data and code is permitted.
+    \end{itemize}
+
+
+\item {\bf Experimental setting/details}
+    \item[] Question: Does the paper specify all the training and test details (e.g., data splits, hyperparameters, how they were chosen, type of optimizer, etc.) necessary to understand the results?
+    \item[] Answer: \answerYes{} % Replace by \answerYes{}, \answerNo{}, or \answerNA{}.
+    \item[] Justification: We have provided implementation details in section~\ref{Experimental Setup} and Appendix \ref{app:setup}.
+    \item[] Guidelines:
+    \begin{itemize}
+        \item The answer NA means that the paper does not include experiments.
+        \item The experimental setting should be presented in the core of the paper to a level of detail that is necessary to appreciate the results and make sense of them.
+        \item The full details can be provided either with the code, in appendix, or as supplemental material.
+    \end{itemize}
+
+\item {\bf Experiment statistical significance}
+    \item[] Question: Does the paper report error bars suitably and correctly defined or other appropriate information about the statistical significance of the experiments?
+    \item[] Answer: \answerNo{} % Replace by \answerYes{}, \answerNo{}, or \answerNA{}.
+    \item[] Justification: Given that calculating statistical significance requires additional resources, we did not perform these calculations. Most of our experimental results show improvements of more than 1 percentage point, indicating a certain level of significance.
+    \item[] Guidelines:
+    \begin{itemize}
+        \item The answer NA means that the paper does not include experiments.
+        \item The authors should answer "Yes" if the results are accompanied by error bars, confidence intervals, or statistical significance tests, at least for the experiments that support the main claims of the paper.
+        \item The factors of variability that the error bars are capturing should be clearly stated (for example, train/test split, initialization, random drawing of some parameter, or overall run with given experimental conditions).
+        \item The method for calculating the error bars should be explained (closed form formula, call to a library function, bootstrap, etc.)
+        \item The assumptions made should be given (e.g., Normally distributed errors).
+        \item It should be clear whether the error bar is the standard deviation or the standard error of the mean.
+        \item It is OK to report 1-sigma error bars, but one should state it. The authors should preferably report a 2-sigma error bar than state that they have a 96\% CI, if the hypothesis of Normality of errors is not verified.
+        \item For asymmetric distributions, the authors should be careful not to show in tables or figures symmetric error bars that would yield results that are out of range (e.g. negative error rates).
+        \item If error bars are reported in tables or plots, The authors should explain in the text how they were calculated and reference the corresponding figures or tables in the text.
+    \end{itemize}
+
+\item {\bf Experiments compute resources}
+    \item[] Question: For each experiment, does the paper provide sufficient information on the computer resources (type of compute workers, memory, time of execution) needed to reproduce the experiments?
+    \item[] Answer: \answerYes{} % Replace by \answerYes{}, \answerNo{}, or \answerNA{}.
+    \item[] Justification: In section~\ref{experimentssection}, we provide information about the computational resources used. Moreover, in Table \ref{tab:main_res}, we show the GPU hours required for model training.
+    \item[] Guidelines:
+    \begin{itemize}
+        \item The answer NA means that the paper does not include experiments.
+        \item The paper should indicate the type of compute workers CPU or GPU, internal cluster, or cloud provider, including relevant memory and storage.
+        \item The paper should provide the amount of compute required for each of the individual experimental runs as well as estimate the total compute. 
+        \item The paper should disclose whether the full research project required more compute than the experiments reported in the paper (e.g., preliminary or failed experiments that didn't make it into the paper). 
+    \end{itemize}
+    
+\item {\bf Code of ethics}
+    \item[] Question: Does the research conducted in the paper conform, in every respect, with the NeurIPS Code of Ethics \url{https://neurips.cc/public/EthicsGuidelines}?
+    \item[] Answer: \answerYes{} % Replace by \answerYes{}, \answerNo{}, or \answerNA{}.
+    \item[] Justification: The research fully adheres to the NeurIPS Code of Ethics, ensuring integrity, fairness, and transparency throughout the study.
+    \item[] Guidelines:
+    \begin{itemize}
+        \item The answer NA means that the authors have not reviewed the NeurIPS Code of Ethics.
+        \item If the authors answer No, they should explain the special circumstances that require a deviation from the Code of Ethics.
+        \item The authors should make sure to preserve anonymity (e.g., if there is a special consideration due to laws or regulations in their jurisdiction).
+    \end{itemize}
+
+
+\item {\bf Broader impacts}
+    \item[] Question: Does the paper discuss both potential positive societal impacts and negative societal impacts of the work performed?
+    \item[] Answer: \answerNo{} % Replace by \answerYes{}, \answerNo{}, or \answerNA{}.
+    \item[] Justification: Our method focuses on improving the performance of general models, which does not directly cause social impact. Additionally, we will provide licenses for our code and model weights.
+    \item[] Guidelines:
+    \begin{itemize}
+        \item The answer NA means that there is no societal impact of the work performed.
+        \item If the authors answer NA or No, they should explain why their work has no societal impact or why the paper does not address societal impact.
+        \item Examples of negative societal impacts include potential malicious or unintended uses (e.g., disinformation, generating fake profiles, surveillance), fairness considerations (e.g., deployment of technologies that could make decisions that unfairly impact specific groups), privacy considerations, and security considerations.
+        \item The conference expects that many papers will be foundational research and not tied to particular applications, let alone deployments. However, if there is a direct path to any negative applications, the authors should point it out. For example, it is legitimate to point out that an improvement in the quality of generative models could be used to generate deepfakes for disinformation. On the other hand, it is not needed to point out that a generic algorithm for optimizing neural networks could enable people to train models that generate Deepfakes faster.
+        \item The authors should consider possible harms that could arise when the technology is being used as intended and functioning correctly, harms that could arise when the technology is being used as intended but gives incorrect results, and harms following from (intentional or unintentional) misuse of the technology.
+        \item If there are negative societal impacts, the authors could also discuss possible mitigation strategies (e.g., gated release of models, providing defenses in addition to attacks, mechanisms for monitoring misuse, mechanisms to monitor how a system learns from feedback over time, improving the efficiency and accessibility of ML).
+    \end{itemize}
+    
+\item {\bf Safeguards}
+    \item[] Question: Does the paper describe safeguards that have been put in place for responsible release of data or models that have a high risk for misuse (e.g., pretrained language models, image generators, or scraped datasets)?
+    \item[] Answer: \answerNo{} % Replace by \answerYes{}, \answerNo{}, or \answerNA{}.
+    \item[] Justification: We will provide licenses for our code and model weights in the future.
+    \item[] Guidelines:
+    \begin{itemize}
+        \item The answer NA means that the paper poses no such risks.
+        \item Released models that have a high risk for misuse or dual-use should be released with necessary safeguards to allow for controlled use of the model, for example by requiring that users adhere to usage guidelines or restrictions to access the model or implementing safety filters. 
+        \item Datasets that have been scraped from the Internet could pose safety risks. The authors should describe how they avoided releasing unsafe images.
+        \item We recognize that providing effective safeguards is challenging, and many papers do not require this, but we encourage authors to take this into account and make a best faith effort.
+    \end{itemize}
+
+\item {\bf Licenses for existing assets}
+    \item[] Question: Are the creators or original owners of assets (e.g., code, data, models), used in the paper, properly credited and are the license and terms of use explicitly mentioned and properly respected?
+    \item[] Answer: \answerNo{} % Replace by \answerYes{}, \answerNo{}, or \answerNA{}.
+    \item[] Justification: Based on the double-blind review process, all code we provide now has been anonymized and is intended only for reviewers to check and reproduce results.
+    \item[] Guidelines:
+    \begin{itemize}
+        \item The answer NA means that the paper does not use existing assets.
+        \item The authors should cite the original paper that produced the code package or dataset.
+        \item The authors should state which version of the asset is used and, if possible, include a URL.
+        \item The name of the license (e.g., CC-BY 4.0) should be included for each asset.
+        \item For scraped data from a particular source (e.g., website), the copyright and terms of service of that source should be provided.
+        \item If assets are released, the license, copyright information, and terms of use in the package should be provided. For popular datasets, \url{paperswithcode.com/datasets} has curated licenses for some datasets. Their licensing guide can help determine the license of a dataset.
+        \item For existing datasets that are re-packaged, both the original license and the license of the derived asset (if it has changed) should be provided.
+        \item If this information is not available online, the authors are encouraged to reach out to the asset's creators.
+    \end{itemize}
+
+\item {\bf New assets}
+    \item[] Question: Are new assets introduced in the paper well documented and is the documentation provided alongside the assets?
+    \item[] Answer: \answerNo{} % Replace by \answerYes{}, \answerNo{}, or \answerNA{}.
+    \item[] Justification: Based on the double-blind review process, all code we provide now has been anonymized and is intended only for reviewers to check and reproduce results.
+    \item[] Guidelines:
+    \begin{itemize}
+        \item The answer NA means that the paper does not release new assets.
+        \item Researchers should communicate the details of the dataset/code/model as part of their submissions via structured templates. This includes details about training, license, limitations, etc. 
+        \item The paper should discuss whether and how consent was obtained from people whose asset is used.
+        \item At submission time, remember to anonymize your assets (if applicable). You can either create an anonymized URL or include an anonymized zip file.
+    \end{itemize}
+
+\item {\bf Crowdsourcing and research with human subjects}
+    \item[] Question: For crowdsourcing experiments and research with human subjects, does the paper include the full text of instructions given to participants and screenshots, if applicable, as well as details about compensation (if any)? 
+    \item[] Answer: \answerNA{} % Replace by \answerYes{}, \answerNo{}, or \answerNA{}.
+    \item[] Justification: The paper does not involve crowdsourcing nor research with human subjects.
+    \item[] Guidelines:
+    \begin{itemize}
+        \item The answer NA means that the paper does not involve crowdsourcing nor research with human subjects.
+        \item Including this information in the supplemental material is fine, but if the main contribution of the paper involves human subjects, then as much detail as possible should be included in the main paper. 
+        \item According to the NeurIPS Code of Ethics, workers involved in data collection, curation, or other labor should be paid at least the minimum wage in the country of the data collector. 
+    \end{itemize}
+
+\item {\bf Institutional review board (IRB) approvals or equivalent for research with human subjects}
+    \item[] Question: Does the paper describe potential risks incurred by study participants, whether such risks were disclosed to the subjects, and whether Institutional Review Board (IRB) approvals (or an equivalent approval/review based on the requirements of your country or institution) were obtained?
+    \item[] Answer: \answerNA{} % Replace by \answerYes{}, \answerNo{}, or \answerNA{}.
+    \item[] Justification: The paper does not involve crowdsourcing nor research with human subjects.
+    \item[] Guidelines:
+    \begin{itemize}
+        \item The answer NA means that the paper does not involve crowdsourcing nor research with human subjects.
+        \item Depending on the country in which research is conducted, IRB approval (or equivalent) may be required for any human subjects research. If you obtained IRB approval, you should clearly state this in the paper. 
+        \item We recognize that the procedures for this may vary significantly between institutions and locations, and we expect authors to adhere to the NeurIPS Code of Ethics and the guidelines for their institution. 
+        \item For initial submissions, do not include any information that would break anonymity (if applicable), such as the institution conducting the review.
+    \end{itemize}
+
+\item {\bf Declaration of LLM usage}
+    \item[] Question: Does the paper describe the usage of LLMs if it is an important, original, or non-standard component of the core methods in this research? Note that if the LLM is used only for writing, editing, or formatting purposes and does not impact the core methodology, scientific rigorousness, or originality of the research, declaration is not required.
+    %this research? 
+    \item[] Answer: \answerNA{} % Replace by \answerYes{}, \answerNo{}, or \answerNA{}.
+    \item[] Justification: The core method development in this research does not involve LLMs as any important, original, or non-standard components.
+    \item[] Guidelines:
+    \begin{itemize}
+        \item The answer NA means that the core method development in this research does not involve LLMs as any important, original, or non-standard components.
+        \item Please refer to our LLM policy (\url{https://neurips.cc/Conferences/2025/LLM}) for what should or should not be described.
+    \end{itemize}
+
+\end{enumerate}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newpage
+
+\appendix
+\section{Appendix - Proof of the Approximation}
+\label{Appendix - Proof of the Approximation}
+
+\subsection*{Step 1: Gromov-Wasserstein Distance Definition}
+
+Consider two graphs with pairwise distance matrices within the respective graphs
+\[
+C \in \mathbb{R}^{n \times n} \quad \text{and} \quad D \in \mathbb{R}^{m \times m},
+\]
+and associated node distributions \( a \in \Delta^n \) and \( b \in \Delta^m \), where \( \Delta^n \) denotes the probability simplex in \( \mathbb{R}^n \). The squared Gromov–Wasserstein (GW) distance is defined as
+\[
+\text{GW}(C, D, a, b)^2 = \min_{\gamma \in \Pi(a,b)} \sum_{i,j,k,l} \left| C_{ij} - D_{kl} \right|^2 \, \gamma_{ik} \, \gamma_{jl}\,,
+\]
+with the transport plan \( \gamma \in \mathbb{R}_+^{n \times m} \) satisfying the marginal constraints
+\[
+\gamma \mathbf{1}_m = a \quad \text{and} \quad \gamma^\top \mathbf{1}_n = b\,.
+\]
+Because of the inherent fourth-order interactions, computing the GW distance exactly is prohibitively expensive. Our goal is to derive a closed-form approximation by \textit{compressing the high-dimensional structural information into node-level features} and then \textit{aligning these features via a sorting-based matching strategy}.
+
+\subsection*{Step 2: Dimensionality Reduction}
+The key observation is that the full distance matrices \( C \) and \( D \) encapsulate the network structure, but a significant part of this information may be captured by summarizing each node's relationships in \textbf{a single scalar} or \textbf{low-dimensional vector}. For example, one may define the node features by node degrees as:
+\[
+f_C(i) = \frac{1}{n} \sum_{j=1}^{n} C_{ij} \quad \text{and} \quad f_D(k) = \frac{1}{m} \sum_{l=1}^{m} D_{kl}\,.
+\]
+Alternatively, one might use the row norm or features derived from a diffusion kernel. In any case, the function \( f \) serves to reduce the high-dimensional distance information into a quantity that reflects the ``importance'' or overall structure of each node. In our work, we apply the node features defined by node degrees.
+
+\subsection*{Step 3: Approximation of the Gromov-Wasserstein Distance}
+\label{Step 3: Approximation of the Gromov-Wasserstein Distance}
+Once the node-level features \( f_C \) and \( f_D \) are extracted, we want to approximate the GW formulation as follows:
+\[
+\widetilde{\text{GW}}(C,D) = \sum_{i,j,k,l} \big| f_C(i) - f_D(k) \big| \cdot \big| f_C(j) - f_D(l) \big| \, \gamma_{ik} \, \gamma_{jl}\,.
+\]
+It is obtained by approximating the element-wise cost in GW formulation and constraining the gap between the original and approximated formulation by a negligible constant. 
+
+\textbf{Proposition 1} [Approximation of the GW]
+\label{lem:gwcost}
+Let $C \in \mathbb{R}^{n \times n}$ and $D \in \mathbb{R}^{m \times m}$ be the similarity matrices derived from logit self-inner products and row-normalized such that $\sum_{j} C_{ij} = 1$ and $\sum_{l} D_{kl} = 1$. Then the absolute error between the exact and approximated GW distances satisfies:
+\begin{equation}
+\bigl|\mathrm{GW}(C,D) - \widetilde{\mathrm{GW}}(C,D)\bigr|\,
+\;\le\;
+\frac{n-1}{n^2} + \frac{m-1}{m^2}
+\end{equation}
+
+\begin{proof}
+Let 
+$C\in\mathbb{R}^{n\times n},\quad D\in\mathbb{R}^{m\times m}$
+be two similarity matrices obtained by computing each model’s logits’ self‐inner products and row‐normalizing so that
+\[
+\sum_{j=1}^n C_{ij}=1,\quad C_{ij}\ge0,
+\quad
+\sum_{l=1}^m D_{kl}=1,\quad D_{kl}\ge0.
+\]
+Define their row–means and global means:
+\[
+f_C(i)=\frac1n\sum_{j=1}^nC_{ij},\quad
+\mu_C=\frac1{n^2}\sum_{i,j}C_{ij},
+\]
+\[
+f_D(k)=\frac1m\sum_{l=1}^mD_{kl},\quad
+\mu_D=\frac1{m^2}\sum_{k,l}D_{kl}.
+\]
+
+Set
+\[
+A \;=\;\sum_{i,j,k,l}\bigl|C_{ij}-D_{kl}\bigr|^2,
+\quad
+B \;=\;\sum_{i,j,k,l}\bigl(f_C(i)-f_D(k)\bigr)\,\bigl(f_C(j)-f_D(l)\bigr).
+\]
+We expand each in turn:
+
+\textbf{Expansion of \(A\).}
+\[
+\begin{aligned}
+A
+&=\sum_{i,j,k,l}\Bigl(C_{ij}^2 + D_{kl}^2 -2\,C_{ij}D_{kl}\Bigr)\\
+&=m^2\sum_{i,j}C_{ij}^2
++ n^2\sum_{k,l}D_{kl}^2
+-2\sum_{i,j,k,l}C_{ij}D_{kl}\\
+&=m^2\sum_{i,j}C_{ij}^2
++ n^2\sum_{k,l}D_{kl}^2
+-2\,n^2m^2\,\mu_C\,\mu_D.
+\end{aligned}
+\]
+
+\textbf{Expansion of \(B\).}
+\[
+\begin{aligned}
+B
+&=\sum_{i,j,k,l}\bigl(f_C(i)-f_D(k)\bigr)\bigl(f_C(j)-f_D(l)\bigr)\\
+&=\bigl(\sum_{i,k}(f_C(i)-f_D(k))\bigr)\,\bigl(\sum_{j,l}(f_C(j)-f_D(l))\bigr)\\
+&=\bigl(m\sum_i f_C(i) - n\sum_k f_D(k)\bigr)^2
+=(nm\,(\mu_C-\mu_D))^2
+=n^2m^2\,(\mu_C-\mu_D)^2.
+\end{aligned}
+\]
+
+\textbf{Combine \(A-B\).}
+\[
+\begin{aligned}
+A - B
+&=\Bigl[m^2\sum C^2 + n^2\sum D^2 -2n^2m^2\mu_C\mu_D\Bigr]
+  -n^2m^2(\mu_C-\mu_D)^2\\
+&=m^2\sum C^2 + n^2\sum D^2
+  -2n^2m^2\mu_C\mu_D
+  -n^2m^2(\mu_C^2 -2\mu_C\mu_D + \mu_D^2)\\
+&=m^2\sum C^2 + n^2\sum D^2
+  -n^2m^2(\mu_C^2+\mu_D^2+2\mu_C\mu_D)
+  +2n^2m^2\mu_C\mu_D
+  -2n^2m^2\mu_C\mu_D\\
+&=m^2\sum C^2 + n^2\sum D^2
+  -n^2m^2(\mu_C^2+\mu_D^2).
+\end{aligned}
+\]
+
+Recall the global Root Mean Square (RMS) variance definitions
+\[
+\Sigma_C^2
+=\frac1{n^2}\sum_{i,j}(C_{ij}-\mu_C)^2,
+\quad
+\Sigma_D^2
+=\frac1{m^2}\sum_{k,l}(D_{kl}-\mu_D)^2.
+\]
+Hence
+\[
+\sum_{i,j}C_{ij}^2
+=n^2\bigl(\mu_C^2+\Sigma_C^2\bigr),
+\quad
+\sum_{k,l}D_{kl}^2
+=m^2\bigl(\mu_D^2+\Sigma_D^2\bigr).
+\]
+Substitute into \(A-B\):
+\[
+\begin{aligned}
+A - B
+&=m^2\bigl(n^2(\mu_C^2+\Sigma_C^2)\bigr)
+ +n^2\bigl(m^2(\mu_D^2+\Sigma_D^2)\bigr)
+ -n^2m^2(\mu_C^2+\mu_D^2)\\
+&=n^2m^2\,\Sigma_C^2 + n^2m^2\,\Sigma_D^2
+\;=\;
+n^2m^2\bigl(\Sigma_C^2+\Sigma_D^2\bigr).
+\end{aligned}
+\]
+
+
+Under uniform transport
+\(\gamma_{ik}=1/(nm)\),
+\[
+\mathrm{error} 
+=\Bigl|\sum_{i,j,k,l}(|C_{ij}-D_{kl}|^2 -\cdots)\,\gamma_{ik}\gamma_{jl}\Bigr|
+=\frac{A-B}{n^2m^2}
+=\Sigma_C^2+\Sigma_D^2.
+\]
+
+Since each row of \(C\) sums to 1,
+\[
+\sum_{j=1}^n C_{ij}=1,
+\]
+the worst–case per‐row variance occurs when one entry is 1 and the rest 0:
+\[
+\sum_{j=1}^n\Bigl(C_{ij}-\tfrac1n\Bigr)^2
+=\Bigl(1-\tfrac1n\Bigr)^2 + (n-1)\Bigl(0-\tfrac1n\Bigr)^2
+=\frac{n-1}{n}.
+\]
+Summing over \(i=1,\dots,n\) gives
+\(\sum_{i,j}(C_{ij}-\tfrac1n)^2 = n-1\).  Thus
+\[
+\Sigma_C^2 = \frac{n-1}{n^2},
+\quad
+\Sigma_D^2 = \frac{m-1}{m^2}.
+\]
+
+Combining the above,
+\[
+\bigl|\mathrm{GW}(C,D) - \widetilde{\mathrm{GW}}(C,D)\bigr|
+\;\le\;
+\Sigma_C^2 + \Sigma_D^2
+\;\le\;
+\frac{n-1}{n^2} + \frac{m-1}{m^2}
+\]
+\end{proof}
+
+Because the summation is separable in the pairs \((i,k)\) and \((j,l)\), define
+\[
+\Delta(\gamma) = \sum_{i,k} \big| f_C(i) - f_D(k) \big| \, \gamma_{ik}\,.
+\]
+Thus, the approximate squared GW distance reduces to
+\[
+\widetilde{\text{GW}}^2 = \left( \Delta(\gamma) \right)^2\,.
+\]
+Our focus now turns to choosing a transport plan \( \gamma \) that minimizes this expression. Notably, we only provide the proof of the scalar method (degree property as the feature), since the spectral method can be proved in the same way.
+
+\subsection*{Step 4: Choosing the Transport Plan via Sorting-Based Matching}
+The transport plan \( \gamma \) must satisfy the marginal conditions:
+\[
+\sum_{k} \gamma_{ik} = a(i), \quad \sum_{i} \gamma_{ik} = b(k)\,.
+\]
+For simplicity, assume uniform marginals, i.e., \( a(i) = \frac{1}{n} \) and \( b(k) = \frac{1}{m} \). In this setting, \( \gamma \) is a doubly stochastic matrix with a balanced assignment.
+
+To bypass the computational difficulty of optimizing over all such matrices, we adopt a direct matching approach by sorting the node features. Let
+\[
+f_C^{\downarrow} = \operatorname{sort}(f_C) \quad \text{and} \quad f_D^{\downarrow} = \operatorname{sort}(f_D)\,,
+\]
+with the sort performed in descending order. A natural matching then pairs the \( i- \)th largest entry of \( f_C \) with the \( i- \)th largest entry of \( f_D \).
+
+This sorted matching corresponds to an induced transport plan that effectively acts as an indicator matrix. Under this matching, the transport cost simplifies to
+\[
+\Delta(\gamma) \approx \sum_{i=1}^{k} \left| f_C^{\downarrow}(i) - f_D^{\downarrow}(i) \right|\,,
+\]
+where \( k = \min\{n, m\} \).
+
+\subsection*{Step 5: Final Solving Strategy}
+By combining the above steps, we obtain the following approximation strategy for solving the GW distance:
+\[
+{\text{GW}}(C,D) \approx \sum_{i=1}^{k} \left| f_C^{\downarrow}(i) - f_D^{\downarrow}(i) \right|,\quad k = \min\{n, m\}. 
+\]
+Here, \( f_C^{\downarrow} \) and \( f_D^{\downarrow} \) denote the sorted node feature vectors (obtained in Step 2, like the row mean or diffusion kernel methods).
+
+\subsection{Discussion}
+\begin{itemize}
+    \item \textbf{Dimensionality Reduction:} By condensing the full distance matrices to one-dimensional node features, the original fourth-order optimization problem is transformed into a much simpler vector matching problem.
+    \item \textbf{Direct Matching:} The sorting-based strategy provides a natural one-to-one correspondence between nodes under the assumption of uniform marginals, thus eliminating the need for expensive optimization over the transport plan space.
+    \item \textbf{Closed-Form Expression:} The final formulation is computationally efficient and differentiable, making it suitable for token space alignment.
+    \item \textbf{Flexibility:} Although we illustrated the process with a simple row-mean (equal to the degree property) extractor, alternative feature extractors (e.g., row norm or diffusion-based features) can be used to potentially improve the approximation quality.
+\end{itemize}
+
+
+
+\section{Appendix - Error Analysis of the Closed-Form}
+\label{Appendix - Error Analysis of the Closed-Form}
+This section aims to investigate whether the approximate GW distance converges to the true GW distance when the node features become increasingly representative of the underlying graph structure. 
+
+\subsection{Part 1: Stability of Feature Extraction}
+\label{feature extraction error}
+We want to show the \textit{ degree feature extraction } (i.e. taking row means of the similarity matrix) in our work is \textbf{Lipschitz continuous}, and hence, under mild conditions, the extracted features will converge to the true underlying structural descriptors as the noise decreases or with increasing sample size. We take the row means (degree property) strategy as an example and give the specific analysis, where the spectral strategy can be analyzed in the same way.
+
+\subsubsection{Notations}
+Let \( C \in \mathbb{R}^{n \times n} \) be the similarity matrix, representing graph structure, and define the degree feature of node \( i \) by
+\[
+f(i) = \frac{1}{n} \sum_{j=1}^{n} C_{ij}\,.
+\]
+This defines the mapping
+\[
+F: \mathbb{R}^{n \times n} \to \mathbb{R}^{n}, \quad F(C) = \frac{1}{n} C \mathbf{1}\,,
+\]
+where \(\mathbf{1} \in \mathbb{R}^{n}\) is the all-ones vector.
+
+\subsubsection{Analysis of Lipschitz Continuity}
+
+For two matrices \( C, C' \in \mathbb{R}^{n \times n} \), we have
+\[
+F(C) - F(C') = \frac{1}{n}(C - C')\,\mathbf{1}\,.
+\]
+Taking the \( 2 \)-norm, we obtain
+\[
+\|F(C) - F(C')\|_2 = \frac{1}{n} \|(C - C')\,\mathbf{1}\|_2\,.
+\]
+Using the inequality (the property of induced norms) 
+\[
+\|(C - C')\,\mathbf{1}\|_2 \le \|C - C'\|_2\, \|\mathbf{1}\|_2\,,
+\]
+and noting that \(\|\mathbf{1}\|_2 = \sqrt{n}\), we conclude:
+\[
+\|F(C) - F(C')\|_2 \le \frac{1}{n} \|C - C'\|_2 \sqrt{n} = \frac{1}{\sqrt{n}} \|C - C'\|_2\,.
+\]
+Thus, \(F\) is Lipschitz continuous with Lipschitz constant \( L = \frac{1}{\sqrt{n}} \).
+
+\subsubsection{Implication for Consistency}
+
+The Lipschitz continuity of \(F\) implies that small perturbations in \(C\) due to noise in the logit similarities result in only small changes in the extracted degree features:
+\[
+\|F(C) - F(C')\|_2 \le \frac{1}{\sqrt{n}} \|C - C'\|_2\,.
+\]
+Therefore, as the noise level decreases or as the number of nodes \( n \) increases, thereby refining the approximation, the extracted features \( F(M) \) converge to the true underlying structural descriptors of the graph.
+
+\subsection{Part 2: Robustness of Sorting}
+\label{sorting error}
+After having proved that the row mean operator is Lipschitz continuous, we need to show that the sorting operator is stable under small perturbations, which means that if two feature vectors are close, then their sorted orders are also close. 
+
+This has been studied in the context of differentiable sorting or soft sort operators \cite{prillo2020softsort, blondel2020fast}. The core idea behind these studies is that, assuming the extracted feature vector has distinct entries, a small perturbation that is less than half the minimum gap between any two sorted entries will leave the ordering unchanged. This means that the sorting operator is locally stable—if the input features converge, then the sorted order converges as well. As proved in Proposition 2 in \cite{blondel2020fast}, "\textit{the sorting is differentiable a.e and not only converge to their hard counterparts, but also satisfy some of their properties for all} $\epsilon$". Hence, as the estimated features converge, then the sorted order converges as well.
+
+\subsection{Part 3: Error Bound for the Approximation}
+
+Two primary sources contribute to the overall error in the approximation:
+\begin{enumerate}
+    \item \textbf{Approximation Error.} The error incurred by approximating$\left|C_{ij} - D_{kl}\right|^2$
+    by
+    \[
+    \phi(i,k) \, \phi(j,l) = \bigl| f_C(i)-f_D(k) \bigr|\, \bigl| f_C(j)-f_D(l) \bigr|.
+    \]
+    For all indices $(i,j,k,l)$, we have proved that
+    \[
+    \epsilon_{\mathrm{approx}} = \left|\left|C_{ij}-D_{kl}\right|^2 - \phi(i,k)\phi(j,l)\right|\gamma_{ik} \, \gamma_{jl}\,
+    \;\le\;
+    \frac{n-1}{n^2} + \frac{m-1}{m^2}
+    \]
+
+    \item \textbf{Sorting Stability Error.} Denote by $\epsilon_{\mathrm{sort}}$ the error incurred by the potential change in the sorted order when the features are perturbed. Under the assumption that the true features have a positive minimal gap, the sorting operator is stable, or, in practice, one can use a soft sort with known Lipschitz properties. Hence, only small errors are induced in the sorting operator, which is bounded by small $\epsilon_{\mathrm{sort}}$ (proved in Proposition 2 by Blondel \cite{blondel2020fast}).
+\end{enumerate}
+In summary, the error for the approximation of Gromov-Wasserstein distance results from 
+\[
+\epsilon = \epsilon_{\mathrm{sort}} +  \epsilon_{\mathrm{approx}}
+\]
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%  Theoretical Motivation: Graph-based Distillation
+%  Sections 1 & 2  (with GW vs. Wasserstein comparison)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% \section{Graph-Structured Metrics for Logit Spaces}
+% \label{sec:graph-metric}
+
+% \subsection{Metric–measure–space view of a logit vector}
+% For any token, let the teacher and student logits be
+% \(
+% T,S\in\mathbb{R}^{D}.
+% \)
+% Define a fully-connected, edge-weighted graph
+% \(G_{T}=(V,E,\omega_{T})\) on the class index set
+% \(V=\{1,\dots,D\}\)
+% with edge weights
+% \[
+% \omega_{T}(i,j)
+%    =C_{T}(i,j)
+%    :=|T_{i}-T_{j}|^{2},
+%    \qquad i,j\in V ,
+% \]
+% and analogously \(G_{S}\).
+% Equipping \(V\) with the metric
+% \(d_{T}(i,j)=\sqrt{\omega_{T}(i,j)}\)
+% and the uniform measure
+% \(\mu=\tfrac{1}{D}\mathbf 1\),\;
+% \((V,d_{T},\mu)\) becomes a discrete
+% \emph{metric–measure space} (mm-space). 
+
+% \subsection{Gromov–Wasserstein distance}
+% The Gromov–Wasserstein (GW) distance between the two mm-spaces (metric measure spaces)
+% \(\mathcal{X}=(V,d_{T},\mu)\) and
+% \(\mathcal{Y}=(V,d_{S},\mu)\)
+% is defined~\cite{peyre2019computational} as
+% \begin{equation}
+%   \operatorname{GW}^{2}(T,S)
+%   \;=\;
+%   \min_{P\in\Pi(\mu,\mu)}
+%   \sum_{i,j,k,l}
+%   \bigl|C_{T}(i,j)-C_{S}(k,l)\bigr|^{2}\,
+%   P_{ik}\,P_{jl},
+%   \label{eq:gw}
+% \end{equation}
+% where
+% \(
+% \Pi(\mu,\mu)
+% =\bigl\{P\ge 0\mid
+%   P\mathbf 1=\mu,\,
+%   P^{\!\top}\mathbf 1=\mu\bigr\}
+% \)
+% is the set of doubly-stochastic couplings.
+
+% \paragraph{Property 1 (Isomorphism invariance).}
+% If there exists a permutation
+% \(\sigma:V\!\to\!V\)
+% such that
+% \(C_{S}=C_{T}^{\sigma}\),
+% then the coupling
+% \(P_{ik}=\mu(i)\,\delta_{k,\sigma(i)}\)
+% makes
+% \(\operatorname{GW}(T,S)=0\).
+% Hence~\eqref{eq:gw} depends only on the \emph{pairwise} structure, not on the coordinate system of logits.
+
+% \paragraph{Property 2 (Relation to Gromov–Hausdorff).}
+% For any two mm-spaces
+% \(\mathcal{X},\mathcal{Y}\)
+% it holds that
+% \(
+% \operatorname{GW}\le 2\,\operatorname{GH}
+% \)
+% \cite{memoli2011gromov},
+% so GW is at most twice the tightest isometry-based metric.
+
+% \paragraph{Property 3 (Spectral consistency).}
+% Let
+% \(L_{T},L_{S}\)
+% be the graph Laplacians of
+% \(G_{T},G_{S}\)
+% and
+% \(\lambda_{i}(\cdot)\)
+% their eigenvalues.
+% Via Weyl’s inequality and the optimal coupling
+% \(P^{\star}\)
+% from~\eqref{eq:gw},
+% \begin{equation}
+%   \bigl|\lambda_{i}(L_{T})-\lambda_{\sigma(i)}(L_{S})\bigr|
+%   \;\le\;
+%   \|L_{T}-P^{\star}L_{S}P^{\star\!\top}\|_{2}
+%   \;\le\;
+%   \sqrt{\beta}\;\operatorname{GW}(T,S),
+%   \label{eq:spectral-bound}
+% \end{equation}
+% where \(\beta\) depends on the maximum node degree.  
+% A small GW therefore implies small spectral distortion, i.e.\ the hierarchical / cluster structure of classes is preserved in the student.
+
+% \subsection{Why graphs instead of pointwise losses?}
+% KL\slash MSE \slash ULD only enforce
+% \(\|T-S\|_{p}\to 0\)  
+% and ignore \emph{global geometry}.
+% Equation~\eqref{eq:gw} minimises the \emph{structural distortion}
+% and remains informative under class permutations or vocabulary changes,
+% which is crucial for cross-model or cross-domain distillation.
+
+%---------------------------------------------------------------------
+\section{Appendix - Graph Regularisation Bounds}
+\label{sec:stability}
+We give proofs for the two Lipschitz lemmas used in
+Sec.~\ref{sec:stability}.
+Throughout we assume that the teacher logits are uniformly bounded
+\(\lVert T\rVert_{\infty}\le R\)
+, and,
+without loss of generality,
+so are the student logits
+\(\lVert S\rVert_{\infty}\le R\).
+
+\subsection{Uniform stability}
+Following Bousquet and Elisseeff~\cite{bousquet2002stability},
+an algorithm \(\mathcal{A}\) is \(\gamma\)-\emph{uniformly stable}
+if, for any training set
+\(S=\{z_{1},\dots,z_{n}\}\),
+removing one example \(z_{i}\) yields
+\begin{equation}
+  \sup_{z}
+  \bigl|
+    \ell\!\bigl(f_{\mathcal{A}}(S),z\bigr)
+    -
+    \ell\!\bigl(f_{\mathcal{A}}(S^{\setminus i}),z\bigr)
+  \bigr|
+  \;\le\;\gamma .
+  \label{eq:uniform-stability}
+\end{equation}
+Uniform stability directly bounds the expected generalisation gap by~\(\gamma\). Bousquet and Elisseeff have also proved properties about $\gamma$:
+\begin{enumerate}
+    \item If an algorithm has $\gamma$-uniform stability, then its generalization error can be controlled in $O(\gamma)$ order of magnitude.
+    \item $\gamma$ is approximately of the order of $L/n$, where $L$ is a Lipschitz constant of the loss function and $n$ is the number of samples.
+\end{enumerate}
+
+\subsection{Lipschitz constant of GW loss}
+
+\begin{lemma}[GW\,Lipschitz constant]
+\label{lem:gw-lip}
+Let
+\(\mathcal{L}_{\mathrm{GW}}(T,S)
+  =\lambda\,\operatorname{GW}^{2}(T,S)\).
+If \(\|S\|_{2}\le R\),
+then
+\[
+  \bigl\|\nabla_{S}\mathcal{L}_{\mathrm{GW}}\bigr\|_{2}
+  \;\le\;
+  \frac{64\lambda R^3}{D}
+  \; =\; L_{\mathrm{GW}} .
+\]
+where $D$ is the vocabulary size.
+\end{lemma}
+
+\begin{proof}
+Recall the squared Gromov–Wasserstein loss
+\[
+  \mathcal{L}_{\mathrm{GW}}(T,S)
+  \;=\;
+  \lambda
+  \min_{P\in\Pi(\mu,\mu)}
+  \sum_{i,j,k,l}
+  \bigl|C_{T}(i,j)-C_{S}(k,l)\bigr|^{2} P_{ik} P_{jl},
+  \qquad
+  C_{S}(k,l):=(S_{k}-S_{l})^{2}.
+\]
+Let \(P^{\star}\) denote an optimal coupling for the inner minimisation.
+Define the distortion tensor
+\(D_{T,S}(k,l)=C_{T}(k,l)-C_{S}(k,l)\).
+For coordinate \(p\in\{1,\dots,D\}\)
+\begin{align*}
+  \frac{\partial\mathcal{L}_{\mathrm{GW}}}{\partial S_{p}}
+  &=
+    -2\lambda
+    \sum_{k,l}
+    D_{T,S}(k,l)\;
+    \frac{\partial C_{S}(k,l)}{\partial S_{p}}
+    \;\Bigl[\sum_{i,j}P^{\star}_{ik}P^{\star}_{jl}\Bigr].
+\end{align*}
+
+Because \(|S_{k}|,|T_{k}|\le R\),
+\[
+  |D_{T,S}(k,l)|
+  \;=\;
+  \bigl|\,(T_{k}-T_{l})^{2}-(S_{k}-S_{l})^{2}\bigr|
+  \;\le\;
+  4R^{2}.
+\tag{A.1}
+\]
+
+Then we consider the derivative of $C_{S}(k,l)\;=\;\bigl(S_{k}-S_{l}\bigr)^{2},
+  \qquad k,l\in\{1,\dots,D\}$:
+
+Taking the partial derivative with respect to the \emph{single} logit
+$S_{p}$ gives three disjoint cases:
+
+\begin{enumerate}
+\item $p=k$:\;
+      $\displaystyle
+        \partial C_{S}(k,l)/\partial S_{p}
+        =\partial_{S_{k}}\,(S_{k}-S_{l})^{2}
+        =2\,(S_{k}-S_{l})$;
+\item $p=l$:\;
+      $\displaystyle
+        \partial C_{S}(k,l)/\partial S_{p}
+        =\partial_{S_{l}}\,(S_{k}-S_{l})^{2}
+        =-2\,(S_{k}-S_{l})$;
+\item $p\neq k,l$:\;
+      $C_{S}(k,l)$ does not depend on $S_{p}$, hence the derivative is $0$.
+\end{enumerate}
+
+All three cases are compactly encoded with Kronecker deltas:
+\begin{equation}
+  \frac{\partial C_{S}(k,l)}{\partial S_{p}}
+  \;=\;
+  2\,(S_{k}-S_{l})\bigl(\delta_{kp}-\delta_{lp}\bigr) .
+  \label{eq:dCs}
+\end{equation}
+where \(\delta_{kp}\) and \(\delta_{lp}\) denote the \emph{Kronecker delta}:
+\[
+  \delta_{kp}\;=\;
+  \begin{cases}
+    1,& k = p ,\\[4pt]
+    0,& k \neq p ,
+  \end{cases}
+  \qquad
+  \delta_{lp}\;=\;
+  \begin{cases}
+    1,& l = p ,\\[4pt]
+    0,& l \neq p .
+  \end{cases}
+\]
+%-----------------  magnitude bound -----------------------------------
+
+Assuming every logit is clipped within $[-R,R]$, i.e.\
+$\lvert S_{i}\rvert\le R$ for all $i$, we have
+\[
+  \lvert S_{k}-S_{l}\rvert
+  \;\le\;
+  \lvert S_{k}\rvert+\lvert S_{l}\rvert
+  \;\le\; 2R .
+\]
+Because $\bigl|\delta_{kp}-\delta_{lp}\bigr|\le 1$, the absolute
+value of~\eqref{eq:dCs} is bounded by
+\begin{equation}
+  \Bigl\lvert
+    \frac{\partial C_{S}(k,l)}{\partial S_{p}}
+  \Bigr\rvert
+  \;\le\;
+  2\,(2R)
+  \;=\; 4R .
+  \tag{A.2}
+\end{equation}
+
+
+For every \((k,l)\),
+\begin{equation}
+    \sum_{i,j} P^{\star}_{ik}P^{\star}_{jl}
+  = \bigl(\sum_{i}P^{\star}_{ik}\bigr)
+    \bigl(\sum_{j}P^{\star}_{jl}\bigr)
+  = \mu(k)\,\mu(l) = 1/D^{2}.
+  \tag{A.3}
+\end{equation}
+
+Using (A.1)–(A.3) and that at most one of
+\(\delta_{kp},\delta_{lp}\) is non–zero,
+\[
+  \bigl|
+  \tfrac{\partial\mathcal{L}_{\mathrm{GW}}}{\partial S_{p}}
+  \bigr|
+  \;\le\;
+  2\lambda\,
+  (4R^{2})\,(4R)\!
+  \sum_{k,l} \!\frac{1}{D^{2}}
+  \bigl(\delta_{kp}+\delta_{lp}\bigr)
+  \;=\;
+  \frac{64\lambda R^3}{D}  .
+\]
+Every coordinate is bounded by \(\frac{64\lambda R^3}{D}\), 
+proving Lemma~\ref{lem:gw-lip}.
+\end{proof}
+
+
+\subsection{Comparison with KL distillation (MiniED)}
+%-------------------------------------------------------------
+%  Appendix A.1 — Lipschitz bound for the KL loss
+%-------------------------------------------------------------
+
+\begin{lemma}[KL~loss Lipschitz constant]
+\label{lem:kl-lip}
+Let
+\(
+  \mathcal{L}_{\mathrm{KL}}(T,S)
+   =\lambda\,\mathrm{KL}\!\bigl(p_{T}\;\|\;p_{S}\bigr),
+   \;
+   p_{T}=\sigma(T),\;
+   p_{S}=\sigma(S)
+\)
+with logits clipped by
+$\lVert S\rVert_{\infty}\le R$, where the mapping $\sigma$ is the softmax function sending a logit vector
+\(z\) to a probability vector on the $(D\!-\!1)$-simplex
+\(\Delta^{D-1}\).
+Then
+\begin{equation}
+  \bigl\lVert\nabla_{S}\mathcal{L}_{\mathrm{KL}}\bigr\rVert_{2}
+  \;\le\;
+  \lambda\,e^{R}\,D
+  \;=\;L_{\mathrm{KL}} .
+  \label{eq:kl-lip}
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+By definition
+\(
+  \mathrm{KL}(p_{T}\|p_{S})
+  =\sum_{i}p_{T}(i)\,
+    \bigl[\log p_{T}(i)-\log p_{S}(i)\bigr].
+\)
+Taking the derivative w.r.t.\ $p_{S}(j)$ yields
+\[
+  \frac{\partial\mathrm{KL}}{\partial p_{S}(j)}
+  = -\frac{p_{T}(j)}{p_{S}(j)}
+  \quad\Longrightarrow\quad
+  \bigl\lvert\tfrac{\partial\mathrm{KL}}{\partial p_{S}(j)}\bigr\rvert
+  \;\le\;\frac{1}{\min_{i}p_{S}(i)} .
+\]
+
+Because each logit is in $[-R,R]$,
+\[
+  p_{S}(i)
+  =\frac{e^{S_{i}}}{\sum_{k}e^{S_{k}}}
+  \;\ge\;
+  \frac{e^{-R}}{De^{R}}
+  \;\ge\;
+  \frac{e^{-2R}}{D}.
+\]
+Hence
+\(
+  \lvert\partial\mathrm{KL}/\partial p_{S}(j)\rvert\le e^{2R}D.
+\)
+
+The soft-max Jacobian $J$ satisfies  
+$\lVert J\rVert_{2\to 2}\le\tfrac12$.
+
+\[
+  \bigl\lVert\nabla_{S}\mathrm{KL}\bigr\rVert_{2}
+  \;=\;
+  \bigl\lVert J^{\!\top}
+         \nabla_{p_{S}}\mathrm{KL}\bigr\rVert_{2}
+  \;\le\;
+  \frac12\,e^{2R}D
+  \;\le\; e^{R}D ,
+\]
+where the last inequality uses $R\ge0$ (so $e^{2R}/2\le e^{R}$ for $R\gtrsim1$; if
+$R$ is small this only tightens the bound). Multiplying by $\lambda$ proves~\eqref{eq:kl-lip}.
+\end{proof}
+
+\noindent
+\textbf{Comparison.}\;
+Putting the lemmas together, Lemma~\ref{lem:kl-lip} alongside
+Lemma~\ref{lem:gw-lip}, we observe the \emph{inverse} scaling of $L_{\mathrm{GW}}$ with 
+dimension~$D$:
+
+\[
+  L_{\mathrm{GW}}
+  \;=\;
+  O\!\!\Bigl(\frac{R^{3}}{D}\Bigr)
+  \;\;<\;
+  O\!\bigl(e^{R}D\bigr)=L_{\mathrm{KL}}
+\]
+
+\subsection{Comparison with Wasserstein distillation (ULD)}
+
+\begin{lemma}[Lipschitz constant of the 1-Wasserstein loss]
+\label{lem:w-lip}
+Let $p_{T} = \sigma(T)$ and $p_{S} = \sigma(S)$ be the soft-max
+probabilities of teacher and student, and define
+\[
+  \mathcal{L}_{W}\;=\;\lambda\,W_{1}\!\bigl(p_{T},p_{S}\bigr),
+\]
+where the ground metric satisfies $d(i,j)\!\in\![0,\Delta]$.
+Then
+\[
+  \bigl\lVert\nabla_{S}\mathcal{L}_{W}\bigr\rVert_{2}
+  \;\le\;
+  \frac{\lambda\,\Delta\,\sqrt{D}}{2}
+  \;=\;L_{W}.
+\]
+\end{lemma}
+
+\begin{proof}
+Using Kantorovich–Rubinstein dual:
+\[
+   W_{1}(p_{T},p_{S})
+   \;=\;
+   \sup_{\lVert\varphi\rVert_{\mathrm{Lip}\le1}}
+   \sum_{i}\varphi_{i}\bigl[p_{T}(i)-p_{S}(i)\bigr],
+   \qquad
+   \lVert\varphi\rVert_{\infty}\le\Delta .
+\]
+
+For the optimal potential $\varphi^{\star}$,
+$\nabla_{p_{S}}W_{1}=-\varphi^{\star}$, hence
+\[
+  \bigl\lVert\nabla_{p_{S}}W_{1}\bigr\rVert_{2}
+  \;\le\;
+  \sqrt{D}\,\lVert\varphi^{\star}\rVert_{\infty}
+  \;\le\;
+  \Delta\sqrt{D}.
+\]
+
+The Jacobian
+$J_{ij} = \partial p_{i}/\partial S_{j}
+        = p_{i}(\delta_{ij}-p_{j})$
+satisfies 
+$\lVert J\rVert_{2\!\to\!2}\le\tfrac12$
+because each row has $\ell_{2}$-norm $\le\frac12$.
+
+\[
+  \bigl\lVert\nabla_{S}W_{1}\bigr\rVert_{2}
+  \;=\;
+  \lVert J^{\!\top}\nabla_{p_{S}}W_{1}\rVert_{2}
+  \;\le\;
+  \lVert J\rVert_{2\!\to\!2}\,
+  \lVert\nabla_{p_{S}}W_{1}\rVert_{2}
+  \;\le\;
+  \frac12\,\Delta\sqrt{D}.
+\]
+
+Then multiply by the scale $\lambda$.
+\[
+  \bigl\lVert\nabla_{S}\mathcal{L}_{W}\bigr\rVert_{2}
+  \;=\;
+  \lambda\,\bigl\lVert\nabla_{S}W_{1}\bigr\rVert_{2}
+  \;\le\;
+  \frac{\lambda\,\Delta\,\sqrt{D}}{2}.
+\]
+\end{proof}
+
+% \noindent\textbf{Comparison:}\;
+% Combining Lemma~\ref{lem:kl-lip}
+% ($L_{\mathrm{KL}}\!\le\!\lambda e^{R}D$),
+% Lemma~\ref{lem:gw-lip}
+% ($L_{\mathrm{GW}}\!\le\!\tfrac{64\lambda R^{3}}{D}$),
+% and Lemma~\ref{lem:w-lip}
+% ($L_{W}\!\le\!\tfrac{\lambda\Delta\sqrt{D}}{2}$) we obtain
+% \[
+%   L_{\mathrm{GW}}
+%   \;=\;O\!\Bigl(\tfrac{R^{3}}{D}\Bigr)
+%   \;<\;
+%   L_{W}
+%   \;=\;O(\sqrt{D})
+%   \;<\;
+%   L_{\mathrm{KL}}
+%   \;=\;O\!\bigl(e^{R}D\bigr),
+% \]
+% for sufficiently large vocabulary size $D$ and moderate $R$.  
+% Hence replacing KL by GW not only preserves structure invariance but
+% also yields the smallest Lipschitz constant, leading—via the stability
+% bound $\gamma\propto L/n$—to the tightest generalisation guarantee.
+
+\subsection{Comparison}
+Combining Lemma~\ref{lem:gw-lip}, Lemma~\ref{lem:kl-lip},
+and Lemma~\ref{lem:w-lip}, we obtain the following relationship between the Lipschitz constants:
+\[
+ \frac{64\lambda R^{3}}{D}
+  \quad < \quad
+  \frac{\lambda\Delta\sqrt{D}}{2}
+  \quad < \quad
+  \lambda e^{R}D,
+\]
+for sufficiently large vocabulary size $D$ and moderate logit range $R$.
+
+This comparison shows that replacing the KL loss with the Gromov-Wasserstein loss results in the smallest Lipschitz constant, which implies the most stable learning process.  
+As the Lipschitz constant is related to the uniform stability bound $\gamma \propto L/n$, a smaller Lipschitz constant translates directly to a tighter generalization gap, improving the model's ability to generalize on unseen data. Thus we can obtain the following proposition:
+
+
+\textbf{Proposition 2} (Lipschitz constants comparison)
+We have the following relationship between the Lipschitz constants ($L$) for the Gromov-Wasserstein, Wasserstein, and KL losses:
+\[
+  L_{\mathrm{GW}} = O\left(\frac{R^3}{D}\right)
+  \quad < \quad
+  L_{W} = O(\sqrt{D})
+  \quad < \quad
+  L_{\mathrm{KL}} = O(e^{R} D),
+\]
+for sufficiently large vocabulary size $D$ and logit range $R$, which means the GW-guided training have tighter generalization bounds.
+
+Thus, replacing GW results in the smallest Lipschitz constant, leading to better stability and tighter generalization bounds.
+
+
+\subsection{Bias–variance decomposition}
+Following~\cite{safaryan2023knowledge},
+\[
+  \mathcal{E}_{\text{gen}}
+  \;\le\;
+  \underbrace{\mathrm{Bias}(T,S)}_{\text{teacher-guided}}
+  +
+  \underbrace{\mathrm{Var}}_{\le L/n}.
+\]
+Teacher logits fix the bias term;
+graph regularisation lowers the Lipschitz constant
+(\(L_{\mathrm{GW}} < L_{\mathrm{KL}}\))
+and thus the variance term,
+yielding a tighter generalisation bound,
+especially in low-data or cross-domain settings.
+
+
+
+
+\section{Appendix - Extended Experimental Setup}
+\label{app:setup}
+\subsection{Fusion Datasets details.}
+\label{app:dataset}
+We construct a multi-task dataset comprising 130k examples across general reasoning, mathematics, and coding. The general data are sourced from Infinity-Instruct \cite{li2024superfiltering}.
+\paragraph{Mathematics.}
+The mathematical dataset we use comprises 39k pairs of math questions and corresponding answers. The questions are sourced from the $NuminaMath\_1.5$\footnote{\href{https://huggingface.co/datasets/AI-MO/NuminaMath-1.5}{https://huggingface.co/datasets/AI-MO/NuminaMath-1.5}} dataset, while the answers are distilled from the DeepSeek-R1-671B model by the AM team\footnote{\href{https://huggingface.co/datasets/a-m-team/AM-DeepSeek-R1-Distilled-1.4M}{https://huggingface.co/datasets/a-m-team/AM-DeepSeek-R1-Distilled-1.4M}}. $NuminaMath\_1.5$ represents the second iteration of the widely acclaimed NuminaMath\cite{li2024numinamath} dataset. It offers high-quality data for competition-level mathematical problems across various domains, including Algebra, Geometry, Combinatorics, Calculus, Inequalities, Logic and Puzzles, and Number Theory.
+\paragraph{Coding.}
+In the code generation domain, we utilized the KodCode-V1-SFT-R1 dataset~\cite{xu2025kodcode}, which contains approximately 268k samples. Each sample was fed into our pivot model, which was prompted to generate 5 random responses per input. The generated outputs were then passed through a sandbox-based evaluation system. For each sample, if at least one of the five responses failed, the sample was flagged for further consideration. From these flagged samples, we filtered and selected 39k high-quality examples for further distillation.
+
+
+
+
+
+\paragraph{Training Details.}
+We train with C-AdamW and cosine decay for 5 epochs, using early stopping on the 4th. Fusion is performed with offline-extracted hidden states (before the \texttt{lm\_head}) to reduce GPU cost, requiring ~1.5TB of storage. 
+Fusion uses a batch size of 16 on 8×80GB NVIDIA H800 GPUs for ~20 hours. We adopt early stopping at epoch 4 (of 5), learning rate $1\times10^{-6}$, and default ULD weight $\lambda=0.5$, GLD weight $\lambda=0.001$. 
+
+
+
+
+\paragraph{Offline Teacher Loading.}
+For InfiGFusion, we extract hidden states (before the \texttt{lm\_head}) from source models and store them (~1.5TB per run). Only final layers are retained online, reducing memory and speeding up training.
+
+\section{Appendix - Evaluation Prompt}
+To enhance the robustness of answer extraction under the regex-based evaluation framework of OpenCompass~\cite{contributors2023opencompass} and EvalPlus~\cite{evalplus}, we systematically refine the prompts used in several benchmark datasets. These tailored prompt formats are designed to facilitate precise output matching, mitigating ambiguities that often arise from model generations. The revised prompt templates corresponding to each dataset are presented in Table~\ref{tab:prompts}, which details how task instructions and answer formats are standardized to align with OpenCompass's automatic evaluation pipeline.
+
+For datasets such as TheoremQA and HumanEval, we retain the original prompt configurations, adhering to their respective community-adopted evaluation protocols. This ensures consistency with prior works and preserves the validity of established benchmarks.
+% 
+For MBPP, we utilize EvalPlus~\cite{evalplus} for more rigorous assessment of LLM-generated code, providing enhanced reliability in functional correctness evaluation.
+
+% We adopt OpenCompass~\cite{contributors2023opencompass} and EvalPlus~\cite{evalplus} to conduct evaluation on $11$ benchmark datasets.
+% %
+% We revise the prompts of certain datasets within OpenCompass to ensure more reliable answer extraction via its regex-based matching mechanism. The detailed prompts are listed in Table~\ref{tab:prompts}.
+
+\begin{table}[htp]
+\caption{Prompt format used for different datasets.}
+\label{tab:prompts}
+\renewcommand\arraystretch{1.1}
+\setlength{\tabcolsep}{6pt}
+\centering
+\small
+\begin{tabular}{lp{0.85\textwidth}}
+\toprule
+\textbf{Dataset} & \textbf{Prompt Format} \\
+\midrule
+IFEval & \texttt{\detokenize{{prompt}\nPlease directly give the correct answer:}} \\
+ARC-C & \texttt{\detokenize{Question: {question}\nA. {textA}\nB. {textB}\nC. {textC}\nD. {textD}\nDirectly give me the correct answer option, and then explain:}} \\
+Hellaswag & \texttt{\detokenize{{ctx}\nQuestion: Which ending makes the most sense?\nDirectly give me the correct choice, you can further explain it or not.\nA. {A}\nB. {B}\nC. {C}\nD. {D}\nYou may choose from 'A', 'B', 'C', 'D'.\nAnswer:}} \\
+BBH & \texttt{\detokenize{Follow the given examples and answer the question.\n{_hint}\nQ: {{input}}\nA: Let's think step by step.}} \\
+DROP & \texttt{\detokenize{You will be asked to read a passage and answer a question. Some examples of passages and Q\&A are provided below.\n{drop_examples}\n\n# Your Task\n---\n{prompt}\nThink step by step, then write a line of the form "Answer: \$ANSWER" at the end of your response.}} \\
+MMLU & \texttt{\detokenize{{_hint}\nQuestion: {{input}}\nA. {{A}}\nB. {{B}}\nC. {{C}}\nD. {{D}}\n\nFor simple problems:\nDirectly provide the answer with minimal explanation.\n\nFor complex problems:\nUse this step-by-step format:\n## Step 1: [Concise description]\n[Brief explanation]\n## Step 2: [Concise description]\n[Brief explanation]\n\nRegardless of the approach, always conclude with:\nThe answer is [the\_answer\_letter].\nwhere the [the\_answer\_letter] is one of A, B, C or D.\n\nLet's think step by step.}} \\
+GSM8K & \texttt{\detokenize{{question}\nPlease reason step by step, and put your final answer within \\boxed\{\}.}} \\
+MATH & \texttt{\detokenize{{problem}\nPlease reason step by step, and put your final answer within \\boxed\{\}.}} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% For TheremQA and HumanEval, we follow the default evaluation settings without modifying the prompts.
+% %
+% For MBPP, we employ EvalPlus~\cite{evalplus} for rigourous evaluation of LLM-synthesized code.
+
+
+
+\section{Appendix - Comprehensive Reasoning Performance}
+\label{Appendix - Comprehensive Reasoning Performance}
+\subsection{Analysis on BBH: Semantic Dependency in Complex Reasoning}
+
+\begin{table}[h]
+\caption{Performance on BBH reasoning tasks. Tasks marked in \textbf{bold} involve complex relational reasoning, multi-hop inference, or semantic alignment, where InfiGFusion shows notable improvements over token-level fusion baselines.}
+\label{tab:bbh_full_results}
+\renewcommand\arraystretch{1.1}
+\setlength{\tabcolsep}{4pt}
+\centering
+\huge
+\resizebox{\textwidth}{!}{
+\begin{tabular}{lcccc>{\columncolor{blue!10}}c>{\columncolor{blue!10}}c}
+\toprule
+\textbf{BBH Dataset} & \textbf{Qwen2.5} & \textbf{Mistral-24B} & \textbf{Phi4-14B}  & \textbf{DeepSeek} & \textbf{Phi4-14B (SFT)} & \textbf{InfiGFusion} \\
+\midrule
+bbh-temporal\_sequences                         & 98.8  & 98.8  & 99.6  & 66.8  & 98.8  & 100   \\
+bbh-disambiguation\_qa                          & 78.8  & 75.6  & 82.4  & 74.8  & 79.6  & 76    \\
+bbh-date\_understanding                         & 90.4  & 86.8  & 94.8  & 50.4  & 85.2  & 82    \\
+bbh-tracking\_shuffled\_objects\_three\_objects & 86.8  & 99.2  & 99.6  & 75.6  & 97.2  & 99.6  \\
+bbh-penguins\_in\_a\_table                      & 90.41 & 97.95 & 98.63 & 69.86 & 93.84 & 97.26 \\
+bbh-geometric\_shapes                           & 58.8  & 49.2  & 56.4  & 71.6  & 56.4  & 62.4  \\
+bbh-snarks                                      & 84.27 & 85.96 & 61.8  & 47.19 & 70.22 & 79.21 \\
+bbh-ruin\_names                                 & 82.8  & 76.8  & 88.8  & 39.6  & 88    & 88.4  \\
+bbh-tracking\_shuffled\_objects\_seven\_objects & 80.4  & 96.4  & 94.4  & 80.8  & 90    & 96.8  \\
+bbh-tracking\_shuffled\_objects\_five\_objects  & 79.2  & 99.2  & 96.8  & 82.8  & 95.6  & 96.8  \\
+bbh-logical\_deduction\_three\_objects          & 97.6  & 98.8  & 98.4  & 83.2  & 96.4  & 97.6  \\
+bbh-hyperbaton                                  & 97.2  & 98.8  & 49.2  & 52    & 53.2  & 99.6  \\
+bbh-logical\_deduction\_five\_objects           & 80.4  & 82    & 85.6  & 86    & 92.4  & 94    \\
+bbh-logical\_deduction\_seven\_objects          & 68.8  & 62.8  & 88.4  & 83.2  & 88.8  & 89.2  \\
+bbh-movie\_recommendation                       & 72.8  & 78    & 58.8  & 60.8  & 62.8  & 43.6  \\
+bbh-salient\_translation\_error\_detection      & 70.4  & 63.2  & 65.2  & 54.4  & 64    & 67.2  \\
+bbh-reasoning\_about\_colored\_objects          & 93.6  & 90    & 96.4  & 87.6  & 96.8  & 96.4  \\
+bbh-multistep\_arithmetic\_two                  & 96.4  & 93.2  & 64    & 81.6  & 62    & 99.6  \\
+bbh-navigate                                    & 97.2  & 80.8  & 96    & 51.6  & 82    & 96    \\
+bbh-dyck\_languages                             & 35.6  & 37.2  & 11.2  & 9.6   & 13.2  & 40    \\
+bbh-word\_sorting                               & 32    & 36.4  & 0.4   & 0     & 9.6   &59.2  \\
+bbh-sports\_understanding                       & 79.2  & 91.2  & 72.4  & 2     & 89.2  & 92.4  \\
+bbh-boolean\_expressions                        & 55.6  & 87.2  & 28.8  & 8     & 66.4  & 98.4  \\
+bbh-object\_counting                            & 89.6  & 95.2  & 98.8  & 99.6  & 99.6  & 98    \\
+bbh-formal\_fallacies                           & 54.8  & 73.2  & 0.4   & 0.8   & 0.8   & 91.6  \\
+bbh-causal\_judgement                           & 43.85 & 68.98 & 32.99 & 45.35 & 35.83 & 70.05 \\
+bbh-web\_of\_lies                               & 99.2  & 100   & 100   & 93.6  & 100   & 100 \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+
+We conduct a comprehensive evaluation of InfiGFusion on the BBH benchmark, which consists of diverse and challenging reasoning tasks requiring multi-step logic, relational alignment, and semantic consistency. These tasks pose significant challenges for token-level fusion methods due to their reliance on token co-activation patterns and internal reasoning structures.
+
+\textit{Remark.} The use of “internal reasoning” refers to the relational structure among semantic dimensions in the logit space. We align inter-logit relation graphs via Gromov–Wasserstein, providing a structural inductive bias for reasoning-heavy tasks, without explicitly modeling the reasoning steps.
+
+\paragraph{Semantic Dependency Fusion Matters.}
+InfiGFusion demonstrates clear advantages on tasks where reasoning relies on inter-token dependencies rather than isolated token probabilities. For example, in \textbf{Logical Deduction (5 objects / 7 objects)}, InfiGFusion outperforms the SFT baseline by +1.6\% and +0.4\%, respectively, indicating better preservation of relational structures. In \textbf{Tracking Shuffled Objects} tasks (five and seven objects), InfiGFusion matches or exceeds the best-performing models, showing that graph-based alignment can maintain structural consistency in object tracking.
+
+\paragraph{Superior Multi-hop and Arithmetic Reasoning.}
+Tasks such as \textbf{Multistep Arithmetic Two} (+36.8\% over SFT) and \textbf{Causal Judgement} (+31.55\%) highlight InfiGFusion’s strength in capturing multi-hop reasoning and causal dependencies, which are notoriously difficult for token-level methods. These improvements suggest that GLD loss effectively aligns higher-order reasoning structures across source models.
+
+\paragraph{Recovering from Source Model Weaknesses.}
+InfiGFusion mitigates the weaknesses of individual source models in cases where token-level fusion underperforms. For instance, in \textbf{Boolean Expressions}, InfiGFusion achieves 98.4\%, significantly outperforming phi4 SFT (66.4\%) and other baselines, by aligning semantic relationships between logical operators through graph structures. Similarly, in \textbf{Dyck Languages}—a task requiring bracket matching and structural hierarchy—InfiGFusion closes the gap (+23.6\% over SFT), showcasing its advantage in structure-sensitive tasks.
+
+\paragraph{Robustness in Semantic Alignment.}
+On tasks like \textbf{Ruin Names} and \textbf{Reasoning about Colored Objects}, InfiGFusion maintains top-tier performance, matching or slightly exceeding SFT results. This indicates that InfiGFusion not only aggregates external knowledge but also preserves the pivot model’s strengths, avoiding catastrophic forgetting.
+
+\paragraph{Challenges and Observations.}
+While InfiGFusion excels in structure-dependent reasoning, it shows less improvement in tasks dominated by shallow lexical patterns (e.g., \textbf{Word Sorting}, \textbf{Sports Understanding}), where token-level matching suffices. This suggests that InfiGFusion’s strength lies in modeling inter-token dependencies rather than surface-level token alignment.
+
+Overall, InfiGFusion outperforms token-level fusion methods on BBH tasks requiring structural reasoning, multi-step inference, and semantic consistency. By explicitly modeling logit-space semantic dependencies, InfiGFusion enables robust and interpretable fusion of heterogeneous LLMs.
+
+\subsection{Analysis on MMLU: Fusion of Knowledge and Reasoning Behaviors}
+
+\begin{table}[htp]
+\centering
+\caption{
+Performance on MMLU sub-tasks. InfiGFusion excels in structure-sensitive reasoning while maintaining robust general knowledge performance. Bold categories indicate tasks where structural dependencies and multi-source knowledge integration are critical.
+}
+\label{tab:mmlu_results}
+\renewcommand\arraystretch{1.1}
+\setlength{\tabcolsep}{4pt}
+\centering
+\Huge
+\resizebox{\textwidth}{!}{
+\begin{tabular}{lcccc>{\columncolor{blue!10}}c>{\columncolor{blue!10}}c}
+\toprule
+\textbf{MMLU Dataset} & \textbf{Qwen2.5} & \textbf{Mistral-24B} & \textbf{Phi4-14B} & \textbf{DeepSeek} & \textbf{Phi4-14B (SFT)} & \textbf{InfiGFusion} \\
+\midrule
+lukaemon\_mmlu\_college\_biology                        & 87.5  & 90.97 & 96.53 & 94.44 & 94.44 & 92.36 \\
+lukaemon\_mmlu\_college\_chemistry                      & 58    & 66    & 72    & 64    & 66    & 63    \\
+lukaemon\_mmlu\_college\_computer\_science              & 76    & 78    & 86    & 82    & 82    & 85    \\
+lukaemon\_mmlu\_college\_mathematics                    & 80    & 72    & 79    & 93    & 77    & 81    \\
+lukaemon\_mmlu\_college\_physics                        & 78.43 & 89.22 & 94.12 & 92.16 & 88.24 & 84.31 \\
+lukaemon\_mmlu\_electrical\_engineering                 & 77.93 & 78.62 & 82.07 & 80.69 & 82.07 & 82.76 \\
+lukaemon\_mmlu\_astronomy                               & 87.5  & 94.08 & 90.79 & 92.76 & 89.47 & 90.79 \\
+lukaemon\_mmlu\_anatomy                                 & 76.3  & 79.26 & 82.96 & 74.81 & 80.74 & 78.52 \\
+lukaemon\_mmlu\_abstract\_algebra                       & 73    & 65    & 82    & 85    & 86    & 88    \\
+lukaemon\_mmlu\_machine\_learning                       & 67.86 & 70.54 & 80.36 & 77.68 & 81.25 & 78.57 \\
+lukaemon\_mmlu\_clinical\_knowledge                     & 84.15 & 87.17 & 84.91 & 83.77 & 89.43 & 87.55 \\
+lukaemon\_mmlu\_global\_facts                           & 53    & 62    & 55    & 57    & 53    & 53    \\
+lukaemon\_mmlu\_management                              & 86.41 & 87.38 & 85.44 & 86.41 & 84.47 & 87.38 \\
+lukaemon\_mmlu\_nutrition                               & 82.68 & 85.95 & 87.25 & 84.97 & 87.91 & 84.31 \\
+lukaemon\_mmlu\_marketing                               & 90.17 & 92.31 & 92.74 & 89.32 & 92.74 & 95.3  \\
+lukaemon\_mmlu\_professional\_accounting                & 75.89 & 73.4  & 86.17 & 78.72 & 84.75 & 81.91 \\
+lukaemon\_mmlu\_high\_school\_geography                 & 87.88 & 87.88 & 90.4  & 88.89 & 91.92 & 89.9  \\
+lukaemon\_mmlu\_international\_law                      & 81.82 & 81.82 & 91.74 & 82.64 & 90.91 & 90.91 \\
+lukaemon\_mmlu\_moral\_scenarios                        & 71.96 & 68.6  & 75.75 & 73.41 & 74.75 & 73.97 \\
+lukaemon\_mmlu\_computer\_security                      & 81    & 85    & 85    & 82    & 83    & 87    \\
+lukaemon\_mmlu\_high\_school\_microeconomics            & 88.24 & 90.34 & 95.38 & 94.96 & 96.22 & 96.22 \\
+lukaemon\_mmlu\_professional\_law                       & 56.65 & 61.73 & 67.28 & 61.67 & 64.99 & 65.71 \\
+lukaemon\_mmlu\_medical\_genetics                       & 89    & 89    & 93    & 94    & 92    & 91    \\
+lukaemon\_mmlu\_professional\_psychology                & 80.07 & 82.19 & 85.78 & 79.58 & 86.6  & 84.97 \\
+lukaemon\_mmlu\_jurisprudence                           & 82.41 & 85.19 & 92.59 & 86.11 & 86.11 & 86.11 \\
+lukaemon\_mmlu\_world\_religions                        & 84.21 & 88.89 & 90.06 & 90.64 & 89.47 & 88.3  \\
+lukaemon\_mmlu\_philosophy                              & 79.74 & 80.06 & 84.89 & 77.17 & 83.92 & 82.96 \\
+lukaemon\_mmlu\_virology                                & 52.41 & 49.4  & 53.01 & 54.22 & 53.61 & 54.22 \\
+lukaemon\_mmlu\_high\_school\_chemistry                 & 76.85 & 83.25 & 90.15 & 88.67 & 88.67 & 84.24 \\
+lukaemon\_mmlu\_public\_relations                       & 70.91 & 69.09 & 77.27 & 74.55 & 79.09 & 75.45 \\
+lukaemon\_mmlu\_high\_school\_macroeconomics            & 84.87 & 84.1  & 89.74 & 88.72 & 90.51 & 91.03 \\
+lukaemon\_mmlu\_human\_sexuality                        & 83.21 & 88.55 & 86.26 & 86.26 & 87.79 & 85.5  \\
+lukaemon\_mmlu\_elementary\_mathematics                 & 95.24 & 94.97 & 97.09 & 97.35 & 96.83 & 95.24 \\
+lukaemon\_mmlu\_high\_school\_physics                   & 78.81 & 76.82 & 85.43 & 84.11 & 87.42 & 84.11 \\
+lukaemon\_mmlu\_high\_school\_computer\_science         & 92    & 92    & 96    & 93    & 93    & 95    \\
+lukaemon\_mmlu\_high\_school\_european\_history         & 81.82 & 80    & 84.24 & 84.85 & 83.03 & 83.64 \\
+lukaemon\_mmlu\_business\_ethics                        & 75    & 83    & 82    & 82    & 82    & 82    \\
+lukaemon\_mmlu\_moral\_disputes                         & 76.88 & 78.61 & 81.79 & 74.57 & 83.24 & 81.5  \\
+lukaemon\_mmlu\_high\_school\_statistics                & 77.78 & 80.56 & 88.89 & 89.81 & 83.8  & 88.43 \\
+lukaemon\_mmlu\_miscellaneous                           & 91.57 & 94.25 & 93.87 & 92.46 & 93.74 & 91.7  \\
+lukaemon\_mmlu\_formal\_logic                           & 68.25 & 66.67 & 77.78 & 91.27 & 78.57 & 74.6  \\
+lukaemon\_mmlu\_high\_school\_government\_and\_politics & 93.78 & 95.34 & 95.85 & 96.37 & 96.89 & 96.37 \\
+lukaemon\_mmlu\_prehistory                              & 86.11 & 83.64 & 85.8  & 83.64 & 87.35 & 87.65 \\
+lukaemon\_mmlu\_security\_studies                       & 77.96 & 78.78 & 77.14 & 78.37 & 79.59 & 81.22 \\
+lukaemon\_mmlu\_high\_school\_biology                   & 90    & 90.97 & 94.19 & 92.58 & 92.9  & 94.19 \\
+lukaemon\_mmlu\_logical\_fallacies                      & 85.28 & 84.66 & 86.5  & 85.28 & 87.73 & 87.73 \\
+lukaemon\_mmlu\_high\_school\_world\_history            & 87.76 & 88.61 & 89.87 & 89.45 & 88.61 & 89.87 \\
+lukaemon\_mmlu\_professional\_medicine                  & 84.19 & 92.28 & 91.18 & 84.19 & 92.28 & 91.54 \\
+lukaemon\_mmlu\_high\_school\_mathematics               & 85.93 & 84.07 & 92.22 & 97.04 & 90.37 & 90    \\
+lukaemon\_mmlu\_college\_medicine                       & 79.77 & 83.82 & 84.97 & 88.44 & 85.55 & 85.55 \\
+lukaemon\_mmlu\_high\_school\_us\_history               & 89.71 & 86.76 & 92.16 & 87.75 & 91.67 & 91.67 \\
+lukaemon\_mmlu\_sociology                               & 86.57 & 85.57 & 89.05 & 84.58 & 88.06 & 90.05 \\
+lukaemon\_mmlu\_econometrics                            & 60.53 & 64.91 & 71.93 & 65.79 & 71.93 & 67.54 \\
+lukaemon\_mmlu\_high\_school\_psychology                & 90.64 & 92.84 & 94.31 & 91.38 & 94.86 & 95.6  \\
+lukaemon\_mmlu\_human\_aging                            & 73.99 & 75.34 & 80.72 & 78.48 & 78.48 & 78.92 \\
+lukaemon\_mmlu\_us\_foreign\_policy                     & 89    & 88    & 92    & 88    & 93    & 91    \\
+lukaemon\_mmlu\_conceptual\_physics                     & 88.09 & 86.81 & 89.79 & 91.06 & 90.64 & 88.09 \\
+\bottomrule
+\end{tabular}}
+\end{table} 
+
+
+We further evaluate InfiGFusion on the MMLU benchmark, covering 57 sub-domains across STEM, social sciences, law, and humanities. Unlike BBH, which emphasizes complex reasoning chains, MMLU focuses on factual knowledge, domain-specific reasoning, and multi-field coverage, offering a complementary perspective to assess fusion effectiveness.
+
+\paragraph{Retaining Pivot Knowledge, Enhancing Structural Alignment.}
+InfiGFusion demonstrates strong consistency with the pivot model’s strengths, while further integrating structural reasoning from source models. On factual knowledge tasks like \textbf{High School Computer Science} (95\%) and \textbf{US History} (91.67\%), InfiGFusion matches or slightly improves over Phi4 SFT. This indicates that structure-aware fusion preserves core pivot capabilities without degradation.
+
+\paragraph{Advantages in Structure-sensitive Tasks.}
+InfiGFusion outperforms Phi4 SFT on structure-dependent categories such as \textbf{Abstract Algebra} (+2\%) and \textbf{Security Studies} (+1.63\%), confirming its effectiveness in aligning semantic dependencies. Similarly, in tasks like \textbf{Machine Learning} and \textbf{Computer Security}, InfiGFusion maintains competitive results, highlighting its ability to integrate relational knowledge from multiple sources.
+
+\paragraph{Balanced Performance in STEM-heavy Tasks.}
+While DeepSeek-R1 exhibits domain-specific advantages (e.g., \textbf{College Mathematics}: 93\%), InfiGFusion remains competitive (81\%), achieving a balance between generalization and specialized knowledge. On \textbf{Clinical Knowledge} and \textbf{Medical Genetics}, InfiGFusion slightly trails SFT but still improves upon the raw Phi4 model, reflecting its capacity to enhance reasoning fidelity without overfitting to narrow domains.
+
+\paragraph{Stable Gains in Social Sciences and Law.}
+In domains like \textbf{International Law}, \textbf{Global Facts}, and \textbf{World Religions}, InfiGFusion maintains accuracy on par with SFT, demonstrating robustness across disciplines. Notably, in \textbf{Sociology}, InfiGFusion surpasses all baselines (90.05\%), suggesting effective fusion of nuanced reasoning patterns.
+
+InfiGFusion’s gains are most prominent in tasks requiring structural reasoning and multi-source knowledge integration, while its performance on pure factual recall tasks remains on par with SFT. This validates our design choice of graph-based semantic alignment for model fusion, enabling balanced and interpretable improvements.
+
+\section{Appendix - Relative Error of GW}
+\label{sec:rebuttal-gw-scale}
+
+\textbf{Setup.}
+To better analyze the relative error of the proposed GW, we quantify the \emph{scale} of the GW distance and its \emph{relative error} on representative BBH subsets using a 14B student and $\sim$130K training examples. 
+We compare three objectives: (i) our \textit{sorting-based} closed-form approximation ($\mathcal{O}(n\log n)$), (ii) \textit{Sinkhorn GW} ($\mathcal{O}(n^2\log n)$), and (iii) \textit{Entropic GW} ($\mathcal{O}(n^2\log n)$).
+Following~\cite{scetbon2022linear, rioux2024entropic}, we report a certified \emph{absolute error bound} and compute \emph{relative error} as 
+$\mathrm{RE}=\frac{\text{Abs.\ Error Bound}}{\text{GW Distance}}\times 100\%$.
+We also list the end-task performance (\%) obtained when optimizing each objective.
+
+\begin{table}[t]
+\renewcommand\arraystretch{1.1}
+\setlength{\tabcolsep}{4pt}
+\centering
+\large
+\resizebox{0.8\textwidth}{!}{
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Method} & \textbf{Logical Deduction} & \textbf{Multistep Arithmetic} & \textbf{Causal Judgement} & \textbf{Dyck Languages} \\
+\midrule
+\multicolumn{5}{l}{\emph{Our Approximation (Sorting-Based, $\mathcal{O}(n\log n)$)}}\\
+\quad GW Distance & 0.0356 & 0.0614 & 0.0445 & 0.0210 \\
+\quad Abs.\ Error Bound & 0.00015 & 0.00015 & 0.00015 & 0.00015 \\
+\quad Relative Error (\%) & 0.421 & 0.244 & 0.337 & 0.714 \\
+\quad Performance (\%) & 89.2 & 99.6 & 70.0 & 94.4 \\
+\midrule
+\multicolumn{5}{l}{\emph{Sinkhorn GW ($\mathcal{O}(n^2\log n)$)}}\\
+\quad GW Distance & 0.02145 & 0.0618 & 0.0449 & 0.0213 \\
+\quad Abs.\ Error Bound & 0.00009 & 0.00009 & 0.00009 & 0.00009 \\
+\quad Relative Error (\%) & 0.419 & 0.145 & 0.200 & 0.422 \\
+\quad Performance (\%) & 89.9 & 99.2 & 70.4 & 94.1 \\
+\midrule
+\multicolumn{5}{l}{\emph{Entropic GW ($\mathcal{O}(n^2\log n)$)}}\\
+\quad GW Distance & 0.0314 & 0.0617 & 0.0448 & 0.0212 \\
+\quad Abs.\ Error Bound & 0.00012 & 0.00012 & 0.00012 & 0.00012 \\
+\quad Relative Error (\%) & 0.382 & 0.194 & 0.267 & 0.566 \\
+\quad Performance (\%) & 89.7 & 99.6 & 70.7 & 93.9 \\
+\bottomrule
+\end{tabular}}
+\vspace{0.5em}
+\caption{Scale of GW distance and relative error on BBH subsets (14B model, $\sim$130K data).}
+\label{tab:gw-scale-rebuttal}
+\vspace{-2mm}
+\end{table}
+
+\textbf{Findings.}
+(1) \textit{Distance scale and RE.} GW distances on BBH fall between $0.02$ and $0.06$.
+With the certified absolute bounds, relative errors are consistently below $1\%$ (Table~\ref{tab:gw-scale-rebuttal}), supporting the suitability of using the approximation as a training objective. 
+(2) \textit{Approximation quality vs.\ cost.} Sinkhorn/Entropic GW yield slightly tighter RE than the sorting-based objective, but with $\mathcal{O}(n^2\log n)$ cost.
+Our sorting-based objective offers near-parity performance while remaining $\mathcal{O}(n\log n)$ and thus \emph{scalable}.
+(3) \textit{Empirical consistency.} The sorting-based absolute error aligns with the expected $\mathcal{O}(1/n)$ rate at our operating regimes (e.g., $n\!\approx\!150$K, $m\!\approx\!100$K), while competitive end-task performance validates training usefulness.
+
+\textbf{On larger models and time gaps.}
+The section \ref{sec:Analysis of the GW approximation}, Table~\ref{tab:gw-scale-rebuttal}, and expanded distillation experiments with Table~\ref{tab:distillation-results} give further discussion.
+While on smaller students the wall-clock gap between Sinkhorn and our sorting-based objective can appear modest, the \emph{asymptotic} gap widens with scale.
+Concretely, the effective problem size $n$ grows with sequence length, batch size, and active logit support (e.g., top-$k$ neighbors), making Sinkhorn/Entropic $\mathcal{O}(n^2\log n)$ costs rise superlinearly, whereas our objective scales as $\mathcal{O}(n\log n)$.
+Empirically, on larger models with more dimensionality, we observe proportionally larger savings in GW-side time while maintaining comparable downstream performance.
+
+
+At the scales of interest for LLM fusion, GW distances are small but stable; certified relative errors under our approximation remain $<1\%$, and the $\mathcal{O}(n\log n)$ objective delivers the right trade-off between fidelity and throughput, with advantages that grow with model/sequence scale.
+
+
+
+\section{Appendix - Distribution Analysis of WD and GW During Fusion}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.32\textwidth]{loss_distribution_1.png}
+\includegraphics[width=0.32\textwidth]{loss_distribution_9.png}
+\includegraphics[width=0.32\textwidth]{loss_distribution_gw_9.png}
+\caption{Comparison of WD and GW distributions during fusion. Left: before distillation; Middle: after token-level WD optimization. WD reduces significantly, but GWD remains largely unchanged, indicating semantic dependency misalignment; Right: after GLD optimization.}
+\label{fig:wd-gwd}
+\end{figure}
+
+
+\begin{table*}[t]
+\centering
+\small
+\resizebox{\textwidth}{!}{
+\begin{tabular}{p{0.48\textwidth} p{0.48\textwidth}}
+\toprule
+\multicolumn{2}{l}{Condition-dependent Logic (Object Tracking)} \\
+\midrule
+\multicolumn{2}{l}{\textbf{Task Type: Sequential state updates under conditions}}   \\
+\midrule
+\textbf{InfiGFusion Behavior} & \textbf{Baseline Behavior} \\
+\midrule
+\multicolumn{2}{p{0.96\textwidth}}{ \texttt{"prompt": "Follow the given examples and answer the question.\textbackslash{}nAnswer extremely simple questions about the colors of objects on a surface.\textbackslash{}n\textbackslash{}nQ: On the nightstand, there is a red pencil, a purple mug, a burgundy keychain, a fuchsia teddy bear, a black plate, and a blue stress ball. ...... \textbackslash{}n\textbackslash{}nQ: On the floor, you see a green bracelet, a purple cat toy, a brown pair of sunglasses, a black fidget spinner, a red dog leash, and an orange pen. How many objects are neither black nor blue?\textbackslash{}nOptions:\textbackslash{}n(A) zero\textbackslash{}n(B) one\textbackslash{}n(C) two\textbackslash{}n(D) three\textbackslash{}n(E) four\textbackslash{}n(F) five\textbackslash{}n(G) six\textbackslash{}nA: Let's think step by step.\textbackslash{}n"}} \\
+\midrule
+\texttt{"origin\_prediction": "According to this question, the objects on the floor are as follows: a green bracelet, a purple cat toy, a brown pair of sunglasses, a black fidget spinner, a red dog leash, and an orange pen.\textbackslash{}n\textbackslash{}nWe need to count how many objects are neither black nor blue.\textbackslash{}n\textbackslash{}n1. Green bracelet: Not black or blue → count\textbackslash{}n2. Purple cat toy: Not black or blue → count\textbackslash{}n3. Brown pair of sunglasses: Not black or blue → count\textbackslash{}n4. Black fidget spinner: Black → do not count\textbackslash{}n5. Red dog leash: Not black or blue → count\textbackslash{}n6. Orange pen: Not black or blue → count\textbackslash{}n\textbackslash{}nSo, the objects that are neither black nor blue are: green bracelet, purple cat toy, brown pair of sunglasses, red dog leash, and orange pen. That makes 5 objects.\textbackslash{}n\textbackslash{}nThe answer is (F). ", "correct": true} & 
+\texttt{"origin\_prediction": "Let's analyze the question step by step:\textbackslash{}n\textbackslash{}nThe objects on the floor are:\textbackslash{}n1. A green bracelet\textbackslash{}n2. A purple cat toy\textbackslash{}n3. A brown pair of sunglasses\textbackslash{}n4. A black fidget spinner\textbackslash{}n5. A red dog leash\textbackslash{}n6. An orange pen\textbackslash{}n\textbackslash{}nWe need to determine how many objects are neither black nor blue.\textbackslash{}n\textbackslash{}n- The green bracelet is neither black nor blue.\textbackslash{}n- The purple cat toy is neither black nor blue.\textbackslash{}n- The brown pair of sunglasses is neither black nor blue.\textbackslash{}n- The black fidget spinner is black, so it is excluded.\textbackslash{}n- The red dog leash is neither black nor blue.\textbackslash{}n- The orange pen is neither black nor blue.\textbackslash{}n\textbackslash{}nCounting the objects that are neither black nor blue, we have:\textbackslash{}n1. Green bracelet\textbackslash{}n2. Purple cat toy\textbackslash{}n3. Brown pair of sunglasses\textbackslash{}n4. Red dog leash\textbackslash{}n5. Orange pen\textbackslash{}n\textbackslash{}nThere are 5 objects that are neither black nor blue.\textbackslash{}n\textbackslash{}nTherefore, the answer is (F) five.", "correct": true} \\
+\bottomrule
+\end{tabular}}
+\caption{Case study on condition-dependent object tracking logic.}
+\label{comparsionoflogic}
+\end{table*}
+
+
+To better understand how InfiGFusion improves semantic alignment, we visualize the evolution of Wasserstein Distance (WD) and Gromov-Wasserstein Distance (GWD) distributions across three key stages of fusion (Fig.~\ref{fig:wd-gwd}).
+
+\textbf{Experimental Setup.}
+We compare:
+(1) The initial distribution before distillation (Left),
+(2) After token-level WD optimization using ULD loss (Middle),
+(3) After full GLD+ULD optimization (Right).
+Each histogram reflects pairwise distances between pivot and source logits across sampled instances.
+
+\textbf{Why This Matters:}
+WD measures the marginal alignment of token logits, while GWD captures relational (dependency-level) differences between token dimensions. Existing fusion methods (e.g., ULD) optimize WD but ignore semantic dependencies, making GWD a critical metric for evaluating structural alignment.
+
+Before distillation (Left): Both WD and GWD exhibit large values, indicating poor alignment at both token-level and structure-level.
+After ULD optimization (Middle): WD reduces significantly, showing that token-wise distributions are aligned. However, GWD remains largely unchanged, revealing a persistent mismatch in semantic dependency patterns. This validates our hypothesis: token-level objectives fail to capture cross-token interactions essential for reasoning consistency.
+After GLD+ULD optimization (Right): Both WD and GWD distributions shift leftward. Notably, GWD exhibits a clear reduction, demonstrating that GLD successfully aligns relational structures in logit space, complementing token-level alignment.
+
+\section{Appendix - Case study}
+We provide additional results compared between InfiGFusion and Phi-4 SFT in Table.\ref{comparsionoflogic}.
+
+\section{Appendix - Additional Discussion}
+\label{app:additional-discussion}
+Our approach focuses on \emph{relational consistency}, aligning the semantic structure of logits across sources, without an explicit mechanism for resolving \emph{factual conflicts} between models. In practice, when source models encode contradictory knowledge, fusion can produce outputs that are structurally coherent yet factually incorrect. While the framework naturally accommodates extensions such as confidence estimation and external verifiers, our preliminary trials with entropy-based source selection~\cite{wanknowledge} and Bayesian conditional alignment~\cite{ye2024bayes} yielded only marginal gains at our scales and benchmarks.
+
+We view conflict-aware \emph{source re-weighting and selection} as complementary to GLD rather than a substitute. Promising directions include per-claim uncertainty calibration, verifier-in-the-loop pipelines (e.g., retrieval or factuality checks), and adaptive top-$k$ pruning conditioned on detected conflicts. A principled, high-yield conflict-resolution module is thus an important avenue for future work, whereas this paper concentrates on semantic structure alignment and a stronger GLD objective.
+
+
+
+\section{Appendix - Additional Distillation Experiments}
+
+To verify the generality of our Graph-on-Logits Distillation (GLD) loss beyond model fusion, we conduct additional experiments in the traditional knowledge distillation setting, where a compact student model learns from a single larger teacher model. These experiments assess whether GLD can also improve response quality under extreme model compression (from 7B to sub-1B scale).
+
+\textbf{Distillation Datasets:}
+The \textbf{distillation} performance of GLD is evaluated via instruction-following accuracy averaged over five random seeds. For distillation, we follow prior work and use Dolly-15k \cite{guminillm} for training. We follow \cite{zhang2024dual} that evaluate on four benchmarks: SelfInst~\cite{wang2022self}, VicunaEval~\cite{chiang2023vicuna}, Super Natural Instructions (S-NI)~\cite{wang2022super}, and the Dolly \cite{guminillm}.
+
+\textbf{Models:}
+ For distillation, we distill from LLaMA3-8B, Mistral-7B, and Qwen2.5-7B into student models, including GPT2-120M \cite{radford2019language}, OPT-350M \cite{zhang2022opt}, and Bloomz-560M \cite{muennighoff2023crosslingual}.
+
+\textbf{Training settings:}
+Distillation uses LoRA finetuning and temperature $\tau=1.5$. All models use a learning rate of $1 \times 10^{-6}$ and $\lambda=0.5$ unless otherwise stated. For all experiments, evaluation metrics are averaged across 5 random seeds.
+
+
+\begin{table}[t]
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.1}
+\caption{
+Performance of different distillation methods across teacher-student pairs. 
+Rouge-L is averaged over 5 different seeds on 4 instruction-following benchmarks.
+Bold indicates the best performance. \textbf{Improv.} denotes the relative performance gain of GLD over the other baseline.
+}
+\resizebox{1.0 \linewidth}{!}{
+\begin{tabular}{l|l|ccccccc|c}
+\toprule
+\multicolumn{1}{c}{Teacher}                  & \multicolumn{1}{c}{Model}       & Methods              & Times/h & Dolly               & Selflnst            & VicunaEval          & S-NI                & Average             & Improv. \\
+\midrule
+\multicolumn{1}{c}{\multirow{3}{*}{Teacher}} & \multicolumn{1}{c}{Qwen 2.5-7B} & \multirow{3}{*}{SFT} &         & 28.71±0.31          & 26.01±0.43          & 21.32±0.48          & 42.56±0.32          & 29.65±0.39          &         \\
+\multicolumn{1}{c}{}                         & \multicolumn{1}{c}{LLama3}      &                      &         & 32.05±0.38          & 25.04±0.71          & 20.68±0.47          & 40.73±0.29          & 29.63±0.46          &         \\
+\multicolumn{1}{c}{}                         & \multicolumn{1}{c}{Mistral}     &                      &         & 31.46±0.34          & 25.15±0.73          & 20.57±0.29          & 37.56±0.40          & 28.69±0.44          &         \\
+\midrule
+\multirow{9}{*}{Qwen 2.5}                    & \multirow{3}{*}{GPT2-120M}      & MinED                & 6.5     & 20.55±0.15          & 10.88±0.36          & 14.90±0.63          & 22.12±0.36          & 17.11±0.38          & 3.48\%  \\
+                                             &                                 & ULD                  & 2.5     & 20.88±0.56          & 11.02±0.33          & 15.45±0.36          & 21.24±0.37          & 17.15±0.41          & 3.27\%  \\
+                                             &                                 & GLD                  & 3.8     & 21.38±0.38          & \textbf{11.34±0.42} & \textbf{15.73±0.15} & \textbf{22.38±0.30} & \textbf{17.58±0.31} & -       \\
+                                             & \multirow{3}{*}{OPT-350m}       & MinED                & 5.0     & 22.62±0.34          & 12.37±0.45          & 15.52±0.30          & 21.99±0.12          & 18.13±0.30          & 0.73\%  \\
+                                             &                                 & ULD                  & 4.5     & 22.36±0.29          & 11.38±0.50          & 14.61±0.36          & 21.80±0.59          & 17.54±0.44          & 4.11\%  \\
+                                             &                                 & GLD                  & 5.0     & 22.80±0.48          & \textbf{12.61±0.54} & \textbf{15.77±0.67} & 21.85±0.33          & \textbf{18.26±0.51} & -       \\
+                                             & \multirow{3}{*}{Bloomz-560m}    & MinED                & 4.2     & \textbf{22.86±0.56} & 11.78±0.34          & \textbf{14.82±0.39} & 22.83±0.30          & 18.07±0.40          & 1.37\%  \\
+                                             &                                 & ULD                  & 5.2     & 22.51±0.32          & 12.48±0.44          & 14.08±0.45          & 22.82±0.21          & 17.97±0.36          & 1.93\%  \\
+                                             &                                 & GLD                  & 4.9     & 22.83±0.16          & \textbf{12.52±0.14} & 14.74±0.31          & 23.19±0.13          & \textbf{18.32±0.19} & -       \\
+\midrule
+\multirow{9}{*}{LLama3}                      & \multirow{3}{*}{GPT2-120M}      & MinED                & 2.9     & 19.93±0.36          & 10.15±0.24          & 14.38±0.43          & 19.78±0.23          & 16.06±0.32          & 3.44\%  \\
+                                             &                                 & ULD                  & 2.5     & 19.66±0.49          & 9.84±0.31           & 14.59±0.50          & 19.77±0.14          & 15.97±0.36          & 4.06\%  \\
+                                             &                                 & GLD                  & 2.8     & \textbf{20.97±0.28} & \textbf{10.81±0.55} & 14.97±0.37          & \textbf{20.09±0.24} & \textbf{16.69±0.36} & -       \\
+                                             & \multirow{3}{*}{OPT-350m}       & MinED                & 5.3     & 21.25±0.27          & 10.06±0.38          & \textbf{15.28±0.41} & 19.04±0.32          & 16.41±0.35          & 2.18\%  \\
+                                             &                                 & ULD                  & 4.4     & 21.08±0.56          & 9.85±0.42           & 14.89±0.50          & 19.13±0.58          & 16.24±0.52          & 3.25\%  \\
+                                             &                                 & GLD                  & 4.7     & \textbf{22.01±0.31} & \textbf{10.97±0.33} & 14.87±0.46          & 19.21±0.25          & \textbf{16.77±0.34} & -       \\
+                                             & \multirow{3}{*}{Bloomz-560m}    & MinED                & 4.7     & 20.16±0.21          & 10.81±0.16          & 13.36±0.44          & 20.62±0.17          & 16.24±0.25          & 2.97\%  \\
+                                             &                                 & ULD                  & 5.3     & 20.69±0.49          & 10.50±0.64          & 12.97±0.61          & 20.71±0.18          & 16.22±0.48          & 3.10\%  \\
+                                             &                                 & GLD                  & 5.5     & \textbf{21.07±0.47} & 10.82±0.17          & 13.41±0.29          & \textbf{21.58±0.24} & \textbf{16.72±0.29} & -       \\
+\midrule
+\multirow{9}{*}{Mistral}                     & \multirow{3}{*}{GPT2-120M}      & MinED                & 2.9     & 20.47±0.62          & 10.52±0.79          & 15.36±0.27          & 20.59±0.54          & 16.74±0.56          & 8.34\%  \\
+                                             &                                 & ULD                  & 2.6     & 20.00±0.52          & 10.53±0.81          & 15.29±0.20          & 20.57±0.16          & 16.60±0.42          & 9.23\%  \\
+                                             &                                 & GLD                  & 2.6     & \textbf{21.90±0.31} & \textbf{11.89±0.41} & 15.99±0.31          & \textbf{22.74±0.27} & \textbf{18.13±0.33} & -       \\
+                                             & \multirow{3}{*}{OPT-350m}       & MinED                & 3.1     & 22.67±0.29          & 11.96±0.74          & 15.85±0.65          & 22.55±0.20          & 18.26±0.47          & 3.63\%  \\
+                                             &                                 & ULD                  & 2.3     & 22.45±0.38          & 11.19±0.88          & 15.41±0.60          & 23.17±0.32          & 18.06±0.55          & 4.79\%  \\
+                                             &                                 & GLD                  & 2.8     & \textbf{23.72±0.36} & \textbf{12.73±0.30} & 15.14±0.53          & \textbf{24.11±0.28} & \textbf{18.92±0.36} & -       \\
+                                             & \multirow{3}{*}{Bloomz-560m}    & MinED                & 3.9     & 22.73±0.18          & 12.30±0.37          & 15.58±0.16          & 23.97±0.13          & 18.65±0.21          & 2.49\%  \\
+                                             &                                 & ULD                  & 3.4     & 22.21±0.40          & 12.23±0.55          & 15.11±0.39          & 23.64±0.37          & 18.30±0.43          & 4.44\%  \\
+                                             &                                 & GLD                  & 3.7     & 23.22±0.38          & \textbf{12.87±0.49} & \textbf{15.92±0.29} & \textbf{24.43±0.11} & \textbf{19.11±0.32} & -  \\
+\bottomrule
+\end{tabular}}
+\label{tab:distillation-results}
+\end{table}
+
+Table~\ref{tab:distillation-results} presents a comprehensive comparison of GLD against prior distillation baselines across a wide range of teacher–student pairs. Across all 27 configurations (3 teachers × 3 students × 3 methods), GLD achieves the highest average accuracy in nearly all cases, consistently outperforming both MinED and ULD.
+
+Notably, even when distilling into extremely lightweight students such as GPT2-120M, GLD shows robust generalization on challenging reasoning datasets like SelfInst and VicunaEval. For instance, when distilled from Mistral to GPT2, GLD yields an average gain of +1.39 over ULD and +1.39 over MinED, despite requiring fewer GPU hours than ULD. Similarly, from LLaMA3 to OPT-350M, GLD improves +0.53 over the best baseline with competitive efficiency.
+
+This performance shows that GLD’s structure-aware objective can preserves inter-token relationships critical for multi-step and relational inference, particularly impactful for small-capacity models where token-level alignment alone often fails. Compared to ULD, which aligns logits dimension-wise using approximated Wasserstein distance, GLD additionally distills cross-dimensional co-activations via logit graphs, serving as a richer supervisory signal. Its effectiveness across diverse teachers (Qwen, LLaMA3, Mistral) and architectures (GPT-style, OPT, Bloomz) highlights GLD’s compatibility with heterogeneous generation styles and token spaces.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+
+
+
+\end{document}

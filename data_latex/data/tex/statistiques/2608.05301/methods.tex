@@ -1,0 +1,424 @@
+We study three algorithms built on two summary properties of the posterior
+distribution: its \textit{location} (how far the estimate sits from the null,
+conveying the effect size) and its \textit{width} (how uncertain that estimate
+is)\footnote{Here \textit{epistemic uncertainty} means the uncertainty in our
+knowledge about the true value of a parameter, as opposed to
+\textit{aleatory uncertainty}, which is the inherent variability of the system
+being studied.}.
+Location is formalised by where the posterior credible interval sits relative to a
+pre-specified equivalence region around the null; width by how broad that interval is.
+Together they inform a shared Decision Rule that all three algorithms apply once
+their respective stopping criteria are met.
+
+Section~\ref{sec:shared_components} introduces the shared inference components,
+namely the ROPE, the HDI, and the Decision Rule, that all three algorithms apply
+identically.
+Section~\ref{sec:sequential_stopping_algorithms} describes the three algorithms,
+which differ only in their stopping criteria.
+Section~\ref{sec:expected_stop_iteration} derives the expected stopping iteration for
+precision-based methods analytically.
+Section~\ref{sec:experimental_design} details the simulation design used to evaluate
+and compare all three algorithms.
+
+\subsection{Shared Components}\label{sec:shared_components}
+
+\subsubsection{Effect Size by Region of Practical Equivalence (ROPE)}\label{sec:rope}
+
+A common misconception in hypothesis testing is that a ``statistically significant'' outcome is sufficient for real-world decision-making. In practice, one must consider the \textit{effect size} \citep{cohen1988}: how large is the difference, not merely whether it is detectable. For example, medical research requires a \textit{minimal clinically important difference} (MCID), the smallest change that a patient or clinician would consider meaningful, for an outcome to justify a change in treatment \citep{jaeschke1989}.
+
+Consider a hypothetical scenario where a researcher examines whether a therapeutic
+differs in impact by gender.
+Even if the data yield a ``statistically significant'' result (say, the drug is
+72.1\% beneficial for males and 72.3\% for females), a practitioner may consider
+this equivalent for all practical purposes.
+Hence, the researcher should define in advance a pre-specified equivalence margin
+around the null hypothesis.
+
+One principled way to operationalise effect size is the
+\textit{Region of Practical Equivalence} (ROPE; \citealt{kruschke2011}).
+The ROPE is defined as an area around the null value considered ``similar enough to the null hypothesis''
+such that if the true value is within this area, it is effectively the same as the null hypothesis.
+
+The appropriate ROPE width is domain-specific: a board game manufacturer requires
+dice to be fair to a reasonable standard, but not to a precision indistinguishable
+to a casual player; conversely, a casino requires a much stricter tolerance (a narrower
+ROPE) to ensure regulatory compliance and fair play.
+Appendix~\ref{app:practical_guidance} discusses principled approaches for setting
+the ROPE, including domain standards such as the MCID and bioequivalence guidelines,
+and robustness checks across a range of ROPE widths when no domain standard exists.
+
+\subsubsection{Highest Density Interval (HDI)}\label{sec:precision_hdi}
+
+To quantify the uncertainty in our estimate we use the \textit{credible interval},
+the Bayesian analogue of the frequentist confidence interval:
+the region of the parameter space that contains a specified fraction of the posterior mass
+(e.g.\ 95\%).
+Several rules exist for selecting which region to report; the two most common are the
+\textit{Equal-Tailed Interval} (ETI) and the \textit{Highest Density Interval} (HDI)
+(see Appendix~\ref{app:hdi} for their formal definitions).
+
+
+The HDI has a natural geometric interpretation: imagine drawing a horizontal line across
+the posterior density curve and slowly lowering it from the peak. The line intersects the
+curve at two points, enclosing an area underneath. The HDI is the interval between those
+two intersection points at the moment the enclosed area first reaches the target mass
+(e.g.\ 95\%). Because the line is horizontal, every point inside the interval sits on a
+portion of the curve that is at least as tall as any point outside — hence \textit{highest
+density}. For a symmetric, bell-shaped posterior this coincides with the ETI (equal tails),
+but for a skewed posterior the HDI is noticeably shorter.
+
+Throughout this work we use the HDI at the 95\% level to remain comparable with traditional
+frequentist hypothesis testing.\footnote{\cite{kruschke2015doing} notes that for numerical posteriors
+obtained via Markov Chain Monte Carlo (MCMC), 95\% HDI estimation requires at least 10{,}000 samples; a slightly lower
+level such as 94\% is recommended for fewer samples. \cite{mcelreath2016} advocates 89\%
+(the highest prime below 100, to underscore the arbitrariness of any threshold). Because we employ analytical
+posteriors in our experiments (Section~\ref{sec:experimental_design}), sampling noise is not a
+concern and 95\% is unambiguous; practitioners relying on sampled (e.g., MCMC-based) posteriors
+should consider the lower thresholds noted above.}
+
+\subsubsection{The Decision Rule}\label{sec:decision_criterion}
+
+We distinguish between the \textit{Stopping Rule} (when to stop collecting data)
+and the \textit{Decision Rule} (what to conclude once stopped). While the three algorithms
+discussed later differ in their \textit{stopping} criteria, they all share an identical
+Decision Rule.
+
+The decision is determined solely by the
+relationship between the HDI and the ROPE.
+Let ${\rm ROPE} = [{\rm ROPE}_{\rm min}, {\rm ROPE}_{\rm max}]$ and the posterior HDI limits be
+$[{\rm HDI}_{\rm min}, {\rm HDI}_{\rm max}]$,
+we define three outcomes based on their relative positions:
+
+\begin{enumerate}[label=(\alph*)]
+    \item \textit{Accept Null}: The HDI is completely \textit{inside} the ROPE. \\
+    $({\rm ROPE}_{\rm min} \leq {\rm HDI}_{\rm min}) \land ({\rm HDI}_{\rm max} \leq {\rm ROPE}_{\rm max})$
+    \item \textit{Reject Null}: The HDI is completely \textit{outside} the ROPE. \\
+    $ ({\rm HDI}_{\rm max} < {\rm ROPE}_{\rm min}) \lor ({\rm ROPE}_{\rm max} < {\rm HDI}_{\rm min} )$
+    \item \textit{Inconclusive}: The HDI \textit{straddles} the ROPE boundary. \\ Otherwise.
+\end{enumerate}
+
+The interpretation of these outcomes, particularly what it means to \textit{accept}
+the null in a Bayesian framework, differs meaningfully from the frequentist convention
+and is worth examining carefully; we do so in Section~\ref{sec:accept_reject_meaning}.
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=1\textwidth]{handpicked_sequence_posteriors_dpi350.png}
+    \caption{Posteriors at three stop iterations from a hand-picked experiment
+    illustrating the three possible decision outcomes.
+    Shaded areas are 95\% HDIs; their widths $\omega_{\rm HDI}$ are annotated.
+    Vertical dashed lines mark the ROPE boundaries.
+    \textit{Top} (iteration 126): HDI fully outside the ROPE $\rightarrow$ Reject $\theta_{\rm null}$.
+    \textit{Middle} (iteration 598): HDI straddles the ROPE $\rightarrow$ Inconclusive.
+    \textit{Bottom} (iteration 804): HDI fully within the ROPE $\rightarrow$ Accept $\theta_{\rm null}$.
+    See Figure~\ref{fig:iterations} for the full sequence of iterations for this experiment.
+    }
+    \label{fig:posteriors}
+\end{figure}
+
+Figure~\ref{fig:posteriors} illustrates all three outcomes using a hand-picked Bernoulli
+experiment ($\theta_{\rm null}=0.5$, ${\rm ROPE}_{\rm min}^{\rm max}=[0.45,0.55]$).
+In the top panel, a stop at iteration 126 finds the 95\% HDI fully outside the ROPE, leading to rejection of the null hypothesis.
+In the middle panel, a stop at iteration 598 finds the HDI straddling the ROPE boundary, resulting in an inconclusive decision.
+In the bottom panel, a stop at iteration 804 finds the 95\% HDI fully within the ROPE, allowing us to accept $\theta_{\rm null}$.
+
+Figure~\ref{fig:posteriors} illustrates that the decision outcome may be iteration-dependent. An inconclusive outcome implies that the data collected is insufficient to justify a decision. In a live setting, a human-in-the-loop (or an algorithm, common in automated high-frequency environments) would need to either conduct a risk assessment or collect more data. Since risk assessment is highly contextual, we defer that discussion and focus on the necessity of collecting more data to avoid inconclusive outcomes.
+
+Algorithm \ref{alg:decision_criterion} further formalises this logic.
+
+\begin{algorithm}
+    \caption{The Decision Rule}\label{alg:decision_criterion}
+    \begin{algorithmic}
+    \Require $\mathrm{ROPE}_\mathrm{min}$, $\mathrm{ROPE}_\mathrm{max}$, $\mathrm{HDI}_\mathrm{min}$, $\mathrm{HDI}_\mathrm{max}$
+    \If{$(\mathrm{ROPE}_\mathrm{min} \leq \mathrm{HDI}_\mathrm{min}) \ \& \ (\mathrm{HDI}_\mathrm{max} \leq \mathrm{ROPE}_\mathrm{max})$}
+        \State Decision = Accept $\theta_{\rm null}$ \Comment{HDI completely within ROPE}
+    \ElsIf{$\mathrm{ROPE}_\mathrm{max}<\mathrm{HDI}_\mathrm{min}$}
+        \State Decision = Reject $\theta_{\rm null}$ \Comment{HDI completely outside ROPE; $\theta_{\rm null}<\hat\theta$}
+    \ElsIf{$\mathrm{HDI}_\mathrm{max}< \mathrm{ROPE}_\mathrm{min}$}
+        \State Decision = Reject $\theta_{\rm null}$ \Comment{HDI completely outside ROPE; $\hat\theta<\theta_{\rm null}$}
+    \Else
+    \State Decision = Inconclusive  \Comment{HDI straddles ROPE}
+    \EndIf \\
+    \Return Decision
+    \end{algorithmic} 
+\end{algorithm}
+
+\subsubsection{Interpreting Accept and Reject Decisions}\label{sec:accept_reject_meaning}
+
+A key conceptual distinction between Bayesian and frequentist inference lies in what it
+means to \textit{accept} the null hypothesis. In NHST, a small p-value justifies
+\textit{rejecting} the null; a large p-value only means there is insufficient evidence
+to reject it. One cannot formally \textit{accept} the null, only ``fail to reject'' it.
+Absence of evidence is not evidence of absence: NHST can conclusively reject
+the null but cannot deliver its symmetric counterpart, a positive verdict that
+the null actually holds.
+
+The HDI+ROPE framework resolves this asymmetry: because the ROPE encodes a pre-specified
+notion of practical equivalence, each verdict carries positive evidential weight:
+Accept and Reject are both affirmative findings, not merely the presence or absence of a
+signal.\footnote{Note that Bayes Factors can also yield positive evidence for the null, but do so
+by comparing marginal likelihoods rather than by assessing practical equivalence
+(see Appendix~\ref{app:bayes_factors}).} The HDI+ROPE framework's Accept verdict is therefore
+distinctive in being grounded in a pre-specified effect-size criterion.
+
+Neither Accept nor Reject identifies the sample estimate $\hat\theta$ as the
+true value; both are statements about $\theta_{\rm null}$, not $\hat\theta$. The posterior
+distributes probability continuously across parameter space, and the HDI+ROPE framework distils
+this into a verdict by asking whether the bulk of posterior mass lies inside, outside, or
+straddling the ROPE. The full posterior remains available for a more nuanced reading: in
+particular, a ``Reject null'' decision does not endorse $\hat\theta$ as the true value;
+$\hat\theta$ is the mode (or mean) of the posterior, and the full distribution
+quantifies the uncertainty surrounding it.
+
+The panels of Figure~\ref{fig:posteriors} make this concrete under the default setup
+($\theta_{\rm null}=0.5$, $\mathrm{ROPE}_{\rm max}^{\rm min}=[0.45,\,0.55]$):
+
+\begin{enumerate}[label=(\alph*)]
+  \item Bottom panel (iteration 804, Accept):
+        $\hat\theta=0.515$ and the 95\% HDI is
+        $[0.480,\,0.549]$.
+        Both bounds lie inside the ROPE, so we accept
+        $\theta_{\rm null}=0.5$: positive evidence that the true rate is practically
+        equivalent to $0.5$. We are \textit{not} claiming the true rate equals $0.515$.
+  \item Top panel (iteration 126, Reject):
+        $\hat\theta=0.635$ and the 95\% HDI is
+        $[0.551,\,0.718]$.
+        Both bounds lie above $\mathrm{ROPE}_{\rm max}=0.55$, so we reject
+        $\theta_{\rm null}=0.5$: positive evidence that the true rate is meaningfully
+        above $0.5$. We are \textit{not} claiming the true rate equals $0.635$.
+\end{enumerate}
+
+Two error types follow directly.
+A \textit{false-accept} arises when a conclusive Accept verdict is reached but
+$\theta_{\rm true}$ lies outside the ROPE, the HDI+ROPE framework analogue of a false
+negative, since the data appear to confirm equivalence when it does not hold.
+A \textit{false-reject} arises when a conclusive Reject verdict is reached but
+$\theta_{\rm true}$ lies inside the ROPE, the analogue of a false positive, since
+the data appear to refute a null that is in fact practically true.
+Their rates across $\theta_{\rm true}$ values are characterised in
+Section~\ref{sec:results}.
+
+\subsection{Sequential Stopping Algorithms}\label{sec:sequential_stopping_algorithms}
+
+Table \ref{tab:comparison} provides a high-level comparison of the three algorithms.
+Each algorithm shares the same Decision Rule (Algorithm \ref{alg:decision_criterion})
+but differs in when it triggers the stop condition.
+Because the term ``HDI+ROPE'' serves two distinct roles in this work, we use distinct names
+throughout. \textit{HDI+ROPE framework} denotes the shared Decision Rule applied
+identically by all three algorithms (Section~\ref{sec:decision_criterion}).
+\textit{HDI+ROPE algorithm} (equivalently, \textit{HDI+ROPE stopping rule}) denotes
+the specific sequential stopping algorithm described in
+Section~\ref{sec:hdi_rope_stopping}.
+
+\begin{table}[h!]
+    \begin{center}
+      \begin{tabular}{l|c|l|l}
+        \textbf{Algorithm} & \textbf{Key Input} & \textbf{Stop Criterion} &  \textbf{Precision/Location Coupling} \\
+        \hline
+        HDI+ROPE & $N_\mathrm{min}$ & Decision is conclusive & Location only \\
+        Precision is the Goal & $\omega_{\rm Goal}$ & $\omega_{\rm HDI}$ $\le$ $\omega_{\rm Goal}$ & Precision then Location \\
+        Decisive PitG & $\omega_{\rm Goal}$ & $\omega_{\rm HDI}$ $\le$ $\omega_{\rm Goal}$ AND & Precision $+$ Location \\
+         & & Decision is conclusive & \\
+      \end{tabular}
+      \caption{Comparison of stopping algorithms. `Decision is conclusive' means the HDI
+      is fully inside or fully outside the ROPE. $\omega_{\rm HDI}$ denotes the observed
+      width of the HDI and $\omega_{\rm Goal}$ denotes the target precision width.}
+      \label{tab:comparison}
+    \end{center}
+  \end{table}
+
+The Key Input column identifies the characteristic parameter that must be determined
+before data collection: $N_{\rm min}$ for the HDI+ROPE algorithm (sensitive to early outliers and
+therefore requiring a minimum sample size, e.g.\ 30) and $\omega_{\rm Goal}$ for the
+precision methods, where by definition $\omega_{\rm Goal}$ must be narrower than or
+equal to the ROPE width $\Delta_{\rm ROPE}$ to allow the HDI to fit fully within the ROPE.
+
+The table also excludes two universal parameters required by all three algorithms:
+\begin{enumerate}[label=(\alph*)]
+    \item The ROPE boundaries $\mathrm{ROPE}_\mathrm{min}$ and $\mathrm{ROPE}_\mathrm{max}$,
+    with $\Delta_\mathrm{ROPE} \equiv \mathrm{ROPE}_\mathrm{max} - \mathrm{ROPE}_\mathrm{min}$.
+    \item $N_\mathrm{max}$ (Final Budget): The maximum sample size or budget limit.
+\end{enumerate}
+
+All three algorithms below assume one data point is collected per iteration
+(Algorithms \ref{alg:hdi_rope}--\ref{alg:dpitg});
+the increment step ($N \mathrel{+}= 1$) can be replaced by a batch size to
+accommodate grouped collection.
+
+\subsubsection{HDI+ROPE Stopping: Location Only}\label{sec:hdi_rope_stopping}
+
+The HDI+ROPE algorithm stops data collection as soon as the posterior's location allows for a decisive acceptance or rejection of the null hypothesis. It does not explicitly demand a specific degree of precision (width), only that the HDI does not straddle the ROPE boundary.
+
+Algorithm \ref{alg:hdi_rope} details the procedure. Note the inclusion of $N_\mathrm{min}$
+(minimal sample size); this is critical because, with small sample sizes, the HDI can
+fluctuate wildly and accidentally fall entirely within or outside the ROPE due to random noise
+(aleatoric uncertainty)\footnote{Note the distinction from the epistemic uncertainty discussed
+earlier: the HDI \textit{width} $\omega_{\rm HDI}$ is epistemic: it reflects how much we do not yet know about
+$\theta$ and shrinks as $N$ grows. The HDI \textit{location}, however, varies across experiments
+due to the randomness of which particular draws are observed; at small $N$ this aleatoric
+variability dominates, and the HDI can wander into a misleadingly decisive position.} rather
+than true effect.
+
+\begin{algorithm}
+    \caption{HDI+ROPE algorithm (highlighted: the stopping condition)}\label{alg:hdi_rope}
+    \begin{algorithmic}
+    \Require $N_\mathrm{min}$, $N_\mathrm{max}$, $\theta_{\rm null}$, $\mathrm{ROPE}_\mathrm{min}$, $\mathrm{ROPE}_\mathrm{max}$
+    \State Stop = False
+    \State Decision = Inconclusive
+    \State N = 0
+    \While{(Stop = False \& $N < N_\mathrm{max}$)} 
+    \State N += 1 \Comment{collect another data point}
+    \State Update $\hat\theta$, $P(\theta|\hat\theta)$ \Comment{update posterior}
+    \State $\mathrm{HDI}_\mathrm{min}, \ \mathrm{HDI}_\mathrm{max}  \gets P(\theta|\hat\theta)$
+    \If{$N \ge N_\mathrm{min}$}
+        \State Decision = Decision Algorithm($\mathrm{ROPE}_\mathrm{min}, \mathrm{ROPE}_\mathrm{max}, \mathrm{HDI}_\mathrm{min}, \mathrm{HDI}_\mathrm{max}$)
+        \If{Decision in \{Accept $\theta_{\rm null}$, Reject $\theta_{\rm null}$\}}
+            \State \HiLi Stop = True \Comment{Stopping depends on decisive Decision}
+        \EndIf
+    \EndIf
+    \EndWhile
+    \end{algorithmic}
+\end{algorithm}
+
+This method serves as the coupled baseline throughout: lacking a precision requirement,
+it is susceptible to false-reject and false-accept decisions, as demonstrated in
+Section~\ref{sec:results}.
+
+\subsubsection{Precision is the Goal Stopping: Precision then Decision}\label{sec:pitg}
+
+Introduced by \cite{kruschke2015doing}, Precision is the Goal shifts the stopping condition
+from the \textit{decision} to the \textit{precision} (width) of the estimate.
+Data collection stops when the width of the HDI is narrower than a pre-specified Goal
+(e.g., $\omega_{\rm Goal}=0.8 \Delta_{\rm ROPE}$).
+
+Algorithm \ref{alg:pitg} shows that this method separates stopping from decision:
+stopping depends on width alone, while the decision depends on location.
+As we later demonstrate in Section \ref{sec:results}, this can lead to situations where
+the algorithm stops (precision reached) but the result is inconclusive (posterior straddles the ROPE).
+
+\begin{algorithm}
+    \caption{Precision is the Goal (highlighted: the stopping condition)}\label{alg:pitg}
+    \begin{algorithmic}
+    \Require $\omega_\mathrm{Goal}$, $N_\mathrm{max}$, $\theta_{\rm null}$, $\mathrm{ROPE}_\mathrm{min}$, $\mathrm{ROPE}_\mathrm{max}$
+    \State Stop = False
+    \State Decision = Inconclusive
+    \State N = 0
+    \While{(Stop = False \& $N < N_\mathrm{max}$)}
+    \State N += 1 \Comment{collect another data point}
+    \State Update $\hat\theta, P(\theta|\hat\theta)$ \Comment{update posterior}
+    \State $\mathrm{HDI}_\mathrm{min}, \mathrm{HDI}_\mathrm{max} \gets P(\theta|\hat\theta)$
+    \State $\omega_{\rm HDI} = \mathrm{HDI}_\mathrm{max} - \mathrm{HDI}_\mathrm{min}$
+    \If{$\omega_{\rm HDI} \le$ $\omega_\mathrm{Goal}$}
+         \State \HiLi Stop = True \Comment{Stopping depends on Precision $\omega_{\rm HDI}$ regardless of Decision}
+         \State Decision = Decision Algorithm($\mathrm{ROPE}_\mathrm{min}, \mathrm{ROPE}_\mathrm{max}, \mathrm{HDI}_\mathrm{min}, \mathrm{HDI}_\mathrm{max}$)  
+    \EndIf
+    \EndWhile
+    \end{algorithmic}
+\end{algorithm}
+
+\subsubsection{Decisive Precision is the Goal Stopping: Precision and Decision}\label{sec:decisive_pitg}
+
+We propose Decisive Precision is the Goal, a conservative variant of PitG,
+to mitigate the high rate of inconclusive results. Unlike PitG, this method joins stopping
+and decision: it stops strictly when \textit{both} the precision goal is met \textit{AND}
+a decisive decision can be made.
+
+
+As seen in Algorithm \ref{alg:dpitg}, strictly enforcing both conditions ensures that we do not stop in an indecisive state, potentially at the cost of collecting more data (up to $N_\mathrm{max}$).
+
+\begin{algorithm}
+    \caption{Decisive Precision is the Goal (highlighted: the stopping condition)}\label{alg:dpitg}
+    \begin{algorithmic}
+    \Require $\omega_\mathrm{Goal}$, $N_\mathrm{max}$, $\theta_{\rm null}$, $\mathrm{ROPE}_\mathrm{min}$, $\mathrm{ROPE}_\mathrm{max}$
+    \State Stop = False
+    \State Decision = Inconclusive
+    \State N = 0
+    \While{(Stop = False \& $N < N_\mathrm{max}$)}
+    \State N += 1 \Comment{collect another data point}
+    \State Update $\hat\theta, P(\theta|\hat\theta)$ \Comment{update posterior}
+    \State $\mathrm{HDI}_\mathrm{min}, \ \mathrm{HDI}_\mathrm{max}  \gets P(\theta|\hat\theta)$ 
+    \State $\omega_{\rm HDI} = \mathrm{HDI}_\mathrm{max} - \mathrm{HDI}_\mathrm{min}$
+    \If{$\omega_{\rm HDI} \le$ $\omega_\mathrm{Goal}$}
+        \State Decision = Decision Algorithm($\mathrm{ROPE}_\mathrm{min}, \mathrm{ROPE}_\mathrm{max}, \mathrm{HDI}_\mathrm{min}, \mathrm{HDI}_\mathrm{max}$) 
+        \If{Decision in \{Accept $\theta_{\rm null}$, Reject $\theta_{\rm null}$\}} 
+            \State \HiLi Stop = True \Comment{Stopping depends on Precision $\omega_{\rm HDI}$ and Decision}
+        \EndIf
+    \EndIf
+    \EndWhile
+    \end{algorithmic}
+\end{algorithm}
+
+\subsection{Expected Precision-Based Stop Iteration}\label{sec:expected_stop_iteration}
+
+For models where the posterior concentrates around the true parameter as data accumulate,
+a property of all regular parametric families, guaranteed asymptotically by the
+Bernstein--von Mises theorem \citep{vandervaart1998}, the HDI width shrinks
+proportionally to $N^{-1/2}$.
+This makes the expected minimum stopping iteration of precision-based algorithms predictable.
+Under a normal approximation (central limit theorem; CLT), the expected sample size to achieve a precision goal
+$\omega_{\rm goal}$ is proportional to the per-observation variance $V(\theta)$ of the
+estimator (see Appendix~\ref{app:expected_stop} for the full derivation).
+As a concrete example, for a Bernoulli rate parameter $\theta$ as in the setting introduced
+in Section~\ref{sec:experimental_design}, $V(\theta) \propto \theta(1-\theta)$, giving
+\begin{equation}\label{eq:pitg_stop_iteration}
+N_{\rm goal}(\theta,\omega_{\rm goal}) = \frac{4 z_{*}^{2}}{\omega_{\rm goal}^{2}}\,\theta(1-\theta) - 1,
+\end{equation}
+where $z_{*}$ is the critical value for the chosen credibility level (e.g.,
+$z_{*}\approx 1.96$ for 95\%). 
+Because $\theta(1-\theta)$ is maximised at $\theta=0.5$, the fair-coin scenario demands
+the largest sample for any given precision goal, and $N_{\rm goal}$ decreases monotonically
+as $\theta$ approaches $0$ or $1$.
+Figure~\ref{fig:min_sample_by_goal} illustrates this dependence
+for the Bernoulli case across $\omega_{\rm goal}$.
+
+\begin{figure}[h!]
+  \centering
+  \includegraphics[width=1\textwidth]{ngoal_by_theta_dpi350.png}
+  \caption{Expected minimum precision-based stop iteration
+  $N_{\rm goal}(\theta, \omega_{\rm goal})$ as a function of
+  $\theta$ for several values of $\omega_{\rm goal}$ in the Bernoulli case.
+  (Equation~\ref{eq:pitg_stop_iteration})
+  }
+  \label{fig:min_sample_by_goal}
+\end{figure}
+
+This also illuminates DPitG's relationship to the HDI+ROPE algorithm: because the
+precision condition must be satisfied before any decision is possible, DPitG behaves
+approximately as the HDI+ROPE algorithm with $N_{\rm min} \approx N_{\rm goal}$, replacing
+the ad-hoc floor (e.g.\ $N_{\rm min}=30$) with a precision-derived bound.
+
+For completeness, we mention that for continuous outcomes, $V(\theta)$ is replaced by the
+estimand variance $\sigma^2$; see Appendix~\ref{app:expected_stop} for the full
+derivation, including a Student-$t$ variant for small samples.
+
+\subsection{Experimental Design}\label{sec:experimental_design}
+
+To evaluate and compare the performance of the three algorithms,
+we employ a synthetic data simulation based on Bernoulli trials (dichotomous data).
+While these methods are applicable to continuous data, we focus on the Bernoulli case
+to maintain comparability with the work of \cite{kruschke2015doing}.\footnote{We follow
+the setup of \S13.3 of \cite{kruschke2015doing} and expand upon it with a broader
+range of $\theta_{\rm true}$ scenarios, systematic performance metrics across $M=5{,}000$
+simulations, and visualisations designed to directly compare all three algorithms.}
+
+We generate $M=5,000$ independent sequences of $N_{\rm max}=1,500$ trials each.
+This choice exceeds $N_{\rm goal}$ at the most demanding setting tested ($\omega_{\rm goal}=0.06$,
+$\theta_{\rm true}=0.5$), where Equation~\ref{eq:pitg_stop_iteration} gives $N_{\rm goal}\approx 1{,}067$,
+ensuring that DPitG can reach its stopping criterion in the vast majority of experiments.
+
+We test multiple scenarios for the ground truth probability $0.5 \le \theta_{\rm true} \le 0.8$
+against a null hypothesis of $\theta_{\rm null}=0.5$, including the fair-coin case
+$\theta_{\rm true}=\theta_{\rm null}=0.5$.
+\subsubsection*{Simulation Configuration}
+
+Unless stated otherwise, we use the following default parameters, chosen to reflect realistic experimental conditions (e.g., opinion polling):
+
+\begin{enumerate}[label=(\alph*)]
+    \item ROPE: Considering an effect size of $\pm 0.05$ around the $\theta_{\rm null}$, we define $\mathrm{ROPE}_{\rm max}^{\rm min}=[0.45,\,0.55]$. ($\Delta_{\rm ROPE}=0.1$)
+    \item Precision Goal $\omega_{\rm goal}=0.08$: I.e, we set $\omega_{\rm goal} = 0.8 \cdot \Delta_{\rm ROPE}$.
+    \item \textbf{Minimum Sample Size ($N_{\rm min}=30$)}: A practical lower bound to guard against misleadingly decisive stops at small $N$, where aleatoric variability can drive the HDI into or out of the ROPE before sufficient data have accumulated (see Section~\ref{sec:hdi_rope_stopping}).
+    This parameter is required for the HDI+ROPE algorithm but not the precision-based algorithms.
+    \item \textbf{Maximum Sample Size ($N_{\rm max}=1,500$)}: An upper bound for budgetary considerations. Experiments that are not decisive by this iteration are flagged as \textit{indecisive}.
+\end{enumerate}
+
+In the following section, we present the results of these simulations, first under these default settings and subsequently by varying key parameters to explore robustness.

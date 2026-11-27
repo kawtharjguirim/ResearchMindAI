@@ -1,6 +1,6 @@
 import { getSupabase } from "./supabase/client";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 export type ProjectStatus = "in_progress" | "literature_review" | "writing";
 
@@ -39,7 +39,17 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const res = await authFetch(path, init);
+  return (res.status === 204 ? undefined : await res.json()) as T;
+}
+
+// For files (PDF) that an <iframe> cannot load itself, since it cannot send the Authorization header.
+export async function requestBlob(path: string): Promise<Blob> {
+  return (await authFetch(path)).blob();
+}
+
+async function authFetch(path: string, init: RequestInit = {}): Promise<Response> {
   const {
     data: { session },
   } = await getSupabase().auth.getSession();
@@ -67,7 +77,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     } catch {}
     throw new ApiError(res.status, detail);
   }
-  return (res.status === 204 ? undefined : await res.json()) as T;
+  return res;
 }
 
 export const api = {

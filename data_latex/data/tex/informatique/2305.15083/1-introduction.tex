@@ -1,0 +1,25 @@
+\section{Introduction}
+
+The emergence of Large Pretrained Language Models (LLMs) \citep{gpt3,chatgpt} has revolutionized the research of machine translation \citep{hendy2023good,garcia2023unreasonable}. These models have demonstrated remarkable multilingual translation capabilities, without requiring explicit training on parallel corpora. For instance, XGLM, a medium-sized multilingual language model, outperforms supervised models using only several examples as demonstrations \citep{lin-etal-2022-shot}; the cutting-edge LLM GPT4 has been shown to perform comparably to commercial translation systems on multiple language pairs \citep{jiao2023chatgpt}.
+
+Most existing research on LLMs for machine translation focuses on in-context learning (ICL), i.e. taking several parallel sentences as the demonstration to guide LLMs to perform translation \citep{vilar-etal-2023-prompting,agrawal-etal-2023-context,hendy2023good,zhu2023multilingual}. However, these methods rely heavily on the in-context learning ability of LLMs. For smaller models, e.g. models with only 1B or 7B parameters, the relatively weak ICL ability may result in an underestimation of their potential translation ability. 
+
+
+Instead of relying on the ICL abilities, we propose to investigate the ability of LLMs by directly training them to follow translation instructions.
+Inspired by the recent success of instruction tuning~\citep{wei2022finetuned,chung2022scaling}, we organize multilingual translation tasks as different instances of the translation instruction, with each instance corresponding to a specific language pair. By training the LLMs to follow these instructions, i.e.  with \textbf{m}ultilingual \textbf{F}inetuning with \textbf{T}ranslation \textbf{I}nstructions (\methodend),
+it is possible to better elicit translation ability inside LLMs. 
+
+
+Our results show that by training on a mixed dataset of 1,000 sentences per language pair, \method outperforms the 8-shot in-context learning by near 3 BLEU on average, showing a greater potential of LLMs' translation ability than previously demonstrated~\citep{lin-etal-2022-shot}. In addition, we also discuss how \method improves the LLMs and which factors influence the performance.
+
+
+
+To better understand why LLMs could follow these instructions, we design a \method setting where only a subset of the translation instructions, i.e. language pairs, are used for training. Thus LLMs need to generalize their instruction following abilities for those language pairs unseen during \methodend. Surprisingly, \method elicits the translation ability not only for trained language pairs but also for those unseen during instruction training. With further experiments and analyses, we find that LLMs could learn the translation behavior in general by being trained to translate even irrelevant language pairs. It is also interesting that with \methodend, LLMs learn to directly align languages through the use of pivot languages, which enhances the instruction-following ability for unseen language pairs.
+
+
+
+
+
+
+
+
