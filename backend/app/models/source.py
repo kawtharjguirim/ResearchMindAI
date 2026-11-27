@@ -28,6 +28,7 @@ class SourceType(str, enum.Enum):
     video = "video"
     web = "web"
     pdf = "pdf"
+    figure = "figure"   # image importée (texte reconnu par OCR)
 
 
 class SourceStatus(str, enum.Enum):

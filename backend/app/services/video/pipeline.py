@@ -16,7 +16,8 @@ from app.db.session import SessionLocal
 from app.models.source import Chunk, Source, SourceStatus, SourceType
 
 from .chunking import construire_chunks
-from .config import DEPENDANCES, PLANCHER_RERANK_WEB, SEUIL_RERANK_WEB, VIDEOS_DIR
+from .config import (DEPENDANCES, PLANCHER_RERANK_PDF, PLANCHER_RERANK_WEB, SEUIL_RERANK_PDF, SEUIL_RERANK_WEB,
+                     VIDEOS_DIR)
 from .qa import VideoQA
 from .search import Index, encoder_passages
 from .transcription import transcrire
@@ -25,8 +26,11 @@ from app.services.web import WebError, decouper, extraire_texte, telecharger_htm
 from app.services.documents import (
     DOCUMENTS_DIR,
     DocumentError,
+    est_bibliographie,
+    decouper_image,
     decouper_pages,
     lire_pages,
+    lire_texte_image,
 )
 
 
@@ -37,7 +41,7 @@ def dependances_manquantes() -> list[str]:
 
 def chemin_video(source: Source):
     """Fichier stocké de la source : une vidéo, ou un PDF dans son propre dossier."""
-    if source.source_type == SourceType.pdf:
+    if source.source_type in (SourceType.pdf, SourceType.figure):
         return DOCUMENTS_DIR / source.filename
     return VIDEOS_DIR / source.filename
 
@@ -147,7 +151,7 @@ def traiter_source_web(source_id: str) -> None:
 
 
 def traiter_source_document(source_id: str) -> None:
-    """Lit un PDF page par page, puis l'indexe. Ne lève jamais."""
+    """Lit un PDF (texte par page) ou une image (OCR), puis l'indexe. Ne lève jamais."""
     with SessionLocal() as db:
         source = db.get(Source, source_id)
         if source is None:
@@ -155,7 +159,10 @@ def traiter_source_document(source_id: str) -> None:
         try:
             source.status, source.error = SourceStatus.transcribing, ""
             db.commit()
-            chunks = decouper_pages(lire_pages(chemin_video(source)))
+            if source.source_type == SourceType.figure:
+                chunks = decouper_image(lire_texte_image(chemin_video(source)))
+            else:
+                chunks = decouper_pages(lire_pages(chemin_video(source)))
             if not chunks:
                 raise DocumentError("No readable text found. Scanned pages need OCR, which is not available yet.")
             source.status = SourceStatus.indexing
@@ -212,8 +219,13 @@ def oublier(source_id: str) -> None:
 
 def repondre(db, source: Source, question: str) -> dict:
     chunks = db.scalars(select(Chunk).where(Chunk.source_id == source.id).order_by(Chunk.position)).all()
-    # Pages web et PDF : mêmes seuils, car leurs scores de pertinence sont du même ordre.
-    if source.source_type in (SourceType.web, SourceType.pdf):
+    # Pages web et images : seuils web. PDF : seuils plus bas, car leurs scores sont plus faibles.
+    if source.source_type == SourceType.pdf:
+        resume = [c.as_search_chunk() for c in chunks if c.timestamp.endswith("(abstract)")][:1]
+        seuils = {"seuil_rerank": SEUIL_RERANK_PDF, "plancher_rerank": PLANCHER_RERANK_PDF,
+                  "ecarter": est_bibliographie,   # pas de réponse tirée de la bibliographie
+                  "toujours": resume}             # le résumé de l'article reste disponible
+    elif source.source_type in (SourceType.web, SourceType.figure):
         seuils = {"seuil_rerank": SEUIL_RERANK_WEB, "plancher_rerank": PLANCHER_RERANK_WEB}
     else:
         seuils = {}

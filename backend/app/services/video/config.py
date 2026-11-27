@@ -58,6 +58,11 @@ CHEVAUCHEMENT = 1     # segments repris au début du chunk suivant
 SEUIL_RERANK_WEB = 0.5
 PLANCHER_RERANK_WEB = 0.1
 
+# PDF : les scores du reranker sont bien plus bas sur un article scientifique en anglais
+# (0,10 au mieux pour le bon passage). Valeurs à valider sur d'autres PDF.
+SEUIL_RERANK_PDF = 0.005
+PLANCHER_RERANK_PDF = 0.001
+
 # ---------- LLM (Ollama) ----------
 OLLAMA_URL = _env.ollama_url
 MODELE_LLM = "qwen2.5:3b"   # tient entièrement dans les 4 Go de la GTX 1650

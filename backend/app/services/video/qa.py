@@ -186,7 +186,8 @@ class VideoQA:
     """Questions-réponses extractives sur l'index d'une vidéo."""
 
     def __init__(self, index, segments: list[dict] | None = None, langue_video: str | None = None,
-                 seuil_rerank: float = SEUIL_RERANK, plancher_rerank: float = PLANCHER_RERANK):
+                 seuil_rerank: float = SEUIL_RERANK, plancher_rerank: float = PLANCHER_RERANK,
+                 ecarter=None, toujours=None):
         self.index = index
         self.segments = segments
         self.seuil_rerank = seuil_rerank
@@ -194,6 +195,10 @@ class VideoQA:
         code = langue_video or index.chunks[0].get("language") or "fr"
         self.langue = LANGUES.get(code, code)
         self.appels: list[dict] = []
+        # Passages à ne jamais retenir pour répondre (ex. bibliographie d'un article)
+        self.ecarter = ecarter
+        # Passages à garder dans la réponse même s'ils ne sont pas dans les candidats (ex. résumé d'un article)
+        self.toujours = toujours or []
 
     def verifier(self, question: str, passages: list[dict]) -> dict:
         r = llm.chat([{"role": "system", "content": SYSTEME_VERIFICATION},
@@ -241,9 +246,16 @@ class VideoQA:
 
         t0 = time.perf_counter()
         out["resultats"] = self.index.rechercher(question)
+        if self.ecarter:
+            out["resultats"] = [r for r in out["resultats"] if not self.ecarter(r["chunk"]["text"])]
         temps["recherche"] = time.perf_counter() - t0
-        passages = out["passages"] = out["resultats"][:TOP_K]
-        rerank_max = out["resultats"][0]["rerank"]
+        passages = out["resultats"][:TOP_K]
+        for t in self.toujours:
+            if not any(p["chunk"]["chunk_id"] == t["chunk_id"] for p in passages):
+                score = float(self.index.scorer(question, [t["text"]])[0])
+                passages = [{"chunk": t, "rerank": score}] + passages[: TOP_K - 1]
+        out["passages"] = passages
+        rerank_max = max(p["rerank"] for p in passages) if passages else 0.0
 
         # Sous le plancher, le verdict ne dépend pas du LLM : inutile de l'appeler
         if rerank_max < self.plancher_rerank:
