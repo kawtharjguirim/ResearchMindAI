@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AssistantPanel } from "@/components/assistant-panel";
 import { Icon } from "@/components/icons";
 import { Badge, btnSecondary, card, type Tone } from "@/components/ui";
+import { WebView } from "./web-view";
 import { playUrl, videoApi, youtubeId, type AnswerCitation, type Source, type SourceStatus, type TranscriptChunk } from "@/lib/video";
 
 const STATUS: Record<SourceStatus, [string, Tone]> = {
@@ -41,9 +42,11 @@ export function VideoView({ sourceId }: { sourceId: string }) {
         setSource(s);
         if (s.status !== "ready") return;
         const ytId = youtubeId(s.url);
+        // Pas de fichier local pour un lien YouTube ni pour une page web.
+        const sansFichier = ytId !== null || s.source_type === "web";
         const [chunks, link] = await Promise.all([
           videoApi.getTranscript(sourceId),
-          ytId ? Promise.resolve(null) : videoApi.playLink(sourceId),
+          sansFichier ? Promise.resolve(null) : videoApi.playLink(sourceId),
         ]);
         if (cancelled) return;
         setYoutube(ytId);
@@ -105,6 +108,8 @@ export function VideoView({ sourceId }: { sourceId: string }) {
       </div>
     );
   }
+
+  if (source.source_type === "web") return <WebView source={source} passages={transcript} />;
 
   const [statusText, statusTone] = STATUS[source.status];
 

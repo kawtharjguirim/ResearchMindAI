@@ -27,6 +27,7 @@ export function AssistantPanel({
   documentId = "",
   onAsk,
   onJump,
+  linkLabel = "open the paper",
 }: {
   emptyIcon?: Parameters<typeof Icon>[0]["name"];
   emptyTitle: string;
@@ -39,6 +40,8 @@ export function AssistantPanel({
   // has no document_id of its own) can still navigate back to the right source.
   documentId?: string;
   onAsk: (question: string) => Promise<AnswerResponse>;
+  // Libellé du lien d'une citation sans horodatage (« open the paper » pour un article, « open the page » pour une page web).
+  linkLabel?: string;
   onJump?: (citation: AnswerCitation) => void;
 }) {
   const [question, setQuestion] = useState("");
@@ -71,7 +74,7 @@ export function AssistantPanel({
       ) : (
         <div className="flex flex-col gap-6">
           {turns.map((turn, i) => (
-            <AnswerTurn key={i} turn={turn} busyText={busyText} documentId={documentId} onJump={onJump} />
+            <AnswerTurn key={i} turn={turn} busyText={busyText} documentId={documentId} onJump={onJump} linkLabel={linkLabel} />
           ))}
         </div>
       )}
@@ -99,11 +102,13 @@ function AnswerTurn({
   busyText,
   documentId,
   onJump,
+  linkLabel,
 }: {
   turn: Turn;
   busyText: string;
   documentId: string;
   onJump?: (citation: AnswerCitation) => void;
+  linkLabel: string;
 }) {
   return (
     <div>
@@ -122,7 +127,7 @@ function AnswerTurn({
           </p>
         )}
         {turn.error && <p className="text-sm text-error-500">{turn.error}</p>}
-        {turn.answer && <AnswerBody answer={turn.answer} documentId={documentId} onJump={onJump} />}
+        {turn.answer && <AnswerBody answer={turn.answer} documentId={documentId} onJump={onJump} linkLabel={linkLabel} />}
       </div>
     </div>
   );
@@ -132,10 +137,12 @@ function AnswerBody({
   answer,
   documentId,
   onJump,
+  linkLabel,
 }: {
   answer: AnswerResponse;
   documentId: string;
   onJump?: (citation: AnswerCitation) => void;
+  linkLabel: string;
 }) {
   const [label, tone] = STATUS_LABEL[answer.status];
   return (
@@ -158,7 +165,7 @@ function AnswerBody({
       {answer.citations.length > 0 && (
         <div className="mt-3 space-y-2">
           {answer.citations.map((c, i) => (
-            <CitationCard key={i} citation={c} onJump={onJump} />
+            <CitationCard key={i} citation={c} onJump={onJump} linkLabel={linkLabel} />
           ))}
         </div>
       )}
@@ -204,7 +211,15 @@ function AnswerBody({
   );
 }
 
-function CitationCard({ citation, onJump }: { citation: AnswerCitation; onJump?: (citation: AnswerCitation) => void }) {
+function CitationCard({
+  citation,
+  onJump,
+  linkLabel,
+}: {
+  citation: AnswerCitation;
+  onJump?: (citation: AnswerCitation) => void;
+  linkLabel: string;
+}) {
   const clickable = Boolean(onJump && citation.timestamp) || Boolean(citation.url);
   const body = (
     <blockquote className="border-l-4 border-primary-400 pl-4">
@@ -221,7 +236,7 @@ function CitationCard({ citation, onJump }: { citation: AnswerCitation; onJump?:
             {citation.source}
           </>
         )}
-        {clickable && <span className="text-gray-400">· {citation.timestamp ? "jump to it" : "open the paper"}</span>}
+        {clickable && <span className="text-gray-400">· {citation.timestamp ? "jump to it" : linkLabel}</span>}
       </p>
     </blockquote>
   );

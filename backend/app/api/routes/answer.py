@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from app.api.routes.sources import get_owned_source, require_video_dependencies
 from app.core.auth import CurrentUser, get_current_user
 from app.db.session import get_db
-from app.models.source import SourceStatus
+from app.models.source import Source, SourceStatus, SourceType
 from app.schemas.source import AnswerCitation, AnswerRequest, AnswerResponse, Passage
 from app.services import papers
 from app.services.rag_corpus import RagIndisponible
@@ -28,11 +28,14 @@ from app.services.video.llm import OllamaIndisponible
 router = APIRouter(tags=["answer"])
 
 
-def _video_to_response(source_id: str, source_title: str, r: dict) -> AnswerResponse:
+def _video_to_response(source: Source, r: dict) -> AnswerResponse:
     c = r.get("citation")
+    # Une page web n'a pas d'horodatage : la citation renvoie vers son adresse.
+    web = source.source_type == SourceType.web
     citations = [AnswerCitation(chunk_id=r["passages"][c["passage"] - 1]["chunk"]["chunk_id"],
-                                document_id=source_id, source=source_title, text=c["texte"],
-                                timestamp=c["timestamp"])] if c else []
+                                document_id=source.id, source=source.title, text=c["texte"],
+                                timestamp=None if web else c["timestamp"],
+                                url=source.url if web else None)] if c else []
     rf = r.get("reformulation")
     reponse = r["reponse"]
     if rf and rf["retenue"] and not rf["identique_a_la_citation"]:
@@ -75,6 +78,6 @@ def answer(body: AnswerRequest, db: Session = Depends(get_db), user: CurrentUser
                             detail=f"Source is not ready (status: {source.status.value})")
     require_video_dependencies()
     try:
-        return _video_to_response(source.id, source.title, pipeline.repondre(db, source, body.question))
+        return _video_to_response(source, pipeline.repondre(db, source, body.question))
     except OllamaIndisponible as e:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
