@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import answer, evaluation, papers, projects, search, sources, system
+from app.api.routes import answer, evaluation, knowledge, knowledge_graph, papers, projects, search, sources, system
 from app.core.config import get_settings
 from app.db.session import init_db
 
@@ -34,3 +34,5 @@ app.include_router(answer.router, prefix=settings.api_prefix)
 app.include_router(search.router, prefix=settings.api_prefix)
 app.include_router(papers.router, prefix=settings.api_prefix)
 app.include_router(evaluation.router, prefix=settings.api_prefix)
+app.include_router(knowledge_graph.router, prefix=settings.api_prefix)
+app.include_router(knowledge.router, prefix=settings.api_prefix)

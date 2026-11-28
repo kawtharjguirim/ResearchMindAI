@@ -28,6 +28,11 @@ class Settings(BaseSettings):
     # Comma-separated list of allowed frontend origins
     cors_origins: str = "http://localhost:3000"
 
+    # Neo4j (graphe de connaissances). Dans docker-compose, l'hôte est « neo4j ».
+    neo4j_uri: str = "bolt://localhost:7687"
+    neo4j_user: str = "neo4j"
+    neo4j_password: str = "researchmind-neo4j"
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
