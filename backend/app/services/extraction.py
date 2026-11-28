@@ -26,6 +26,7 @@ VERIFIED, NEEDS_REVIEW, REJECTED = "VERIFIED", "NEEDS_REVIEW", "REJECTED"
 MOTS_MINIMUM = 25        # un passage plus court ne contient en général pas d'information exploitable
 PASSAGES_MAXIMUM = 40    # plafond par document, pour limiter le temps de calcul sur CPU
 SEUIL_PROCHE = 0.8       # part des mots de la phrase présents dans le passage
+LONGUEUR_NOM_MAXIMUM = 80  # au-delà, ce n'est plus un nom mais une phrase
 
 SCHEMA = {
     "type": "object",
@@ -61,6 +62,21 @@ def normaliser(texte: str) -> str:
     return " ".join(re.sub(r"[^a-z0-9]+", " ", sans_accents.lower()).split())
 
 
+def nom_utile(nom: str) -> bool:
+    """
+    Filtre les noms d'entités trop pauvres pour être utiles dans un graphe :
+    au moins trois lettres, un mot d'au moins trois lettres (« Γ X Y M » et « β/b 1 » sont écartés),
+    et pas une phrase entière.
+    """
+    nom = " ".join(nom.split())
+    if not nom or len(nom) > LONGUEUR_NOM_MAXIMUM:
+        return False
+    lettres = [c for c in nom if c.isalpha()]
+    if len(lettres) < 3:
+        return False
+    return any(sum(c.isalpha() for c in mot) >= 3 for mot in nom.split())
+
+
 def verifier(entite: dict, passage: str) -> str:
     """Statut d'une proposition, décidé sans le LLM."""
     nom, phrase = normaliser(entite.get("nom", "")), normaliser(entite.get("phrase", ""))
@@ -93,10 +109,34 @@ def selectionner(passages: list[dict]) -> list[dict]:
     return utiles[:PASSAGES_MAXIMUM]
 
 
+_ACRONYME_ENTRE_PARENTHESES = re.compile(r"\(([A-Z][A-Za-z0-9\-]{1,9})\)\s*$")
+_ACRONYME_SEUL = re.compile(r"[A-Z][A-Z0-9\-]{1,9}")
+
+
+def forme_canonique(nom: str, alias: dict[str, str]) -> str:
+    """
+    Clé de regroupement d'un nom. Un acronyme et sa forme complète donnent la même clé :
+      « quantum anomalous Hall effect (QAHE) » → « qahe », « QAHE » → « qahe ».
+    `alias` mémorise les formes complètes déjà vues dans le document, pour les rattacher ensuite à leur acronyme.
+    """
+    nom = " ".join(nom.split())
+    m = _ACRONYME_ENTRE_PARENTHESES.search(nom)
+    if m:
+        acronyme = normaliser(m.group(1))
+        forme_complete = normaliser(nom[:m.start()])
+        if forme_complete:
+            alias[forme_complete] = acronyme
+        return acronyme
+    if _ACRONYME_SEUL.fullmatch(nom):
+        return normaliser(nom)
+    cle = normaliser(nom)
+    return alias.get(cle, cle)
+
+
 def enregistrer(db: Session, user_id: str, document_key: str, titre: str, passage: dict, entite: dict,
-                statut: str) -> bool:
+                statut: str, alias: dict[str, str] | None = None) -> bool:
     """Ajoute une proposition si elle n'existe pas déjà. Renvoie True si elle est nouvelle."""
-    nom_normal = normaliser(entite["nom"])
+    nom_normal = forme_canonique(entite["nom"], alias if alias is not None else {})
     existe = db.scalar(select(KnowledgeProposal.id).where(
         KnowledgeProposal.user_id == user_id,
         KnowledgeProposal.document_key == document_key,
@@ -127,6 +167,7 @@ def extraire_document(db: Session, user_id: str, document_key: str, titre: str, 
     """
     selection = selectionner(passages)
     compteurs = {"passages_lus": len(selection), "proposees": 0, "a_relire": 0, "rejetees": 0, "doublons": 0}
+    alias: dict[str, str] = {}   # formes complètes → acronymes, partagées par tout le document
     for fait, passage in enumerate(selection):
         if progres:
             progres(fait, len(selection))
@@ -139,10 +180,10 @@ def extraire_document(db: Session, user_id: str, document_key: str, titre: str, 
             continue
         for entite in entites:
             statut = verifier(entite, passage["text"])
-            if statut == REJECTED:
+            if statut == REJECTED or not nom_utile(entite.get("nom", "")):
                 compteurs["rejetees"] += 1
                 continue
-            if enregistrer(db, user_id, document_key, titre, passage, entite, statut):
+            if enregistrer(db, user_id, document_key, titre, passage, entite, statut, alias):
                 compteurs["proposees"] += 1
                 compteurs["a_relire"] += statut == NEEDS_REVIEW
             else:

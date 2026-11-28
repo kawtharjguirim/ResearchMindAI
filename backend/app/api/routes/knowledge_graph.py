@@ -4,7 +4,7 @@ Graphe de connaissances (Neo4j) : reconstruction depuis le corpus et lecture des
     POST /knowledge-graph/build   -> lit data_latex/ et écrit le graphe dans Neo4j
     GET  /knowledge-graph         -> nombre de nœuds et de relations par type
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.core.auth import CurrentUser, get_current_user
 from app.services import knowledge_graph as kg
@@ -38,6 +38,19 @@ def stats(user: CurrentUser = Depends(get_current_user)):
         driver = kg.pilote()
         try:
             return kg.statistiques(driver)
+        finally:
+            driver.close()
+    except Exception as e:  # noqa: BLE001
+        raise _erreur_neo4j(e) from e
+
+
+@router.get("/view")
+def view(limit: int = Query(default=300, ge=1, le=2000), user: CurrentUser = Depends(get_current_user)):
+    """Graphe validé de l'utilisateur (documents, entités approuvées, relations avec leur provenance)."""
+    try:
+        driver = kg.pilote()
+        try:
+            return kg.vue_utilisateur(driver, user.id, limit)
         finally:
             driver.close()
     except Exception as e:  # noqa: BLE001

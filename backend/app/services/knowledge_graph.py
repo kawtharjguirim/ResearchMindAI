@@ -186,3 +186,31 @@ def ajouter_proposition(driver, proposition: dict, owner: str) -> None:
     }
     with driver.session() as session:
         session.run(cypher, parametres).consume()
+
+
+def vue_utilisateur(driver, owner: str, limite: int = 300) -> dict:
+    """
+    Graphe validé d'un utilisateur, pour l'affichage : documents, entités approuvées et relations.
+    Chaque relation garde sa provenance (phrase, page, document). Les bibliographies (étape 1)
+    ne sont pas incluses : elles comptent des dizaines de milliers de nœuds.
+    """
+    cypher = (
+        "MATCH (d)-[r]->(e) WHERE r.owner = $owner AND type(r) IN ['USES', 'EVALUATES', 'MENTIONS'] "
+        "RETURN coalesce(d.id, d.cle) AS d_id, coalesce(d.titre, d.id, d.cle) AS d_titre, "
+        "labels(e)[0] AS e_type, e.nom_normal AS e_id, e.nom AS e_nom, type(r) AS relation, "
+        "r.phrase AS phrase, r.location AS location, r.document_key AS document_key "
+        "LIMIT $limite"
+    )
+    noeuds: dict[str, dict] = {}
+    liens: list[dict] = []
+    with driver.session() as session:
+        for ligne in session.run(cypher, {"owner": owner, "limite": limite}):
+            doc = f"doc:{ligne['d_id']}"
+            entite = f"{ligne['e_type']}:{ligne['e_id']}"
+            noeuds.setdefault(doc, {"id": doc, "type": "Document", "label": ligne["d_titre"],
+                                    "document_key": ligne["document_key"]})
+            noeuds.setdefault(entite, {"id": entite, "type": ligne["e_type"], "label": ligne["e_nom"]})
+            liens.append({"source": doc, "target": entite, "relation": ligne["relation"],
+                          "phrase": ligne["phrase"], "location": ligne["location"],
+                          "document_key": ligne["document_key"]})
+    return {"nodes": list(noeuds.values()), "edges": liens}

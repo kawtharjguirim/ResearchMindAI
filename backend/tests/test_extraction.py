@@ -228,3 +228,37 @@ def test_meme_entite_deux_fois_dans_un_passage_donne_une_proposition(monkeypatch
         assert bilan["proposees"] == 1
         assert bilan["doublons"] == 1
         assert len(db.scalars(select(KnowledgeProposal).where(KnowledgeProposal.user_id == "u-regr")).all()) == 1
+
+
+@pytest.mark.parametrize("nom", ["QAHE", "square lattice", "ferromagnetic semiconductor", "ARPES"])
+def test_nom_utile_garde_les_noms_informatifs(nom):
+    assert extraction.nom_utile(nom)
+
+
+@pytest.mark.parametrize("nom", ["", "Γ X Y M", "β/b 1", "(γ + η)/a 3", "M", "ab", "1 2 3",
+                                 "une phrase entière qui décrit longuement le résultat obtenu dans le passage et au-delà de quatre-vingts caractères"])
+def test_nom_utile_ecarte_les_fragments(nom):
+    assert not extraction.nom_utile(nom)
+
+
+def test_forme_canonique_regroupe_acronyme_et_forme_complete():
+    alias: dict[str, str] = {}
+    assert extraction.forme_canonique("quantum anomalous Hall effect (QAHE)", alias) == "qahe"
+    assert extraction.forme_canonique("QAHE", alias) == "qahe"
+    # Une forme complète vue ensuite, sans acronyme, rejoint l'acronyme déjà connu.
+    assert extraction.forme_canonique("Quantum anomalous Hall effect", alias) == "qahe"
+    assert extraction.forme_canonique("square lattice", alias) == "square lattice"
+
+
+def test_acronyme_et_forme_complete_dans_un_meme_passage_donnent_une_proposition(monkeypatch):
+    monkeypatch.setattr(llm, "chat", reponse_llm([
+        {"type": "Concept", "nom": "quantum anomalous Hall effect (QAHE)",
+         "phrase": "le modèle FictifNet est évalué sur le jeu de données JeuTest"},
+        {"type": "Concept", "nom": "QAHE",
+         "phrase": "le modèle FictifNet est évalué sur le jeu de données JeuTest"},
+    ]))
+    with SessionLocal() as db:
+        bilan = extraction.extraire_document(db, "u-acro", "corpus:acro", "Acronymes",
+                                             [{"text": PASSAGE_TEST, "location": "p. 1"}])
+        assert bilan["proposees"] == 1
+        assert bilan["doublons"] == 1

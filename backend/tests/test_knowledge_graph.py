@@ -126,3 +126,36 @@ def test_lire_corpus_ignore_les_bases_trop_volumineuses(tmp_path, monkeypatch):
     ecrire(tmp_path, "informatique/2100.00004/petit.bib", BIB_TEST[:120] + "\n}\n")
     ids = {a["id"] for a in kg.lire_corpus(tmp_path)}
     assert "2100.00003" not in ids
+
+
+def test_vue_utilisateur_construit_noeuds_et_liens():
+    lignes = [
+        {"d_id": "2100.00001", "d_titre": "arXiv:2100.00001", "e_type": "Method", "e_id": "fictifnet",
+         "e_nom": "FictifNet", "relation": "USES", "phrase": "le modèle FictifNet", "location": "p. 2",
+         "document_key": "corpus:2100.00001"},
+        {"d_id": "2100.00001", "d_titre": "arXiv:2100.00001", "e_type": "Dataset", "e_id": "jeutest",
+         "e_nom": "JeuTest", "relation": "USES", "phrase": "le jeu JeuTest", "location": "p. 3",
+         "document_key": "corpus:2100.00001"},
+    ]
+    recu = {}
+
+    class Session:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def run(self, cypher, parametres):
+            recu.update(parametres)
+            return lignes
+
+    class Pilote:
+        def session(self):
+            return Session()
+
+    vue = kg.vue_utilisateur(Pilote(), "u1", 50)
+    assert recu == {"owner": "u1", "limite": 50}          # filtré sur le propriétaire
+    assert {n["id"] for n in vue["nodes"]} == {"doc:2100.00001", "Method:fictifnet", "Dataset:jeutest"}
+    assert len(vue["edges"]) == 2
+    assert vue["edges"][0]["phrase"] == "le modèle FictifNet"
